@@ -18,6 +18,7 @@ import { logger } from './utils/logger';
 import { Music } from './engine/Music';
 import { Tutorial } from './utils/Tutorial';
 import { Vec2 } from './engine/math/Vec2';
+import { Starfield } from './ui/Starfield';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const boot = document.getElementById('boot');
@@ -36,6 +37,7 @@ const towerPanel = new TowerPanel();
 const settingsScreen = new SettingsScreen(settings);
 const levelSelect = new LevelSelect(state.levels, state.save);
 const tutorial = new Tutorial();
+const starfield = new Starfield(140);
 
 let paused = false;
 let showSettings = false;
@@ -165,6 +167,8 @@ const update = (dt: number): void => {
     frameCount = 0;
     lastFpsUpdate = 0;
   }
+  // starfield runs on every overlay screen (menu/levelSelect/won/lost)
+  starfield.update(dt, renderer.width, renderer.height);
 
   // settings overlay takes priority
   if (showSettings) {
@@ -256,6 +260,11 @@ const update = (dt: number): void => {
 
 const render = (_alpha: number): void => {
   renderer.clear();
+
+  // starfield behind pure overlay screens (menu/levelSelect only;
+  // won/lost still show the game world underneath)
+  if (state.phase === 'menu' || state.phase === 'levelSelect') starfield.draw(renderer);
+
   const { camX, camY } = camOffset();
   renderer.camX = camX;
   renderer.camY = camY;
