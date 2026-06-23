@@ -72,6 +72,10 @@ export class GameState {
   score = 0;
   fps = 0;
   lastStars = 0;
+  /** Combo streak: kills within 2s window. Resets on timeout. */
+  comboCount = 0;
+  comboTimer = 0;
+  static readonly COMBO_WINDOW = 2; // seconds to keep combo alive
 
   constructor() {
     this.grid = new Grid(this.levels.current);
@@ -195,6 +199,12 @@ export class GameState {
   update(dt: number): void {
     if (this.phase !== 'playing') return;
     this.stats.tick(dt);
+
+    // combo decay
+    if (this.comboCount > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) this.comboCount = 0;
+    }
 
     this.waves.update(dt, this.grid, this.enemies);
     this.bus.emit('waveChanged', { current: this.waves.current, total: this.waves.totalWaves });

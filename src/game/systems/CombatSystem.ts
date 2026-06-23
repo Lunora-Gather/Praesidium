@@ -1,7 +1,7 @@
 // Combat system: applies projectile hits, splash, slow, typed damage.
 // Emits events for particles/audio/stats. Authoritative damage application.
 
-import type { GameState } from '../GameState';
+import { GameState } from '../GameState';
 import type { Projectile } from '../projectiles/Projectile';
 import type { Enemy } from '../enemies/Enemy';
 import { EventBus } from '../../utils/EventBus';
@@ -64,12 +64,17 @@ export class CombatSystem {
     this.bus.emit('hit', { enemy: e, damage: actual, x: e.pos.x, y: e.pos.y });
     if (wasAlive && e.hp <= 0) {
       const reward = Math.round(e.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul);
-      state.gold += reward;
-      state.score += reward;
+      // combo streak: bonus gold for rapid kills
+      state.comboCount++;
+      state.comboTimer = GameState.COMBO_WINDOW;
+      const comboBonus = state.comboCount >= 3 ? Math.floor(reward * 0.2 * (state.comboCount - 2)) : 0;
+      const totalReward = reward + comboBonus;
+      state.gold += totalReward;
+      state.score += totalReward;
       state.stats.recordKill();
-      state.stats.recordGold(reward);
+      state.stats.recordGold(totalReward);
       state.achievements.recordKill();
-      state.achievements.recordGold(reward);
+      state.achievements.recordGold(totalReward);
       this.bus.emit('kill', { enemy: e, x: e.pos.x, y: e.pos.y });
     }
   }

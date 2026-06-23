@@ -23,6 +23,9 @@ export class HUD {
     if (speed > 1) {
       r.text(`${speed}x`, 700, 14, '#fff176', 16);
     }
+    if (s.comboCount >= 3) {
+      r.text(`COMBO x${s.comboCount}`, 760, 14, '#ff5722', 16);
+    }
 
     // tower shop (bottom bar)
     const shopH = 64;
