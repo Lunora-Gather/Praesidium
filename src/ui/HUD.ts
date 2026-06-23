@@ -60,6 +60,7 @@ export class HUD {
       ? 'Wave…'
       : s.waves.current >= s.waves.totalWaves ? 'Last wave' : `Send W${s.waves.current + 1}`;
     drawBtn(`${speed}x`, speed > 1 ? '#6a1b9a' : '#374151', 'speed');
+    drawBtn('Talents', '#374151', 'talent');
     drawBtn('Settings', '#374151', 'settings');
     drawBtn('Pause', '#374151', 'pause');
     drawBtn('Menu', '#374151', 'menu');

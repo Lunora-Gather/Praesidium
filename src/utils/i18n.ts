@@ -28,6 +28,9 @@ const STRINGS: Record<Locale, Record<string, string>> = {
     'tutorial.wave': 'Click "Send Wave" to summon enemies.',
     'tutorial.upgrade': 'Click a placed tower to upgrade or sell it.',
     'tutorial.spell': 'Try a spell: Q (Meteor) W (Freeze) E (Repair).',
+    'talent.title': 'TALENTS',
+    'talent.points': 'Points',
+    'talent.close': 'Press T or click outside to close',
   },
   zh: {
     'app.title': 'Praesidium 守望',
@@ -53,6 +56,9 @@ const STRINGS: Record<Locale, Record<string, string>> = {
     'tutorial.wave': '点击"召唤波次"召唤敌人。',
     'tutorial.upgrade': '点击已放置的炮塔可升级或出售。',
     'tutorial.spell': '试试技能：Q 陨石 W 冰冻 E 修复。',
+    'talent.title': '天赋',
+    'talent.points': '点数',
+    'talent.close': '按 T 或点击外部关闭',
   },
 };
 

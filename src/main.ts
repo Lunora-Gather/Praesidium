@@ -20,6 +20,7 @@ import { Tutorial } from './utils/Tutorial';
 import { Vec2 } from './engine/math/Vec2';
 import { Starfield } from './ui/Starfield';
 import { t } from './utils/i18n';
+import { TalentPanel } from './ui/TalentPanel';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const boot = document.getElementById('boot');
@@ -39,6 +40,7 @@ const settingsScreen = new SettingsScreen(settings);
 const levelSelect = new LevelSelect(state.levels, state.save);
 const tutorial = new Tutorial();
 const starfield = new Starfield(140);
+const talentPanel = new TalentPanel();
 
 let paused = false;
 let showSettings = false;
@@ -47,6 +49,7 @@ let lastFpsUpdate = 0;
 let frameCount = 0;
 let placingMode = true; // true=click places tower, false=click selects tower
 let gameSpeed = 1; // 1x/2x/3x speed control
+let showTalent = false;
 
 // sync audio mute with stored setting
 audio.setMuted(settings.get().muted);
@@ -113,6 +116,8 @@ function handleHUDClick(x: number, y: number): void {
   } else if (btn === 'speed') {
     gameSpeed = gameSpeed >= 3 ? 1 : gameSpeed + 1;
     loop.timeScale = gameSpeed;
+  } else if (btn === 'talent') {
+    showTalent = true;
   } else if (btn === 'menu') {
     state.goMenu();
   } else if (btn === 'settings') {
@@ -244,6 +249,13 @@ const update = (dt: number): void => {
       tx >= 0 && ty >= 0 && tx < state.grid.cols && ty < state.grid.rows ? { tx, ty } : null;
 
     for (const c of input.clicks()) {
+      // talent panel takes priority when open
+      if (showTalent) {
+        const tid = talentPanel.hit(c.x, c.y);
+        if (tid) state.talents.rankUp(tid);
+        else showTalent = false; // click outside closes
+        continue;
+      }
       if (c.y < 48) continue; // top bar no-op
       if (c.y > renderer.height - 64) handleHUDClick(c.x, c.y);
       else if (state.selectedSpellId) {
@@ -261,7 +273,10 @@ const update = (dt: number): void => {
     }
     if (input.wasKeyPressed('KeyS') && state.selectedTower) state.sellTower(state.selectedTower);
     if (input.wasKeyPressed('KeyU') && state.selectedTower) state.upgradeTower(state.selectedTower);
-    if (input.wasKeyPressed('KeyT') && state.selectedTower) state.selectedTower.cycleStrategy();
+    if (input.wasKeyPressed('KeyT')) {
+      if (showTalent) showTalent = false;
+      else if (state.selectedTower) state.selectedTower.cycleStrategy();
+    }
     for (let i = 0; i < TOWER_LIST.length; i++) {
       if (input.wasKeyPressed(`Digit${i + 1}`)) {
         state.selectedTowerId = TOWER_LIST[i].id;
@@ -314,6 +329,7 @@ const render = (_alpha: number): void => {
       towerPanel.clear();
     }
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
+    if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
     if (state.phase === 'won') screens.draw(renderer, 'won', state.score);
     if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed);

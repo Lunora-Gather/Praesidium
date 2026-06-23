@@ -62,7 +62,7 @@ export class WorldRenderer {
       }
     }
 
-    // enemies + hp bars + slow tint
+    // enemies + hp bars + slow tint + boss health bar
     for (const e of s.enemies) {
       r.circle(e.pos, e.radius, e.color);
       if (e.isSlowed) r.circle(e.pos, e.radius + 2, '#80deea', false);
@@ -71,6 +71,15 @@ export class WorldRenderer {
       const barY = e.pos.y - e.radius - 6;
       r.rect(barX, barY, barW, 3, '#000', true);
       r.rect(barX, barY, barW * e.hpRatio, 3, '#4caf50', true);
+      // boss: thick health bar across screen width
+      if (e.isBoss) {
+        const bossBarW = r.width * 0.6;
+        const bossBarX = (r.width - bossBarW) / 2 - r.camX;
+        const bossBarY = 52 - r.camY;
+        r.rect(bossBarX, bossBarY, bossBarW, 8, '#1a1a1a', true);
+        r.rect(bossBarX, bossBarY, bossBarW * e.hpRatio, 8, '#d32f2f', true);
+        r.rect(bossBarX, bossBarY, bossBarW, 8, '#d32f2f', false);
+      }
     }
 
     // projectiles

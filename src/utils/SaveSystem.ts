@@ -9,6 +9,7 @@ export interface SaveData {
   highScore: number;
   maxLevelReached: number; // 1-based index into LEVELS
   unlockedTowers: string[];
+  levelStars: Record<number, number>; // levelNumber (1-based) -> best stars 0..3
 }
 
 const KEY = 'save';
@@ -20,6 +21,7 @@ const DEFAULTS: SaveData = {
   highScore: 0,
   maxLevelReached: 1,
   unlockedTowers: ['turret'],
+  levelStars: {},
 };
 
 export class SaveSystem {
@@ -64,6 +66,21 @@ export class SaveSystem {
       this.data.unlockedTowers.push(id);
       this.persist();
     }
+  }
+
+  /** Record best stars for a level (1-based). Returns true if new best. */
+  recordStars(levelNumber: number, stars: number): boolean {
+    const prev = this.data.levelStars[levelNumber] ?? 0;
+    if (stars > prev) {
+      this.data.levelStars[levelNumber] = stars;
+      this.persist();
+      return true;
+    }
+    return false;
+  }
+
+  getStars(levelNumber: number): number {
+    return this.data.levelStars[levelNumber] ?? 0;
   }
 
   reset(): void {

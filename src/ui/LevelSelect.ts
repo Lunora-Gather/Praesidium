@@ -36,7 +36,11 @@ export class LevelSelect {
       r.text(`Level ${i + 1}`, x + cardW / 2, y + 18, unlocked ? '#fff' : '#555', 18, 'center');
       r.text(levelName, x + cardW / 2, y + 48, unlocked ? '#9aa0a6' : '#444', 13, 'center');
       if (unlocked) {
-        r.text('Click to play', x + cardW / 2, y + 78, '#8ab4f8', 12, 'center');
+        // show best stars as ★/☆
+        const stars = this.save.getStars(i + 1);
+        const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+        r.text(starStr, x + cardW / 2, y + 70, stars >= 3 ? '#ffd54f' : '#9aa0a6', 16, 'center');
+        r.text('Click to play', x + cardW / 2, y + 92, '#8ab4f8', 11, 'center');
         this.regions.push({ x, y, w: cardW, h: cardH, action: { kind: 'level', index: i } });
       } else {
         r.text('Locked', x + cardW / 2, y + 78, '#555', 12, 'center');

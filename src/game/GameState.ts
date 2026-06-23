@@ -227,6 +227,7 @@ export class GameState {
       this.bus.emit('levelWon', { level: this.levels.levelNumber, stars: this.lastStars });
       const newly = this.achievements.newlyUnlocked();
       if (newly.length > 0) logger.info('Achievements unlocked', newly.map((a) => a.id));
+      this.save.recordStars(this.levels.levelNumber, this.lastStars);
       const isNew = this.save.recordScore(this.score);
       logger.info('Level won', { score: this.score, stars: this.lastStars, isNewHigh: isNew });
       this.advanceLevel();

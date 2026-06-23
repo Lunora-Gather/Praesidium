@@ -30,7 +30,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'archmage', name: 'Archmage', description: 'Cast 20 spells.', check: (s) => s.spellsCast >= 20 },
   { id: 'perfect', name: 'Flawless', description: 'Earn 3 stars on a level.', check: (s) => s.bestStars >= 3 },
   { id: 'veteran', name: 'Veteran', description: 'Clear 10 waves total.', check: (s) => s.totalWavesCleared >= 10 },
-  { id: 'conqueror', name: 'Conqueror', description: 'Complete all levels.', check: (s) => s.levelsCompleted >= 3 },
+  { id: 'conqueror', name: 'Conqueror', description: 'Complete all levels.', check: (s) => s.levelsCompleted >= 6 },
 ];
 
 export class AchievementSystem {
