@@ -47,6 +47,7 @@
   </head>
   <body>
     <div id="boot">PRAESIDIUM · loading…</div>
+    <div id="err-indicator" style="position:fixed;bottom:4px;right:4px;color:#e57373;font-size:11px;z-index:99"></div>
     <canvas id="game-canvas"></canvas>
     <script type="module" src="/src/main.ts"></script>
     <script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js');</script>

@@ -25,6 +25,17 @@ import { t } from './utils/i18n';
 import { TalentPanel } from './ui/TalentPanel';
 import { loadRun } from './utils/RunSave';
 
+// Global error boundary — prevents one unhandled error from crashing the entire game.
+// Logs the error and shows a subtle red indicator instead of a blank screen.
+window.addEventListener('error', (e) => {
+  console.error('[Praesidium] Unhandled error:', e.error ?? e.message);
+  const indicator = document.getElementById('err-indicator');
+  if (indicator) indicator.textContent = '⚠ Error — see console';
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('[Praesidium] Unhandled promise rejection:', e.reason);
+});
+
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const boot = document.getElementById('boot');
 if (boot) boot.remove();
