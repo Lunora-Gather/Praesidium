@@ -84,10 +84,13 @@ export class PlayerSpell {
           state.stats.recordDamage(actual);
           state.combat.bus.emit('hit', { enemy: e, damage: actual, x: e.pos.x, y: e.pos.y });
           if (wasAlive && e.hp <= 0) {
-            state.gold += e.reward;
-            state.score += e.reward;
+            const reward = Math.round(e.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul);
+            state.gold += reward;
+            state.score += reward;
             state.stats.recordKill();
-            state.stats.recordGold(e.reward);
+            state.stats.recordGold(reward);
+            state.achievements.recordKill();
+            state.achievements.recordGold(reward);
             state.combat.bus.emit('kill', { enemy: e, x: e.pos.x, y: e.pos.y });
           }
         }

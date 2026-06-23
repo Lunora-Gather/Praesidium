@@ -18,6 +18,9 @@ import { ParticleSystem } from './effects/ParticleSystem';
 import { PlayerSpell, PLAYER_SPELLS } from './spells/PlayerSpells';
 import { StatsTracker } from './StatsTracker';
 import { computeStars } from './Stars';
+import { AchievementSystem } from './Achievements';
+import { TalentTree } from './Talents';
+import { Difficulty, DIFFICULTIES, DifficultyDef } from '../config/Difficulty';
 import { Vec2 } from '../engine/math/Vec2';
 
 export type Phase = 'menu' | 'levelSelect' | 'playing' | 'won' | 'lost';
@@ -50,7 +53,14 @@ export class GameState {
   readonly save = new SaveSystem();
   readonly particles = new ParticleSystem();
   readonly stats = new StatsTracker();
+  readonly achievements = new AchievementSystem();
+  readonly talents = new TalentTree();
   readonly spells = PLAYER_SPELLS.map((s) => new PlayerSpell(s.def));
+  difficulty: Difficulty = 'normal';
+
+  get diffMul(): DifficultyDef { return DIFFICULTIES[this.difficulty]; }
+
+  setDifficulty(d: Difficulty): void { this.difficulty = d; }
   selectedTowerId: string | null = 'turret';
   hoverTile: { tx: number; ty: number } | null = null;
   selectedTower: Tower | null = null;
@@ -74,8 +84,9 @@ export class GameState {
 
   start(): void {
     this.grid = new Grid(this.levels.current);
-    this.gold = BALANCE.startGold;
-    this.lives = BALANCE.startLives;
+    const diff = DIFFICULTIES[this.difficulty];
+    this.gold = BALANCE.startGold + diff.goldStartBonus;
+    this.lives = BALANCE.startLives + this.talents.multiplier('lives');
     this.score = 0;
     this.lastStars = 0;
     this.towers.length = 0;
@@ -87,6 +98,7 @@ export class GameState {
     this.selectedTower = null;
     this.selectedSpellId = null;
     this.waves.reset();
+    this.waves.setDifficulty(diff.hpMul, diff.countMul);
     this.setPhase('playing');
     logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name });
   }
@@ -189,7 +201,12 @@ export class GameState {
     }
     if (this.waves.state === 'done' && this.enemies.length === 0) {
       this.lastStars = computeStars(this.lives);
+      this.talents.awardPoints(this.lastStars);
+      this.achievements.recordStars(this.lastStars);
+      this.achievements.recordLevelComplete();
       this.bus.emit('levelWon', { level: this.levels.levelNumber, stars: this.lastStars });
+      const newly = this.achievements.newlyUnlocked();
+      if (newly.length > 0) logger.info('Achievements unlocked', newly.map((a) => a.id));
       const isNew = this.save.recordScore(this.score);
       logger.info('Level won', { score: this.score, stars: this.lastStars, isNewHigh: isNew });
       this.advanceLevel();

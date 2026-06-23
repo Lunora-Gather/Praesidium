@@ -97,7 +97,7 @@ function handleHUDClick(x: number, y: number): void {
   }
   const btn = hud.hitButton(hudRegions, x, y);
   if (btn === 'send') {
-    if (state.waves.forceNext(state.grid, state.enemies)) audio.waveStart();
+    if (state.waves.forceNext(state.enemies)) audio.waveStart();
   } else if (btn === 'pause') {
     paused = !paused;
   } else if (btn === 'menu') {

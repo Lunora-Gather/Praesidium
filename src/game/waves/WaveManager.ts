@@ -3,7 +3,7 @@
 import { BALANCE } from '../../config/balance';
 import type { Grid } from '../grid/Grid';
 import type { Enemy } from '../enemies/Enemy';
-import { ENEMY_DEFS, getEnemyDef } from '../enemies/EnemyRegistry';
+import { getEnemyDef } from '../enemies/EnemyRegistry';
 import { Enemy as EnemyClass } from '../enemies/Enemy';
 
 export interface WaveDef {
@@ -63,16 +63,15 @@ export class WaveManager {
   update(dt: number, grid: Grid, out: Enemy[]): void {
     if (this.state === 'done') return;
     this.timer += dt;
-
     if (this.state === 'idle') {
       this.betweenTimer += dt;
-      if (this.betweenTimer >= 1.5) this.startNext(grid, out);
+      if (this.betweenTimer >= 1.5) this.startNext(out);
       return;
     }
 
     if (this.state === 'between') {
       this.betweenTimer += dt;
-      if (this.betweenTimer >= BALANCE.waveInterDelay) this.startNext(grid, out);
+      if (this.betweenTimer >= BALANCE.waveInterDelay) this.startNext(out);
       return;
     }
 
@@ -80,7 +79,7 @@ export class WaveManager {
     while (this.spawnQueue.length > 0 && this.timer >= this.spawnQueue[0].at) {
       const spec = this.spawnQueue.shift()!;
       const def = getEnemyDef(spec.id);
-      const hpMul = 1 + (this.current - 1) * (BALANCE.enemyHpGrowth - 1);
+      const hpMul = (1 + (this.current - 1) * (BALANCE.enemyHpGrowth - 1)) * this.diffHpMul;
       out.push(new EnemyClass(def, grid.waypoints[0], hpMul));
     }
     if (this.spawnQueue.length === 0) {
@@ -90,7 +89,15 @@ export class WaveManager {
     }
   }
 
-  private startNext(grid: Grid, _out: Enemy[]): void {
+  setDifficulty(hpMul: number, countMul: number): void {
+    this.diffHpMul = hpMul;
+    this.diffCountMul = countMul;
+  }
+
+  private diffHpMul = 1;
+  private diffCountMul = 1;
+
+  private startNext(_out: Enemy[]): void {
     this.current++;
     if (this.current > this.waves.length) {
       this.state = 'done';
@@ -102,8 +109,9 @@ export class WaveManager {
     let total = 0;
     const ids: string[] = [];
     for (const g of wave.enemies) {
-      for (let i = 0; i < g.count; i++) ids.push(g.id);
-      total += g.count;
+      const scaled = Math.max(1, Math.round(g.count * this.diffCountMul));
+      for (let i = 0; i < scaled; i++) ids.push(g.id);
+      total += scaled;
     }
     // interleave spawn order
     for (let i = 0; i < total; i++) {
@@ -116,16 +124,15 @@ export class WaveManager {
     this.timer = 0;
     this.betweenTimer = 0;
     this.state = 'running';
-    void ENEMY_DEFS;
-    void grid;
+    void _out;
   }
 
   /** Force-start next wave (player clicks "Send Wave"). Returns true if started. */
-  forceNext(grid: Grid, out: Enemy[]): boolean {
+  forceNext(out: Enemy[]): boolean {
     if (this.state === 'running') return false;
     if (this.state === 'done') return false;
     this.betweenTimer = BALANCE.waveInterDelay; // trip the gate
-    this.startNext(grid, out);
+    this.startNext(out);
     return true;
   }
 

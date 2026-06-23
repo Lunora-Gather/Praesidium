@@ -13,6 +13,7 @@ export class Enemy {
   private wpIndex = 0;
   hp: number;
   private readonly maxHp: number;
+  private shieldHp = 0;
   private readonly baseSpeed: number;
   private slowTimer = 0;
   private slowFactor = 1;
@@ -75,9 +76,24 @@ export class Enemy {
 
   takeDamage(d: number, type: DamageType = DamageType.Physical): number {
     const actual = this.resist ? applyResistance(d, type, this.resist) : d;
-    this.hp -= actual;
+    let dmg = actual;
+    if (this.shieldHp > 0) {
+      const absorbed = Math.min(this.shieldHp, dmg);
+      this.shieldHp -= absorbed;
+      dmg -= absorbed;
+    }
+    this.hp -= dmg;
     if (this.hp <= 0) this.dead = true;
     return actual;
+  }
+
+  heal(amount: number): void {
+    if (this.dead) return;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+  }
+
+  shield(amount: number): void {
+    this.shieldHp += amount;
   }
 
   get hpRatio(): number {
