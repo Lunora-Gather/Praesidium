@@ -337,8 +337,8 @@ const render = (_alpha: number): void => {
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
-    if (state.phase === 'won') screens.draw(renderer, 'won', state.score);
-    if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed);
+    if (state.phase === 'won') screens.draw(renderer, 'won', state.score, 0, { stars: state.lastStars, kills: state.stats.get().kills, gold: state.stats.get().goldEarned });
+    if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed, { wave: state.waves.current, kills: state.stats.get().kills });
     if (settings.get().showFps) renderer.text(`${state.fps} fps`, 8, 52, '#555', 11);
   } else if (state.phase === 'levelSelect') {
     levelSelect.draw(renderer);
