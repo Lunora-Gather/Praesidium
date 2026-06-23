@@ -74,42 +74,36 @@ export class PlayerSpell {
     this.cooldown = this.def.cooldown;
 
     if (this.def.damage && this.def.radius) {
-      const r2 = this.def.radius * this.radius;
+      const r2 = this.def.radius * this.def.radius;
       const type = this.def.damageType ?? DamageType.Physical;
       for (const e of state.enemies) {
         if (e.dead) continue;
-        if (target.distSq(e.pos) <= r2) {
-          const wasAlive = !e.dead;
-          const actual = e.takeDamage(this.def.damage!, type);
-          state.stats.recordDamage(actual);
-          state.combat.bus.emit('hit', { enemy: e, damage: actual, x: e.pos.x, y: e.pos.y });
-          if (wasAlive && e.hp <= 0) {
-            const reward = Math.round(e.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul);
-            state.gold += reward;
-            state.score += reward;
-            state.stats.recordKill();
-            state.stats.recordGold(reward);
-            state.achievements.recordKill();
-            state.achievements.recordGold(reward);
-            state.combat.bus.emit('kill', { enemy: e, x: e.pos.x, y: e.pos.y });
-          }
+        if (target.distSq(e.pos) > r2) continue;
+        const actual = e.takeDamage(this.def.damage, type);
+        state.stats.recordDamage(actual);
+        state.combat.bus.emit('hit', { enemy: e, damage: actual, x: e.pos.x, y: e.pos.y });
+        if (e.hp <= 0) {
+          const reward = Math.round(e.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul);
+          state.gold += reward;
+          state.score += reward;
+          state.stats.recordKill();
+          state.stats.recordGold(reward);
+          state.achievements.recordKill();
+          state.achievements.recordGold(reward);
+          state.combat.bus.emit('kill', { enemy: e, x: e.pos.x, y: e.pos.y });
         }
       }
     }
     if (this.def.slow) {
       for (const e of state.enemies) {
         if (e.dead) continue;
-        e.applySlow(this.def.slow!.factor, this.def.slow!.duration);
+        e.applySlow(this.def.slow.factor, this.def.slow.duration);
       }
     }
     if (this.def.heal) {
       state.lives += this.def.heal;
     }
     return true;
-  }
-
-  private get radius(): number {
-    return this.def.radius ?? 0;
   }
 }
 

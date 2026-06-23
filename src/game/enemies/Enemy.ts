@@ -31,7 +31,7 @@ export class Enemy {
     this.hp = def.hp * waveHpMul;
     this.maxHp = this.hp;
     this.baseSpeed = def.speed;
-    this.reward = Math.round(def.reward * waveHpMul);
+    this.reward = def.reward; // base reward; difficulty/talent multipliers applied at kill site
     this.pos = Vec2.from(startPos);
     this.resist = def.resist;
     this.isBoss = !!def.isBoss;

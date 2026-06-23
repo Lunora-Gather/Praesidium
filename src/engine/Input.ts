@@ -53,6 +53,7 @@ export class Input {
   };
 
   private readonly onDown = (e: MouseEvent): void => {
+    if (e.button !== 0) return; // left-click only
     this.mouseDown = true;
     const r = this.canvas.getBoundingClientRect();
     this.addClick(e.clientX - r.left, e.clientY - r.top);

@@ -50,7 +50,9 @@ export class HUD {
       regions.buttons.push({ x: bx, y: btnY, w: btnW, h: btnH, action });
       bx -= 8;
     };
-    const waveLabel = s.waves.inProgress ? 'Wave…' : `Send W${s.waves.current + 1}`;
+    const waveLabel = s.waves.inProgress
+      ? 'Wave…'
+      : s.waves.current >= s.waves.totalWaves ? 'Last wave' : `Send W${s.waves.current + 1}`;
     drawBtn('Settings', '#374151', 'settings');
     drawBtn('Pause', '#374151', 'pause');
     drawBtn('Menu', '#374151', 'menu');

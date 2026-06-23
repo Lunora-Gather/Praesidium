@@ -39,8 +39,8 @@ export interface GameEvents {
 
 export class GameState {
   grid: Grid;
-  gold = BALANCE.startGold as number;
-  lives = BALANCE.startLives as number;
+  gold = 0;
+  lives = 0;
   phase: Phase = 'menu';
   readonly towers: Tower[] = [];
   readonly enemies: Enemy[] = [];
@@ -86,7 +86,7 @@ export class GameState {
     this.grid = new Grid(this.levels.current);
     const diff = DIFFICULTIES[this.difficulty];
     this.gold = BALANCE.startGold + diff.goldStartBonus;
-    this.lives = BALANCE.startLives + this.talents.multiplier('lives');
+    this.lives = BALANCE.startLives + Math.round(this.talents.multiplier('lives'));
     this.score = 0;
     this.lastStars = 0;
     this.towers.length = 0;

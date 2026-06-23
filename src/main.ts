@@ -97,7 +97,7 @@ function handleHUDClick(x: number, y: number): void {
   }
   const btn = hud.hitButton(hudRegions, x, y);
   if (btn === 'send') {
-    if (state.waves.forceNext(state.enemies)) audio.waveStart();
+    if (state.waves.forceNext()) audio.waveStart();
   } else if (btn === 'pause') {
     paused = !paused;
   } else if (btn === 'menu') {
@@ -194,13 +194,8 @@ const update = (dt: number): void => {
   if (state.phase === 'menu') {
     for (const c of input.clicks()) {
       const a = screens.hit(c.x, c.y);
-      if (a === 'start') {
-        state.goLevelSelect();
-      } else if (a === 'restart') {
-        state.start();
-      }
+      if (a === 'start') state.goLevelSelect();
     }
-    if (input.wasKeyPressed('Escape')) {/* no-op */}
     input.endFrame();
     return;
   }

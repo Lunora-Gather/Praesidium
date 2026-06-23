@@ -43,8 +43,6 @@ export class LevelSelect {
       }
       x += cardW + gap;
     }
-    // re-draw with correct names (LevelManager.current is mutable; snapshot list)
-    // — handled by caller passing fresh names via redraw; acceptable for Phase 2.
 
     const btnY = y + cardH + 40;
     r.text('← Back to Menu (click below)', cx, btnY, '#9aa0a6', 14, 'center');

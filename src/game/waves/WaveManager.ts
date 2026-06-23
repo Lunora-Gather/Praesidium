@@ -38,7 +38,6 @@ export class WaveManager {
   private timer = 0; // accumulates time to schedule spawns
   state: 'idle' | 'running' | 'between' | 'done' = 'idle';
   private betweenTimer = 0;
-  spawnedThisWave = 0;
   enemiesThisWave = 0;
 
   constructor(count = BALANCE.waveCount) {
@@ -51,7 +50,6 @@ export class WaveManager {
     this.timer = 0;
     this.betweenTimer = 0;
     this.state = 'idle';
-    this.spawnedThisWave = 0;
     this.enemiesThisWave = 0;
   }
 
@@ -65,13 +63,13 @@ export class WaveManager {
     this.timer += dt;
     if (this.state === 'idle') {
       this.betweenTimer += dt;
-      if (this.betweenTimer >= 1.5) this.startNext(out);
+      if (this.betweenTimer >= 1.5) this.startNext();
       return;
     }
 
     if (this.state === 'between') {
       this.betweenTimer += dt;
-      if (this.betweenTimer >= BALANCE.waveInterDelay) this.startNext(out);
+      if (this.betweenTimer >= BALANCE.waveInterDelay) this.startNext();
       return;
     }
 
@@ -97,7 +95,7 @@ export class WaveManager {
   private diffHpMul = 1;
   private diffCountMul = 1;
 
-  private startNext(_out: Enemy[]): void {
+  private startNext(): void {
     this.current++;
     if (this.current > this.waves.length) {
       this.state = 'done';
@@ -120,19 +118,17 @@ export class WaveManager {
       t += BALANCE.enemySpawnGap;
     }
     this.enemiesThisWave = total;
-    this.spawnedThisWave = 0;
     this.timer = 0;
     this.betweenTimer = 0;
     this.state = 'running';
-    void _out;
   }
 
   /** Force-start next wave (player clicks "Send Wave"). Returns true if started. */
-  forceNext(out: Enemy[]): boolean {
+  forceNext(): boolean {
     if (this.state === 'running') return false;
     if (this.state === 'done') return false;
     this.betweenTimer = BALANCE.waveInterDelay; // trip the gate
-    this.startNext(out);
+    this.startNext();
     return true;
   }
 
