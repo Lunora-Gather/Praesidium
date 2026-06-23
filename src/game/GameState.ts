@@ -216,8 +216,14 @@ export class GameState {
     for (const sp of this.spells) sp.update(dt);
 
     if (this.lives <= 0) {
-      this.setPhase('lost');
+      // award talent points even on defeat (endless: waves survived = progress)
+      if (this.endless && this.waves.current > 0) {
+        const stars = Math.min(3, Math.floor(this.waves.current / 4)); // 1 star per 4 waves, max 3
+        this.talents.awardPoints(stars);
+        this.achievements.recordStars(stars);
+      }
       this.save.recordScore(this.score);
+      this.setPhase('lost');
       return;
     }
     if (this.waves.state === 'done' && this.enemies.length === 0) {
