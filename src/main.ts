@@ -10,6 +10,8 @@ import { HUD, HudRegions } from './ui/HUD';
 import { Screens, MenuClickAction } from './ui/Screens';
 import { WorldRenderer } from './ui/WorldRenderer';
 import { TOWER_LIST } from './game/towers/TowerRegistry';
+import { getTowerDef } from './game/towers/TowerRegistry';
+import { Tower } from './game/towers/Tower';
 import { TowerPanel } from './ui/TowerPanel';
 import { SettingsScreen } from './ui/SettingsScreen';
 import { LevelSelect } from './ui/LevelSelect';
@@ -21,6 +23,7 @@ import { Vec2 } from './engine/math/Vec2';
 import { Starfield } from './ui/Starfield';
 import { t } from './utils/i18n';
 import { TalentPanel } from './ui/TalentPanel';
+import { loadRun } from './utils/RunSave';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const boot = document.getElementById('boot');
@@ -47,10 +50,38 @@ let showSettings = false;
 let hudRegions: HudRegions = { shop: [], buttons: [] };
 let lastFpsUpdate = 0;
 let frameCount = 0;
-let placingMode = true; // true=click places tower, false=click selects tower
-let gameSpeed = 1; // 1x/2x/3x speed control
+let placingMode = true;
+let gameSpeed = 1;
 let showTalent = false;
 let autoSend = false;
+
+// restore mid-run save if present (player closed tab mid-game)
+const savedRun = loadRun();
+if (savedRun && savedRun.v === 1) {
+  state.setDifficulty(savedRun.difficulty as 'normal' | 'hard' | 'brutal');
+  state.endless = savedRun.endless;
+  state.endlessSeed = savedRun.endlessSeed;
+  state.selectLevel(savedRun.levelIndex);
+  state.gold = savedRun.gold;
+  state.lives = savedRun.lives;
+  state.score = savedRun.score;
+  state.towers.length = 0;
+  for (const td of savedRun.towers) {
+    const def = getTowerDef(td.id);
+    const t = new Tower(def, td.tx, td.ty, state.grid, { damage: td.dmgMul, range: td.rangeMul, firerate: td.fireRateMul });
+    while (t.level < td.level && t.nextUpgrade) t.upgrade();
+    t.strategy = td.strategy as 'first' | 'last' | 'strongest' | 'weakest' | 'closest';
+    state.towers.push(t);
+  }
+  for (let i = 0; i < savedRun.spellCooldowns.length && i < state.spells.length; i++) {
+    state.spells[i].cooldown = savedRun.spellCooldowns[i];
+  }
+  while (state.waves.current < savedRun.waveCurrent && state.waves.state !== 'done') {
+    state.waves.forceNext();
+  }
+  paused = false;
+  logger.info('Restored mid-run save', { level: savedRun.levelIndex + 1, wave: savedRun.waveCurrent });
+}
 
 // sync audio mute with stored setting
 audio.setMuted(settings.get().muted);
@@ -61,7 +92,7 @@ window.addEventListener('pointerdown', resumeAudio, { once: true });
 window.addEventListener('keydown', resumeAudio, { once: true });
 window.addEventListener('resize', () => renderer.resize());
 window.addEventListener('blur', () => {
-  if (settings.get().pauseOnBlur && state.phase === 'playing') paused = true;
+  if (settings.get().pauseOnBlur && state.phase === 'playing') { paused = true; state.autoSave(); }
 });
 // auto-resume on focus so a returning player isn't stuck on the pause screen
 // (tower defense is long-form; players tab out constantly — forcing a manual
@@ -69,6 +100,8 @@ window.addEventListener('blur', () => {
 window.addEventListener('focus', () => {
   if (settings.get().pauseOnBlur && paused && state.phase === 'playing') paused = false;
 });
+// save on tab close/refresh so progress isn't lost
+window.addEventListener('beforeunload', () => { if (state.phase === 'playing') state.autoSave(); });
 
 // event bus -> audio + particles + music
 state.bus.on('towerPlaced', () => audio.place());
@@ -78,12 +111,14 @@ state.combat.bus.on('hit', (p) => { audio.hit(); state.particles.hit(new Vec2(p.
 state.combat.bus.on('kill', (p) => { audio.enemyDie(); state.particles.death(new Vec2(p.x, p.y), p.enemy.color); const reward = Math.round(p.enemy.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul); state.particles.floatText(new Vec2(p.x, p.y - 16), `+${reward}g`, '#ffd54f', 1.0); if (p.enemy.isBoss) renderer.shake(12); else renderer.shake(3); });
 state.combat.bus.on('splash', (p) => { state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4); renderer.shake(5); });
 state.bus.on('phaseChanged', ({ to }) => {
-  if (to === 'won') { audio.win(); music.stop(); }
-  if (to === 'lost') { audio.lose(); music.stop(); }
+  if (to === 'won') { audio.win(); music.stop(); state.clearSave(); }
+  if (to === 'lost') { audio.lose(); music.stop(); state.clearSave(); }
   if (to === 'playing') music.start();
   if (to === 'menu' || to === 'levelSelect') music.stop();
 });
 state.bus.on('spellCast', () => audio.waveStart());
+// mid-run save on every wave boundary
+state.bus.on('waveChanged', () => state.autoSave());
 
 function camOffset(): { camX: number; camY: number } {
   const topBar = 48;

@@ -22,6 +22,7 @@ import { AchievementSystem } from './Achievements';
 import { TalentTree } from './Talents';
 import { Difficulty, DIFFICULTIES, DifficultyDef } from '../config/Difficulty';
 import { Vec2 } from '../engine/math/Vec2';
+import { saveRun, clearRun, RunSnapshot } from '../utils/RunSave';
 
 export type Phase = 'menu' | 'levelSelect' | 'playing' | 'won' | 'lost';
 
@@ -272,5 +273,47 @@ export class GameState {
       }
     }
     arr.length = w;
+  }
+
+  /** Serialize current run for mid-run save (called on wave boundaries). */
+  snapshot(): RunSnapshot {
+    return {
+      v: 1,
+      levelIndex: this.levels.levelNumber - 1,
+      difficulty: this.difficulty,
+      endless: this.endless,
+      endlessSeed: this.endlessSeed,
+      gold: this.gold,
+      lives: this.lives,
+      score: this.score,
+      waveCurrent: this.waves.current,
+      towers: this.towers.map(t => ({
+        id: t.def.id, tx: t.tx, ty: t.ty, level: t.level,
+        strategy: t.strategy, invested: t.sellValue / BALANCE.tower.sellRefund,
+        dmgMul: t.damage / t.def.damage / (1 + Math.min(t.synergyNeighbors, 4) * 0.10),
+        rangeMul: t.range / t.def.range,
+        fireRateMul: t.fireRate / t.def.fireRate / (1 + Math.min(t.synergyNeighbors, 4) * 0.08),
+      })),
+      spellCooldowns: this.spells.map(s => s.cooldown),
+      stats: {
+        kills: this.stats.get().kills,
+        towersPlaced: this.stats.get().towersPlaced,
+        upgrades: this.stats.get().upgrades,
+        spellsCast: this.stats.get().spellsCast,
+        goldEarned: this.stats.get().goldEarned,
+        damageDealt: this.stats.get().damageDealt,
+        durationSec: this.stats.get().durationSec,
+      },
+    };
+  }
+
+  /** Auto-save on wave boundary. */
+  autoSave(): void {
+    if (this.phase === 'playing') saveRun(this.snapshot());
+  }
+
+  /** Clear mid-run save (on game end or manual reset). */
+  clearSave(): void {
+    clearRun();
   }
 }
