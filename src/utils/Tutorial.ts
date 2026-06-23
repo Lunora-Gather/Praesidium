@@ -1,5 +1,5 @@
-// Tutorial: contextual first-run hints that disappear after triggered.
-// Stored as ordered checks; each reveals one tip then marks itself shown.
+// Tutorial: contextual first-run hints that disappear after the player
+// performs the relevant action. Each step shows a tip until its check passes.
 
 import { GameState } from '../game/GameState';
 import { load, save } from './storage';

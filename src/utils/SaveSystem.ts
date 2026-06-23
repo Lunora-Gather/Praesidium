@@ -2,6 +2,7 @@
 // Gameplay state is NOT saved mid-run in Phase 2; that's a Phase 3 target.
 
 import { load, save } from './storage';
+import { LEVELS } from '../game/grid/LevelManager';
 
 export interface SaveData {
   version: number;
@@ -12,6 +13,7 @@ export interface SaveData {
 
 const KEY = 'save';
 const CURRENT_VERSION = 1;
+const MAX_LEVEL = LEVELS.length;
 
 const DEFAULTS: SaveData = {
   version: CURRENT_VERSION,
@@ -49,8 +51,10 @@ export class SaveSystem {
   }
 
   recordLevelReached(level: number): void {
-    if (level > this.data.maxLevelReached) {
-      this.data.maxLevelReached = level;
+    // level is 1-based; clamp to actual level count to avoid unlocking non-existent levels
+    const clamped = Math.min(level, MAX_LEVEL);
+    if (clamped > this.data.maxLevelReached) {
+      this.data.maxLevelReached = clamped;
       this.persist();
     }
   }
