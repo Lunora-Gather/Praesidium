@@ -1,5 +1,8 @@
-// Tower instance with upgrade levels, damage type, target strategy.
+// Tower instance with upgrade levels, damage type, target strategy, synergy aura.
 // Stats scale per-level; sell refund based on total invested.
+// Synergy: towers within 2 tiles of each other gain +10% damage and +8% fire rate
+// per nearby tower (max +40%). This creates the strategic choice of clustering
+// towers for synergy bonuses vs. spreading them for map coverage.
 
 import { Vec2 } from '../../engine/math/Vec2';
 import type { Grid } from '../grid/Grid';
@@ -24,6 +27,12 @@ export const UPGRADE_STEPS: UpgradeStep[] = [
 
 export const MAX_LEVEL = UPGRADE_STEPS.length + 1;
 
+/** Synergy: bonus per nearby tower within SYNERGY_RANGE tiles. */
+const SYNERGY_RANGE = 2; // tile distance
+const SYNERGY_DMG_BONUS = 0.10; // +10% damage per neighbor
+const SYNERGY_RATE_BONUS = 0.08; // +8% fire rate per neighbor
+const SYNERGY_MAX_NEIGHBORS = 4; // cap at 4 neighbors
+
 export class Tower {
   readonly def: TowerDef;
   readonly pos: Vec2;
@@ -37,6 +46,8 @@ export class Tower {
   private dmgMul = 1;
   private rangeMul = 1;
   private fireRateMul = 1;
+  /** Number of towers within synergy range (set each frame by GameState). */
+  synergyNeighbors = 0;
 
   constructor(def: TowerDef, tx: number, ty: number, grid: Grid, talents?: { damage: number; range: number; firerate: number }) {
     this.def = def;
@@ -52,13 +63,20 @@ export class Tower {
     }
   }
 
-  get damage(): number { return this.def.damage * this.dmgMul; }
+  get damage(): number {
+    const syn = 1 + Math.min(this.synergyNeighbors, SYNERGY_MAX_NEIGHBORS) * SYNERGY_DMG_BONUS;
+    return this.def.damage * this.dmgMul * syn;
+  }
   get range(): number { return this.def.range * this.rangeMul; }
-  get fireRate(): number { return this.def.fireRate * this.fireRateMul; }
+  get fireRate(): number {
+    const syn = 1 + Math.min(this.synergyNeighbors, SYNERGY_MAX_NEIGHBORS) * SYNERGY_RATE_BONUS;
+    return this.def.fireRate * this.fireRateMul * syn;
+  }
   get sellValue(): number { return Math.floor(this.invested * BALANCE.tower.sellRefund); }
   get nextUpgrade(): UpgradeStep | null {
     return this.level < MAX_LEVEL ? UPGRADE_STEPS[this.level - 1] : null;
   }
+  get synergyRange(): number { return SYNERGY_RANGE; }
 
   upgrade(): boolean {
     const step = this.nextUpgrade;

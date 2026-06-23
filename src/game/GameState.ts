@@ -209,6 +209,16 @@ export class GameState {
     this.waves.update(dt, this.grid, this.enemies);
     this.bus.emit('waveChanged', { current: this.waves.current, total: this.waves.totalWaves });
 
+    // compute tower synergy neighbors (towers within 2 tiles of each other)
+    for (const t of this.towers) {
+      let neighbors = 0;
+      for (const o of this.towers) {
+        if (o === t) continue;
+        if (Math.abs(o.tx - t.tx) + Math.abs(o.ty - t.ty) <= 2) neighbors++;
+      }
+      t.synergyNeighbors = neighbors;
+    }
+
     for (const t of this.towers) {
       const { target } = t.update(dt, this.enemies, this.grid);
       if (target && t.canFire()) {
