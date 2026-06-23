@@ -14,7 +14,7 @@ export class HUD {
     // top bar
     r.rect(0, 0, r.width, 48, '#11182788');
     r.text(`GOLD ${s.gold}`, 16, 14, '#ffd54f', 18);
-    r.text(`LIVES ${s.lives}`, 160, 14, '#e57373', 18);
+    r.text(`LIVES ${s.lives}`, 160, 14, s.lives <= 5 ? (Math.floor(Date.now() / 300) % 2 === 0 ? '#ff1744' : '#e57373') : '#e57373', 18);
     r.text(`WAVE ${s.waves.current}/${s.waves.totalWaves}`, 300, 14, '#81c784', 18);
     r.text(`SCORE ${s.score}`, 460, 14, '#ffffff', 18);
     if (s.endless) {
