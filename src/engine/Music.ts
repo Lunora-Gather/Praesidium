@@ -13,7 +13,7 @@ export class Music {
   private step = 0;
 
   // minor pentatonic — pleasant, tension-appropriate
-  private readonly notes = [196, 233, 262, 294, 349]; // G3 A#3 C4 F4
+  private readonly notes = [196, 233, 262, 294, 349]; // G3 A#3 C4 D4 F4
 
   ensure(): void {
     if (this.ctx) return;
