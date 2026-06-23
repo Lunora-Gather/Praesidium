@@ -19,6 +19,7 @@ import { Music } from './engine/Music';
 import { Tutorial } from './utils/Tutorial';
 import { Vec2 } from './engine/math/Vec2';
 import { Starfield } from './ui/Starfield';
+import { t } from './utils/i18n';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const boot = document.getElementById('boot');
@@ -206,11 +207,25 @@ const update = (dt: number): void => {
       const a = screens.hit(c.x, c.y);
       if (a === 'start') {
         state.endless = false;
+        state.endlessSeed = 0;
         state.goLevelSelect();
       } else if (a === 'endless') {
         state.endless = true;
+        state.endlessSeed = 0; // start() will pick a random seed
         state.selectLevel(0);
         paused = false;
+      } else if (a === 'challenge') {
+        // prompt for a shared endless seed (hex), then replay that exact run
+        const raw = window.prompt(t('menu.challenge') + ' — hex seed (e.g. 1A2B3C4D):');
+        if (raw != null) {
+          const seed = parseInt(raw.trim(), 16) >>> 0;
+          if (!Number.isNaN(seed) && seed !== 0) {
+            state.endless = true;
+            state.endlessSeed = seed;
+            state.selectLevel(0);
+            paused = false;
+          }
+        }
       }
     }
     input.endFrame();
@@ -297,7 +312,7 @@ const render = (_alpha: number): void => {
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
     if (state.phase === 'won') screens.draw(renderer, 'won', state.score);
-    if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score);
+    if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed);
     if (settings.get().showFps) renderer.text(`${state.fps} fps`, 8, 52, '#555', 11);
   } else if (state.phase === 'levelSelect') {
     levelSelect.draw(renderer);

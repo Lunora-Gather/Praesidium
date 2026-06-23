@@ -59,6 +59,8 @@ export class GameState {
   difficulty: Difficulty = 'normal';
   /** Endless mode: waves never end, run only ends on death. */
   endless = false;
+  /** Seed of the current endless run (0 in scripted mode); shareable to reproduce. */
+  endlessSeed = 0;
 
   get diffMul(): DifficultyDef { return DIFFICULTIES[this.difficulty]; }
 
@@ -101,7 +103,15 @@ export class GameState {
     this.selectedSpellId = null;
     this.waves.reset();
     this.waves.endless = this.endless;
-    this.waves.setDifficulty(diff.hpMul, diff.countMul);
+    if (this.endless) {
+      // pick a fresh random seed each endless run (32-bit); stored on state for HUD/share
+      this.endlessSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
+      this.waves.endlessSeed = this.endlessSeed;
+      this.waves.reset(); // re-seed the endless RNG with the new seed
+      this.waves.setDifficulty(diff.hpMul, diff.countMul);
+    } else {
+      this.waves.setDifficulty(diff.hpMul, diff.countMul);
+    }
     this.setPhase('playing');
     logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name });
   }

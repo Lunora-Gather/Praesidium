@@ -7,6 +7,7 @@ import type { Grid } from '../grid/Grid';
 import type { Enemy } from '../enemies/Enemy';
 import { getEnemyDef } from '../enemies/EnemyRegistry';
 import { Enemy as EnemyClass } from '../enemies/Enemy';
+import { Rng } from '../../utils/rng';
 
 export interface WaveDef {
   enemies: Array<{ id: string; count: number }>;
@@ -33,15 +34,20 @@ function buildWaves(count: number): WaveDef[] {
   return waves;
 }
 
-/** Procedurally generate wave #i (0-based) for endless mode — scales forever. */
-function endlessWave(i: number): WaveDef {
-  // i is the absolute wave index (>= scripted waveCount). Scale aggressively.
-  const gruntCount = 6 + i * 3;
-  const scoutCount = Math.floor(i * 1.1);
-  const bruteCount = Math.floor(i * 0.8);
-  const zealotCount = Math.floor(i * 0.7);
+/**
+ * Procedurally generate wave #i (0-based) for endless mode — scales forever.
+ * Driven by a seeded Rng so each run's endless waves are reproducible from the
+ * run's seed number (shareable for challenge races).
+ */
+function endlessWave(i: number, rng: Rng): WaveDef {
+  // i is the absolute wave index (>= scripted waveCount). Scale aggressively,
+  // with seed-driven jitter so different seeds feel different.
+  const gruntCount = 6 + i * 3 + rng.int(0, 3);
+  const scoutCount = Math.floor(i * 1.1) + rng.int(0, 2);
+  const bruteCount = Math.floor(i * 0.8) + rng.int(0, 2);
+  const zealotCount = Math.floor(i * 0.7) + rng.int(0, 2);
   // boss every 5th endless wave, then +1 boss each cycle
-  const bossCount = (i + 1) % 5 === 0 ? Math.floor((i / 5)) : 0;
+  const bossCount = (i + 1) % 5 === 0 ? Math.floor(i / 5) : 0;
   return {
     enemies: [
       { id: 'grunt', count: gruntCount },
@@ -65,6 +71,9 @@ export class WaveManager {
   endless = false;
   /** Extra HP multiplier applied per endless wave (compounds on growth). */
   endlessHpBonus = 0;
+  /** Seed for endless-wave generation (shareable to reproduce a challenge run). */
+  endlessSeed = 0;
+  private endlessRng: Rng = new Rng(0);
 
   constructor(count = BALANCE.waveCount) {
     this.waves = buildWaves(count);
@@ -78,6 +87,8 @@ export class WaveManager {
     this.state = 'idle';
     this.enemiesThisWave = 0;
     this.endlessHpBonus = 0;
+    // re-seed the endless RNG so each run is a fresh sequence
+    this.endlessRng = new Rng(this.endlessSeed || 1);
   }
 
   get totalWaves(): number {
@@ -133,7 +144,7 @@ export class WaveManager {
     // scripted waves use index [0..length-1]; endless waves beyond that use endlessWave()
     const wave = this.current <= this.waves.length
       ? this.waves[this.current - 1]
-      : endlessWave(this.current - 1);
+      : endlessWave(this.current - 1, this.endlessRng);
     // endless HP ramps each wave past the scripted cap
     if (this.endless && this.current > this.waves.length) {
       this.endlessHpBonus += 0.15; // +15% HP per endless wave, compounding

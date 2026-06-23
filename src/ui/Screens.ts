@@ -4,12 +4,12 @@
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
 
-export type MenuClickAction = 'start' | 'endless' | 'resume' | 'restart' | 'menu' | null;
+export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'resume' | 'restart' | 'menu' | null;
 
 export class Screens {
   private regions: Array<{ x: number; y: number; w: number; h: number; action: MenuClickAction }> = [];
 
-  draw(r: Renderer, kind: 'menu' | 'paused' | 'won' | 'lost', score = 0): void {
+  draw(r: Renderer, kind: 'menu' | 'paused' | 'won' | 'lost', score = 0, seed = 0): void {
     this.regions = [];
     r.rect(0, 0, r.width, r.height, '#0a0e14cc');
     const cx = r.width / 2;
@@ -20,6 +20,11 @@ export class Screens {
 
     if (kind === 'won' || kind === 'lost') {
       r.text(`${t('hud.score')}: ${score}`, cx, r.height / 2 - 20, '#fff', 22, 'center');
+      // shareable endless seed on defeat — challenge a friend to survive longer
+      if (kind === 'lost' && seed !== 0) {
+        const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
+        r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, r.height / 2 + 6, '#ce93d8', 16, 'center');
+      }
     }
     if (kind === 'menu') {
       r.text(t('app.tagline'), cx, r.height / 2 - 20, '#9aa0a6', 16, 'center');
@@ -42,6 +47,11 @@ export class Screens {
       r.rect(btnX, eY, btnW, 40, '#6a1b9a', true);
       r.text(t('menu.endless'), cx, eY + 12, '#fff', 15, 'center');
       this.regions.push({ x: btnX, y: eY, w: btnW, h: 40, action: 'endless' });
+      // challenge seed — replay a friend's endless run from its seed number
+      const cY = eY + 40 + 12;
+      r.rect(btnX, cY, btnW, 36, '#374151', true);
+      r.text(t('menu.challenge'), cx, cY + 10, '#fff', 14, 'center');
+      this.regions.push({ x: btnX, y: cY, w: btnW, h: 36, action: 'challenge' });
     }
 
     if (kind !== 'menu') {

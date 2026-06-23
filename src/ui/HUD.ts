@@ -17,6 +17,9 @@ export class HUD {
     r.text(`LIVES ${s.lives}`, 160, 14, '#e57373', 18);
     r.text(`WAVE ${s.waves.current}/${s.waves.totalWaves}`, 300, 14, '#81c784', 18);
     r.text(`SCORE ${s.score}`, 460, 14, '#ffffff', 18);
+    if (s.endless) {
+      r.text(`SEED ${s.endlessSeed.toString(16).toUpperCase().padStart(8, '0')}`, 580, 14, '#ce93d8', 16);
+    }
 
     // tower shop (bottom bar)
     const shopH = 64;
