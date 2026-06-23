@@ -36,15 +36,21 @@ export class LevelSelect {
       dx += diffBtnW + diffGap;
     }
 
-    const cardW = 280;
-    const cardH = 110;
-    const gap = 24;
+    const cardW = 180;
+    const cardH = 100;
+    const gap = 16;
     const total = this.levels.total;
-    const totalW = total * cardW + (total - 1) * gap;
-    let x = cx - totalW / 2;
-    const y = r.height / 2 - cardH / 2;
+    const cols = Math.min(3, total); // max 3 per row, wraps on mobile
+    const rows = Math.ceil(total / cols);
+    const totalW = cols * cardW + (cols - 1) * gap;
+    const startX = cx - totalW / 2;
+    const startY = 160;
 
     for (let i = 0; i < total; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = startX + col * (cardW + gap);
+      const y = startY + row * (cardH + gap);
       const unlocked = i + 1 <= this.save.get().maxLevelReached;
       const levelName = this.levels.levelAt(i).name;
       r.rect(x, y, cardW, cardH, unlocked ? '#1f2937' : '#0d1320', true);
@@ -61,10 +67,9 @@ export class LevelSelect {
       } else {
         r.text('Locked', x + cardW / 2, y + 78, '#555', 12, 'center');
       }
-      x += cardW + gap;
     }
 
-    const btnY = y + cardH + 40;
+    const btnY = startY + rows * (cardH + gap) + 20;
     r.text('← Back to Menu (click below)', cx, btnY, '#9aa0a6', 14, 'center');
     const bw = 160;
     const bx = cx - bw / 2;
