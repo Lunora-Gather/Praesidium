@@ -1,0 +1,139 @@
+// Wave manager: spawns queued enemies over time, advances waves, signals end.
+
+import { BALANCE } from '../../config/balance';
+import type { Grid } from '../grid/Grid';
+import type { Enemy } from '../enemies/Enemy';
+import { ENEMY_DEFS, getEnemyDef } from '../enemies/EnemyRegistry';
+import { Enemy as EnemyClass } from '../enemies/Enemy';
+import { Rng } from '../../utils/rng';
+
+export interface WaveDef {
+  enemies: Array<{ id: string; count: number }>;
+}
+
+function buildWaves(count: number): WaveDef[] {
+  const waves: WaveDef[] = [];
+  const rng = new Rng(1337);
+  for (let i = 0; i < count; i++) {
+    const gruntCount = 4 + i * 2;
+    const scoutCount = i >= 2 ? Math.floor(i * 0.7) : 0;
+    const bruteCount = i >= 4 ? Math.floor((i - 3) * 0.6) : 0;
+    waves.push({
+      enemies: [
+        { id: 'grunt', count: gruntCount },
+        { id: 'scout', count: scoutCount },
+        { id: 'brute', count: bruteCount },
+      ],
+    });
+  }
+  void rng; // reserved for later randomized spawns
+  return waves;
+}
+
+export class WaveManager {
+  readonly waves: WaveDef[];
+  current = 0;
+  private spawnQueue: Array<{ id: string; at: number }> = [];
+  private timer = 0; // accumulates time to schedule spawns
+  state: 'idle' | 'running' | 'between' | 'done' = 'idle';
+  private betweenTimer = 0;
+  spawnedThisWave = 0;
+  enemiesThisWave = 0;
+
+  constructor(count = BALANCE.waveCount) {
+    this.waves = buildWaves(count);
+  }
+
+  reset(): void {
+    this.current = 0;
+    this.spawnQueue.length = 0;
+    this.timer = 0;
+    this.betweenTimer = 0;
+    this.state = 'idle';
+    this.spawnedThisWave = 0;
+    this.enemiesThisWave = 0;
+  }
+
+  get totalWaves(): number {
+    return this.waves.length;
+  }
+
+  /** Auto-starts first wave after a short countdown; between waves waits waveInterDelay. */
+  update(dt: number, grid: Grid, out: Enemy[]): void {
+    if (this.state === 'done') return;
+    this.timer += dt;
+
+    if (this.state === 'idle') {
+      this.betweenTimer += dt;
+      if (this.betweenTimer >= 1.5) this.startNext(grid, out);
+      return;
+    }
+
+    if (this.state === 'between') {
+      this.betweenTimer += dt;
+      if (this.betweenTimer >= BALANCE.waveInterDelay) this.startNext(grid, out);
+      return;
+    }
+
+    // running
+    while (this.spawnQueue.length > 0 && this.timer >= this.spawnQueue[0].at) {
+      const spec = this.spawnQueue.shift()!;
+      const def = getEnemyDef(spec.id);
+      const hpMul = 1 + (this.current - 1) * (BALANCE.enemyHpGrowth - 1);
+      out.push(new EnemyClass(def, grid.waypoints[0], hpMul));
+    }
+    if (this.spawnQueue.length === 0) {
+      this.state = 'between';
+      this.betweenTimer = 0;
+      if (this.current >= this.waves.length) this.state = 'done';
+    }
+  }
+
+  private startNext(grid: Grid, _out: Enemy[]): void {
+    this.current++;
+    if (this.current > this.waves.length) {
+      this.state = 'done';
+      return;
+    }
+    const wave = this.waves[this.current - 1];
+    this.spawnQueue = [];
+    let t = 0;
+    let total = 0;
+    const ids: string[] = [];
+    for (const g of wave.enemies) {
+      for (let i = 0; i < g.count; i++) ids.push(g.id);
+      total += g.count;
+    }
+    // interleave spawn order
+    for (let i = 0; i < total; i++) {
+      const pick = ids[Math.floor(i % ids.length)];
+      this.spawnQueue.push({ id: pick, at: t });
+      t += BALANCE.enemySpawnGap;
+    }
+    this.enemiesThisWave = total;
+    this.spawnedThisWave = 0;
+    this.timer = 0;
+    this.betweenTimer = 0;
+    this.state = 'running';
+    void ENEMY_DEFS;
+    void grid;
+  }
+
+  /** Force-start next wave (player clicks "Send Wave"). Returns true if started. */
+  forceNext(grid: Grid, out: Enemy[]): boolean {
+    if (this.state === 'running') return false;
+    if (this.state === 'done') return false;
+    this.betweenTimer = BALANCE.waveInterDelay; // trip the gate
+    this.startNext(grid, out);
+    return true;
+  }
+
+  get inProgress(): boolean {
+    return this.state === 'running';
+  }
+
+  get betweenProgress(): number {
+    if (this.state !== 'between' && this.state !== 'idle') return 0;
+    return Math.min(1, this.betweenTimer / (this.state === 'idle' ? 1.5 : BALANCE.waveInterDelay));
+  }
+}
