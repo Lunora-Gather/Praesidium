@@ -38,13 +38,18 @@ export class Tower {
   private rangeMul = 1;
   private fireRateMul = 1;
 
-  constructor(def: TowerDef, tx: number, ty: number, grid: Grid) {
+  constructor(def: TowerDef, tx: number, ty: number, grid: Grid, talents?: { damage: number; range: number; firerate: number }) {
     this.def = def;
     this.tx = tx;
     this.ty = ty;
     this.pos = grid.tileCenter(tx, ty);
     this.invested = def.cost;
     this.strategy = def.defaultStrategy;
+    if (talents) {
+      this.dmgMul *= talents.damage;
+      this.rangeMul *= talents.range;
+      this.fireRateMul *= talents.firerate;
+    }
   }
 
   get damage(): number { return this.def.damage * this.dmgMul; }

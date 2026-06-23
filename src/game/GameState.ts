@@ -130,7 +130,12 @@ export class GameState {
     if (!this.grid.isBuildable(tx, ty)) return false;
     if (this.towers.some((t) => t.tx === tx && t.ty === ty)) return false;
     this.gold -= def.cost;
-    this.towers.push(new Tower(def, tx, ty, this.grid));
+    const tm = {
+      damage: this.talents.multiplier('damage'),
+      range: this.talents.multiplier('range'),
+      firerate: this.talents.multiplier('firerate'),
+    };
+    this.towers.push(new Tower(def, tx, ty, this.grid, tm));
     this.stats.recordPlace();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('towerPlaced', { tx, ty, id: def.id });

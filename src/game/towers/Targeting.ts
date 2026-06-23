@@ -16,21 +16,19 @@ export class Targeting {
     const r2 = range * range;
     let best: Enemy | null = null;
     let bestKey = Infinity;
-    const key = (e: Enemy): number => {
-      switch (strategy) {
-        case 'first': return e.progressRemaining(grid); // closest to goal
-        case 'last': return -e.progressRemaining(grid); // furthest from goal
-        case 'strongest': return -e.hp;
-        case 'weakest': return e.hp;
-        case 'closest': return towerPos.x - e.pos.x + (towerPos.y - e.pos.y); // rough; distSq used below
-      }
-    };
     for (const e of enemies) {
       if (e.dead || e.reachedGoal) continue;
-      if ((towerPos.x - e.pos.x) ** 2 + (towerPos.y - e.pos.y) ** 2 > r2) continue;
-      const k = strategy === 'closest'
-        ? (towerPos.x - e.pos.x) ** 2 + (towerPos.y - e.pos.y) ** 2
-        : key(e);
+      const dSq = (towerPos.x - e.pos.x) ** 2 + (towerPos.y - e.pos.y) ** 2;
+      if (dSq > r2) continue;
+      let k: number;
+      switch (strategy) {
+        case 'first': k = e.progressRemaining(grid); break;       // closest to goal
+        case 'last': k = -e.progressRemaining(grid); break;        // furthest from goal
+        case 'strongest': k = -e.hp; break;
+        case 'weakest': k = e.hp; break;
+        case 'closest': k = dSq; break;                            // nearest in range
+        default: k = dSq;
+      }
       if (k < bestKey) {
         bestKey = k;
         best = e;

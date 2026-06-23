@@ -71,7 +71,7 @@ export class PlayerSpell {
   cast(target: Vec2, state: GameState): boolean {
     if (!this.ready || state.gold < this.def.cost) return false;
     state.gold -= this.def.cost;
-    this.cooldown = this.def.cooldown;
+    this.cooldown = this.def.cooldown * state.talents.multiplier('spellcd');
 
     if (this.def.damage && this.def.radius) {
       const r2 = this.def.radius * this.def.radius;
