@@ -44,9 +44,9 @@ export class CombatSystem {
   }
 
   private damage(e: Enemy, dmg: number, type: import('../DamageType').DamageType, state: GameState): void {
-    const scaled = dmg * state.talents.multiplier('damage');
+    // dmg already includes talent multiplier (baked into Tower.damage at construction)
     const wasAlive = !e.dead;
-    const actual = e.takeDamage(scaled, type);
+    const actual = e.takeDamage(dmg, type);
     state.stats.recordDamage(actual);
     this.bus.emit('hit', { enemy: e, damage: actual, x: e.pos.x, y: e.pos.y });
     if (wasAlive && e.hp <= 0) {
