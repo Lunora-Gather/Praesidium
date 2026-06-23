@@ -25,6 +25,7 @@ import { t } from './utils/i18n';
 import { TalentPanel } from './ui/TalentPanel';
 import { StatsScreen } from './ui/StatsScreen';
 import { loadRun } from './utils/RunSave';
+import { dailySeed } from './utils/DailyChallenge';
 
 // Global error boundary — prevents one unhandled error from crashing the entire game.
 // Logs the error and shows a subtle red indicator instead of a blank screen.
@@ -291,6 +292,12 @@ const update = (dt: number): void => {
             paused = false;
           }
         }
+      } else if (a === 'daily') {
+        // daily challenge: same seed for everyone today, compete for highest wave
+        state.endless = true;
+        state.endlessSeed = dailySeed();
+        state.selectLevel(0);
+        paused = false;
       }
     }
     input.endFrame();

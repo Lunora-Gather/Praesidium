@@ -4,7 +4,7 @@
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
 
-export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'resume' | 'restart' | 'menu' | null;
+export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'daily' | 'resume' | 'restart' | 'menu' | null;
 
 export interface ScreenStats {
   stars?: number;
@@ -75,6 +75,11 @@ export class Screens {
       r.rect(btnX, cY, btnW, 36, '#374151', true);
       r.text(t('menu.challenge'), cx, cY + 10, '#fff', 14, 'center');
       this.regions.push({ x: btnX, y: cY, w: btnW, h: 36, action: 'challenge' });
+      // daily challenge — same seed for everyone today
+      const dY = cY + 36 + 12;
+      r.rect(btnX, dY, btnW, 36, '#1b5e20', true);
+      r.text(t('menu.daily'), cx, dY + 10, '#fff', 14, 'center');
+      this.regions.push({ x: btnX, y: dY, w: btnW, h: 36, action: 'daily' });
     }
 
     if (kind !== 'menu') {
