@@ -65,6 +65,7 @@ export class HUD {
     drawBtn(`${speed}x`, speed > 1 ? '#6a1b9a' : '#374151', 'speed');
     drawBtn(autoSend ? 'Auto✓' : 'Auto', autoSend ? '#1b5e20' : '#374151', 'autoSend');
     drawBtn('Talents', '#374151', 'talent');
+    drawBtn('Stats', '#374151', 'stats');
     drawBtn('Settings', '#374151', 'settings');
     drawBtn('Pause', '#374151', 'pause');
     drawBtn('Menu', '#374151', 'menu');

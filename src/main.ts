@@ -23,6 +23,7 @@ import { Vec2 } from './engine/math/Vec2';
 import { Starfield } from './ui/Starfield';
 import { t } from './utils/i18n';
 import { TalentPanel } from './ui/TalentPanel';
+import { StatsScreen } from './ui/StatsScreen';
 import { loadRun } from './utils/RunSave';
 
 // Global error boundary — prevents one unhandled error from crashing the entire game.
@@ -55,6 +56,7 @@ const levelSelect = new LevelSelect(state.levels, state.save);
 const tutorial = new Tutorial();
 const starfield = new Starfield(140);
 const talentPanel = new TalentPanel();
+const statsScreen = new StatsScreen();
 
 let paused = false;
 let showSettings = false;
@@ -64,6 +66,7 @@ let frameCount = 0;
 let placingMode = true;
 let gameSpeed = 1;
 let showTalent = false;
+let showStats = false;
 let autoSend = false;
 
 // restore mid-run save if present (player closed tab mid-game)
@@ -165,6 +168,8 @@ function handleHUDClick(x: number, y: number): void {
     loop.timeScale = gameSpeed;
   } else if (btn === 'talent') {
     showTalent = true;
+  } else if (btn === 'stats') {
+    showStats = true;
   } else if (btn === 'autoSend') {
     autoSend = !autoSend;
     state.waves.autoSend = autoSend;
@@ -382,6 +387,7 @@ const render = (_alpha: number): void => {
     }
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
+    if (showStats && state.phase === 'playing') statsScreen.draw(renderer, state.analytics.get());
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
     if (state.phase === 'won') screens.draw(renderer, 'won', state.score, 0, { stars: state.lastStars, kills: state.stats.get().kills, gold: state.stats.get().goldEarned });
     if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed, { wave: state.waves.current, kills: state.stats.get().kills });
