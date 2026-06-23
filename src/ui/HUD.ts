@@ -58,7 +58,7 @@ export class HUD {
     };
     const waveLabel = s.waves.inProgress
       ? 'Wave…'
-      : s.waves.current >= s.waves.totalWaves ? 'Last wave' : `Send W${s.waves.current + 1}`;
+      : s.waves.current >= s.waves.totalWaves && !s.endless ? 'Last wave' : `Send W${s.waves.current + 1}`;
     drawBtn(`${speed}x`, speed > 1 ? '#6a1b9a' : '#374151', 'speed');
     drawBtn(autoSend ? 'Auto✓' : 'Auto', autoSend ? '#1b5e20' : '#374151', 'autoSend');
     drawBtn('Talents', '#374151', 'talent');
@@ -66,6 +66,16 @@ export class HUD {
     drawBtn('Pause', '#374151', 'pause');
     drawBtn('Menu', '#374151', 'menu');
     drawBtn(waveLabel, '#1f6feb', 'send');
+
+    // wave countdown bar (between waves, shows time until auto-send)
+    if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
+      const barW = 200;
+      const barH = 4;
+      const barX = (r.width - barW) / 2;
+      const barY = 44;
+      r.rect(barX, barY, barW, barH, '#222', true);
+      r.rect(barX, barY, barW * s.waves.betweenProgress, barH, '#1f6feb', true);
+    }
 
     return regions;
   }
