@@ -20,6 +20,8 @@ function buildWaves(count: number): WaveDef[] {
     const scoutCount = i >= 2 ? Math.floor(i * 0.7) : 0;
     const bruteCount = i >= 4 ? Math.floor((i - 3) * 0.6) : 0;
     const zealotCount = i >= 5 ? Math.floor((i - 4) * 0.5) : 0;
+    const phantomCount = i >= 7 ? Math.floor((i - 6) * 0.4) : 0;
+    const titanCount = i >= 9 ? Math.floor((i - 8) * 0.3) : 0;
     const bossCount = (i + 1) % 6 === 0 ? 1 : 0; // boss every 6th wave
     waves.push({
       enemies: [
@@ -27,6 +29,8 @@ function buildWaves(count: number): WaveDef[] {
         { id: 'scout', count: scoutCount },
         { id: 'brute', count: bruteCount },
         { id: 'zealot', count: zealotCount },
+        { id: 'phantom', count: phantomCount },
+        { id: 'titan', count: titanCount },
         { id: 'boss', count: bossCount },
       ],
     });
@@ -46,6 +50,8 @@ function endlessWave(i: number, rng: Rng): WaveDef {
   const scoutCount = Math.floor(i * 1.1) + rng.int(0, 2);
   const bruteCount = Math.floor(i * 0.8) + rng.int(0, 2);
   const zealotCount = Math.floor(i * 0.7) + rng.int(0, 2);
+  const phantomCount = Math.floor(i * 0.5) + rng.int(0, 2);
+  const titanCount = Math.floor(i * 0.3) + rng.int(0, 1);
   // boss every 5th endless wave, then +1 boss each cycle
   const bossCount = (i + 1) % 5 === 0 ? Math.floor(i / 5) : 0;
   return {
@@ -54,6 +60,8 @@ function endlessWave(i: number, rng: Rng): WaveDef {
       { id: 'scout', count: scoutCount },
       { id: 'brute', count: bruteCount },
       { id: 'zealot', count: zealotCount },
+      { id: 'phantom', count: phantomCount },
+      { id: 'titan', count: titanCount },
       { id: 'boss', count: bossCount },
     ],
   };
@@ -95,6 +103,9 @@ export class WaveManager {
     return this.waves.length;
   }
 
+  /** Auto-send next wave when current wave's enemies are all spawned. */
+  autoSend = false;
+
   /** Auto-starts first wave after a short countdown; between waves waits waveInterDelay. */
   update(dt: number, grid: Grid, out: Enemy[]): void {
     if (this.state === 'done') return;
@@ -107,7 +118,8 @@ export class WaveManager {
 
     if (this.state === 'between') {
       this.betweenTimer += dt;
-      if (this.betweenTimer >= BALANCE.waveInterDelay) this.startNext();
+      // auto-send: skip the inter-wave delay
+      if (this.autoSend || this.betweenTimer >= BALANCE.waveInterDelay) this.startNext();
       return;
     }
 

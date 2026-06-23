@@ -71,6 +71,31 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
       [DamageType.Lightning]: 0.7,
     },
   },
+  // Phase 5 enemies — expands tactical depth
+  phantom: {
+    id: 'phantom',
+    name: 'Phantom',
+    color: '#b39ddb',
+    hp: BALANCE.enemyBaseHp * 1.0,
+    speed: BALANCE.enemyBaseSpeed * 1.4,
+    reward: BALANCE.enemyBaseReward * 1.5,
+    radius: 10,
+    resist: { [DamageType.Physical]: 0.5 }, // ethereal — resists physical
+  },
+  titan: {
+    id: 'titan',
+    name: 'Titan',
+    color: '#78909c',
+    hp: BALANCE.enemyBaseHp * 5,
+    speed: BALANCE.enemyBaseSpeed * 0.4,
+    reward: BALANCE.enemyBaseReward * 3,
+    radius: 20,
+    resist: {
+      [DamageType.Fire]: 0.6,
+      [DamageType.Ice]: 0.6,
+      [DamageType.Lightning]: 0.6,
+    },
+  },
 };
 
 export function getEnemyDef(id: string): EnemyDef {
