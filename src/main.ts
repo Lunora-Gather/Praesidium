@@ -50,6 +50,7 @@ let frameCount = 0;
 let placingMode = true; // true=click places tower, false=click selects tower
 let gameSpeed = 1; // 1x/2x/3x speed control
 let showTalent = false;
+let autoSend = false;
 
 // sync audio mute with stored setting
 audio.setMuted(settings.get().muted);
@@ -118,6 +119,9 @@ function handleHUDClick(x: number, y: number): void {
     loop.timeScale = gameSpeed;
   } else if (btn === 'talent') {
     showTalent = true;
+  } else if (btn === 'autoSend') {
+    autoSend = !autoSend;
+    state.waves.autoSend = autoSend;
   } else if (btn === 'menu') {
     state.goMenu();
   } else if (btn === 'settings') {
@@ -320,7 +324,7 @@ const render = (_alpha: number): void => {
   if (state.phase === 'playing' || state.phase === 'won' || state.phase === 'lost') {
     worldRenderer.draw(renderer, state, settings.get());
     state.particles.draw(renderer);
-    hudRegions = hud.draw(renderer, state, gameSpeed);
+    hudRegions = hud.draw(renderer, state, gameSpeed, autoSend);
     drawSpells(renderer);
     if (state.selectedTower && state.phase === 'playing') {
       const s = renderer.toScreen(state.selectedTower.pos);

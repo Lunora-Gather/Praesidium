@@ -8,7 +8,7 @@ import { Vec2 } from '../engine/math/Vec2';
 
 export class HUD {
   /** Draw the HUD; returns hit regions for click handling (shop buttons, etc.). */
-  draw(r: Renderer, s: GameState, speed = 1): HudRegions {
+  draw(r: Renderer, s: GameState, speed = 1, autoSend = false): HudRegions {
     const regions: HudRegions = { shop: [], buttons: [] };
 
     // top bar
@@ -60,6 +60,7 @@ export class HUD {
       ? 'Wave…'
       : s.waves.current >= s.waves.totalWaves ? 'Last wave' : `Send W${s.waves.current + 1}`;
     drawBtn(`${speed}x`, speed > 1 ? '#6a1b9a' : '#374151', 'speed');
+    drawBtn(autoSend ? 'Auto✓' : 'Auto', autoSend ? '#1b5e20' : '#374151', 'autoSend');
     drawBtn('Talents', '#374151', 'talent');
     drawBtn('Settings', '#374151', 'settings');
     drawBtn('Pause', '#374151', 'pause');
