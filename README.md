@@ -19,22 +19,33 @@ npm run build    # outputs static files to dist/
 
 The `dist/` folder is fully self-contained — drop it on any static host (GitHub Pages, Vercel, Netlify, S3, even a plain `file://` open).
 
-## Features (Phase 1 — playable core loop)
+## Features (Phase 3 — full systems suite)
 
 - **Fixed-timestep game loop** with render interpolation (60 Hz update, smooth render)
-- **Data-driven design** — add towers/enemies by dropping a definition object, no engine code changes
-- **Grid map** with a serpentine path, buildable tiles, spawn & goal markers
-- **Waypoint-based enemy movement** along the path
-- **Tower targeting** — picks the enemy closest to the goal within range (smart last-progress targeting)
-- **Homing projectiles** with finite lifetime
-- **Splash damage** support (ready for mortar-style towers)
-- **Wave system** — 12 waves with escalating HP, three enemy types (Grunt / Scout / Brute), force-next-wave button
-- **Economy** — gold from kills, tower placement cost, sell refund
+- **Data-driven design** — add towers/enemies/spells by dropping a definition object, no engine code changes
+- **Grid map** with serpentine paths, buildable tiles, spawn & goal markers
+- **A\* pathfinding** ready for dynamic obstacle avoidance when towers block tiles
+- **6 tower archetypes**: Turret, Sniper, Mortar(splash), Frost(slow), Tesla, Cannon — each with damage type, target strategy, 3 upgrade levels
+- **5 enemy types**: Grunt, Scout, Brute, Zealot, Boss — with damage resistances (rock-paper-scissors)
+- **Typed damage system**: Physical / Fire / Ice / Lightning + per-enemy resistance maps
+- **Tower targeting strategies**: first/last/strongest/weakest/closest — cyclable per-tower (KeyT)
+- **Homing projectiles** with finite lifetime, splash, slow, damage type
+- **3 player spells**: Meteor (AoE Fire), Freeze (global slow), Repair (heal lives) — cooldown + gold cost
+- **Wave system** — 12 waves with escalating HP, boss every 6th wave, force-next-wave button
+- **Economy** — gold from kills, tower placement cost, upgrade cost, sell refund, spell cost
 - **Lives & win/lose** — lose a life per enemy that reaches the goal; win when all waves cleared
-- **Procedural audio** via Web Audio API — no audio asset files needed (shoot/hit/death/place/wave/win/lose blips)
-- **Unified input** — mouse + touch + keyboard (1-9 to pick tower, Space to pause, Esc to menu)
-- **HUD** — gold, lives, wave counter, score, tower shop, control buttons
-- **Screen overlays** — main menu, pause, victory, defeat
+- **3 levels** with distinct layouts + LevelManager + level select screen
+- **Star rating** per level based on lives retained (3/2/1 stars)
+- **Save system** — high score, level unlocks, tower unlocks, tutorial progress (localStorage)
+- **Settings** — mute/FPS/range/pause-on-blur toggles, persistent
+- **Particle effects** — hit sparks, death bursts, splash explosions
+- **Procedural audio** via Web Audio API — SFX + background music (no asset files)
+- **Tutorial** — contextual first-run hints that disappear after triggered
+- **Run statistics** — kills, towers placed, upgrades, spells cast, gold earned, damage dealt
+- **Unified input** — mouse + touch + keyboard (1-6 tower, Q/W/E spell, Space pause, Esc menu, S sell, U upgrade, T cycle target)
+- **HUD** — gold, lives, wave counter, score, tower shop, spell bar, control buttons
+- **Screen overlays** — main menu, level select, pause, victory, defeat, settings
+- **19 unit tests** — core logic verified (stars, resistance, upgrades, A*, vectors)
 
 ## Architecture
 

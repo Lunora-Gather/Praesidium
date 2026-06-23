@@ -5,7 +5,6 @@ import type { Grid } from '../grid/Grid';
 import type { Enemy } from '../enemies/Enemy';
 import { ENEMY_DEFS, getEnemyDef } from '../enemies/EnemyRegistry';
 import { Enemy as EnemyClass } from '../enemies/Enemy';
-import { Rng } from '../../utils/rng';
 
 export interface WaveDef {
   enemies: Array<{ id: string; count: number }>;
@@ -13,20 +12,22 @@ export interface WaveDef {
 
 function buildWaves(count: number): WaveDef[] {
   const waves: WaveDef[] = [];
-  const rng = new Rng(1337);
   for (let i = 0; i < count; i++) {
     const gruntCount = 4 + i * 2;
     const scoutCount = i >= 2 ? Math.floor(i * 0.7) : 0;
     const bruteCount = i >= 4 ? Math.floor((i - 3) * 0.6) : 0;
+    const zealotCount = i >= 5 ? Math.floor((i - 4) * 0.5) : 0;
+    const bossCount = (i + 1) % 6 === 0 ? 1 : 0; // boss every 6th wave
     waves.push({
       enemies: [
         { id: 'grunt', count: gruntCount },
         { id: 'scout', count: scoutCount },
         { id: 'brute', count: bruteCount },
+        { id: 'zealot', count: zealotCount },
+        { id: 'boss', count: bossCount },
       ],
     });
   }
-  void rng; // reserved for later randomized spawns
   return waves;
 }
 

@@ -1,19 +1,24 @@
 // Top-level game state machine + economy/lives + owning all gameplay objects.
-// Combat/movement delegated to systems; this orchestrates them + economy + phases.
+// Orchestrates systems (combat/movement), economy, spells, particles, stats.
 
 import { Grid } from './grid/Grid';
 import { Tower } from './towers/Tower';
 import { Enemy } from './enemies/Enemy';
 import { Projectile } from './projectiles/Projectile';
 import { WaveManager } from './waves/WaveManager';
-import { CombatSystem, CombatEvents } from './systems/CombatSystem';
-import { MovementSystem, MovementEvents } from './systems/MovementSystem';
+import { CombatSystem } from './systems/CombatSystem';
+import { MovementSystem } from './systems/MovementSystem';
 import { LevelManager } from './grid/LevelManager';
 import { getTowerDef, TowerDef } from './towers/TowerRegistry';
 import { BALANCE } from '../config/balance';
 import { EventBus } from '../utils/EventBus';
 import { SaveSystem } from '../utils/SaveSystem';
 import { logger } from '../utils/logger';
+import { ParticleSystem } from './effects/ParticleSystem';
+import { PlayerSpell, PLAYER_SPELLS } from './spells/PlayerSpells';
+import { StatsTracker } from './StatsTracker';
+import { computeStars } from './Stars';
+import { Vec2 } from '../engine/math/Vec2';
 
 export type Phase = 'menu' | 'levelSelect' | 'playing' | 'won' | 'lost';
 
@@ -25,6 +30,8 @@ export interface GameEvents {
   towerPlaced: { tx: number; ty: number; id: string };
   towerUpgraded: { tx: number; ty: number; level: number };
   towerSold: { tx: number; ty: number; refund: number };
+  spellCast: { id: string; x: number; y: number };
+  levelWon: { level: number; stars: number };
 }
 
 export class GameState {
@@ -38,14 +45,19 @@ export class GameState {
   readonly waves: WaveManager;
   readonly levels = new LevelManager();
   readonly bus = new EventBus<GameEvents>();
-  readonly combat = new CombatSystem(new EventBus<CombatEvents>());
-  readonly movement = new MovementSystem(new EventBus<MovementEvents>());
+  readonly combat = new CombatSystem();
+  readonly movement = new MovementSystem();
   readonly save = new SaveSystem();
+  readonly particles = new ParticleSystem();
+  readonly stats = new StatsTracker();
+  readonly spells = PLAYER_SPELLS.map((s) => new PlayerSpell(s.def));
   selectedTowerId: string | null = 'turret';
   hoverTile: { tx: number; ty: number } | null = null;
-  selectedTower: Tower | null = null; // tower clicked for upgrade/sell panel
+  selectedTower: Tower | null = null;
+  selectedSpellId: string | null = null; // when set, next click casts this spell
   score = 0;
   fps = 0;
+  lastStars = 0;
 
   constructor() {
     this.grid = new Grid(this.levels.current);
@@ -60,28 +72,27 @@ export class GameState {
     this.bus.emit('phaseChanged', { from, to: p });
   }
 
-  /** Start a fresh run on the current level. */
   start(): void {
     this.grid = new Grid(this.levels.current);
     this.gold = BALANCE.startGold;
     this.lives = BALANCE.startLives;
     this.score = 0;
+    this.lastStars = 0;
     this.towers.length = 0;
     this.enemies.length = 0;
     this.projectiles.length = 0;
+    this.particles.clear();
+    this.stats.reset();
+    for (const sp of this.spells) sp.cooldown = 0;
     this.selectedTower = null;
+    this.selectedSpellId = null;
     this.waves.reset();
     this.setPhase('playing');
     logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name });
   }
 
-  goMenu(): void {
-    this.setPhase('menu');
-  }
-
-  goLevelSelect(): void {
-    this.setPhase('levelSelect');
-  }
+  goMenu(): void { this.setPhase('menu'); }
+  goLevelSelect(): void { this.setPhase('levelSelect'); }
 
   selectLevel(i: number): void {
     this.levels.setLevel(i);
@@ -89,19 +100,17 @@ export class GameState {
     this.start();
   }
 
-  /** Advance to next level after a win. */
   advanceLevel(): void {
+    this.save.recordLevelReached(this.levels.levelNumber + 1);
     if (!this.levels.hasNext) {
       logger.info('All levels cleared');
       this.setPhase('won');
       return;
     }
     this.levels.advance();
-    this.save.recordLevelReached(this.levels.levelNumber);
     this.start();
   }
 
-  /** Try to place a tower of the selected type at a tile. Returns success. */
   tryPlace(tx: number, ty: number): boolean {
     if (!this.selectedTowerId) return false;
     const def: TowerDef = getTowerDef(this.selectedTowerId);
@@ -110,6 +119,7 @@ export class GameState {
     if (this.towers.some((t) => t.tx === tx && t.ty === ty)) return false;
     this.gold -= def.cost;
     this.towers.push(new Tower(def, tx, ty, this.grid));
+    this.stats.recordPlace();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('towerPlaced', { tx, ty, id: def.id });
     return true;
@@ -120,6 +130,7 @@ export class GameState {
     if (!step || this.gold < step.cost) return false;
     this.gold -= step.cost;
     t.upgrade();
+    this.stats.recordUpgrade();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('towerUpgraded', { tx: t.tx, ty: t.ty, level: t.level });
     return true;
@@ -135,13 +146,26 @@ export class GameState {
     this.bus.emit('towerSold', { tx: t.tx, ty: t.ty, refund });
   }
 
+  castSpell(id: string, target: Vec2): boolean {
+    const sp = this.spells.find((s) => s.def.id === id);
+    if (!sp) return false;
+    if (!sp.cast(target, this)) return false;
+    this.stats.recordSpell();
+    this.bus.emit('goldChanged', { gold: this.gold });
+    this.bus.emit('spellCast', { id, x: target.x, y: target.y });
+    if (sp.def.damage && sp.def.radius) {
+      this.particles.burst(target, 20, sp.def.color, 200, 0.6, 5);
+    }
+    return true;
+  }
+
   update(dt: number): void {
     if (this.phase !== 'playing') return;
+    this.stats.tick(dt);
 
     this.waves.update(dt, this.grid, this.enemies);
     this.bus.emit('waveChanged', { current: this.waves.current, total: this.waves.totalWaves });
 
-    // towers acquire + fire
     for (const t of this.towers) {
       const { target } = t.update(dt, this.enemies, this.grid);
       if (target && t.canFire()) {
@@ -150,34 +174,28 @@ export class GameState {
       }
     }
 
-    // projectiles move
     for (const p of this.projectiles) p.update(dt);
-
-    // combat resolution (damage/splash/slow)
     this.combat.resolve(this.projectiles, this.enemies, this);
     this.compact(this.projectiles);
 
-    // movement + life loss + cleanup
     this.movement.update(dt, this.enemies, this.grid, this);
+    this.particles.update(dt);
+    for (const sp of this.spells) sp.update(dt);
 
-    // win/lose
     if (this.lives <= 0) {
       this.setPhase('lost');
       this.save.recordScore(this.score);
       return;
     }
     if (this.waves.state === 'done' && this.enemies.length === 0) {
+      this.lastStars = computeStars(this.lives);
+      this.bus.emit('levelWon', { level: this.levels.levelNumber, stars: this.lastStars });
       const isNew = this.save.recordScore(this.score);
-      logger.info('Level won', { score: this.score, isNewHigh: isNew });
-      if (this.levels.hasNext) {
-        this.advanceLevel();
-      } else {
-        this.setPhase('won');
-      }
+      logger.info('Level won', { score: this.score, stars: this.lastStars, isNewHigh: isNew });
+      this.advanceLevel();
     }
   }
 
-  /** Remove dead entries in-place (avoids array reallocation churn). */
   private compact<T extends { dead: boolean }>(arr: T[]): void {
     let w = 0;
     for (let r = 0; r < arr.length; r++) {

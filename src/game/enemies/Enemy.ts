@@ -1,8 +1,10 @@
-// Enemy instance: walks waypoints, takes damage, supports slow effects.
+// Enemy instance: walks waypoints, takes typed damage (with resistance),
+// supports slow effects, tracks being a boss.
 
 import { Vec2 } from '../../engine/math/Vec2';
 import type { Grid } from '../grid/Grid';
 import type { EnemyDef } from './EnemyRegistry';
+import { applyResistance, DamageType } from '../DamageType';
 
 export class Enemy {
   dead = false;
@@ -13,11 +15,13 @@ export class Enemy {
   private readonly maxHp: number;
   private readonly baseSpeed: number;
   private slowTimer = 0;
-  private slowFactor = 1; // multiplicative speed factor (0.5 = half speed)
+  private slowFactor = 1;
   readonly reward: number;
   readonly radius: number;
   readonly color: string;
   readonly id: string;
+  readonly resist: Partial<Record<DamageType, number>> | undefined;
+  readonly isBoss: boolean;
 
   constructor(def: EnemyDef, startPos: Vec2, waveHpMul: number) {
     this.id = def.id;
@@ -28,10 +32,11 @@ export class Enemy {
     this.baseSpeed = def.speed;
     this.reward = Math.round(def.reward * waveHpMul);
     this.pos = Vec2.from(startPos);
+    this.resist = def.resist;
+    this.isBoss = !!def.isBoss;
   }
 
   applySlow(factor: number, duration: number): void {
-    // Only the strongest slow owns the duration; weaker slows may extend it.
     if (factor <= this.slowFactor) {
       this.slowFactor = factor;
       this.slowTimer = duration;
@@ -42,14 +47,11 @@ export class Enemy {
 
   update(dt: number, grid: Grid): void {
     if (this.dead || this.reachedGoal) return;
-
-    // tick slow
     if (this.slowTimer > 0) {
       this.slowTimer -= dt;
       if (this.slowTimer <= 0) this.slowFactor = 1;
     }
     const speed = this.baseSpeed * this.slowFactor;
-
     if (this.wpIndex >= grid.waypoints.length) {
       this.reachedGoal = true;
       this.dead = true;
@@ -71,9 +73,11 @@ export class Enemy {
     }
   }
 
-  takeDamage(d: number): void {
-    this.hp -= d;
+  takeDamage(d: number, type: DamageType = DamageType.Physical): number {
+    const actual = this.resist ? applyResistance(d, type, this.resist) : d;
+    this.hp -= actual;
     if (this.hp <= 0) this.dead = true;
+    return actual;
   }
 
   get hpRatio(): number {
@@ -84,7 +88,6 @@ export class Enemy {
     return this.slowTimer > 0;
   }
 
-  /** Distance remaining along waypoints (px), for tower targeting heuristics. */
   progressRemaining(grid: Grid): number {
     let total = this.pos.dist(grid.waypoints[this.wpIndex] ?? this.pos);
     for (let i = this.wpIndex; i + 1 < grid.waypoints.length; i++) {

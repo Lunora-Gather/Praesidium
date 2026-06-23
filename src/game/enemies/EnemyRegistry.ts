@@ -1,6 +1,8 @@
-// Data-driven enemy registry. New enemy types = add an entry, no code changes.
+// Data-driven enemy registry. Phase 3 adds Boss + damage resistances.
+// Adding an enemy = one object literal; no combat code changes.
 
 import { BALANCE } from '../../config/balance';
+import { DamageType, ResistanceMap } from '../DamageType';
 
 export interface EnemyDef {
   id: string;
@@ -10,6 +12,9 @@ export interface EnemyDef {
   speed: number; // px/s
   reward: number;
   radius: number;
+  damageType?: DamageType; // for enemies that deal damage to towers (future)
+  resist?: ResistanceMap; // damage multipliers per type
+  isBoss?: boolean;
 }
 
 export const ENEMY_DEFS: Record<string, EnemyDef> = {
@@ -39,6 +44,32 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: BALANCE.enemyBaseSpeed * 0.7,
     reward: BALANCE.enemyBaseReward * 1.8,
     radius: 16,
+    resist: { [DamageType.Ice]: 0.5 }, // resists ice
+  },
+  zealot: {
+    id: 'zealot',
+    name: 'Zealot',
+    color: '#ff8a65',
+    hp: BALANCE.enemyBaseHp * 1.3,
+    speed: BALANCE.enemyBaseSpeed * 1.2,
+    reward: BALANCE.enemyBaseReward * 1.2,
+    radius: 11,
+    resist: { [DamageType.Fire]: 0.3 }, // heavily resists fire
+  },
+  boss: {
+    id: 'boss',
+    name: 'Warlord',
+    color: '#d32f2f',
+    hp: BALANCE.enemyBaseHp * 8,
+    speed: BALANCE.enemyBaseSpeed * 0.5,
+    reward: BALANCE.enemyBaseReward * 5,
+    radius: 22,
+    isBoss: true,
+    resist: {
+      [DamageType.Fire]: 0.4,
+      [DamageType.Ice]: 0.4,
+      [DamageType.Lightning]: 0.7,
+    },
   },
 };
 

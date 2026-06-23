@@ -15,6 +15,9 @@ import { SettingsScreen } from './ui/SettingsScreen';
 import { LevelSelect } from './ui/LevelSelect';
 import { SettingsStore } from './config/Settings';
 import { logger } from './utils/logger';
+import { Music } from './engine/Music';
+import { Tutorial } from './utils/Tutorial';
+import { Vec2 } from './engine/math/Vec2';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const boot = document.getElementById('boot');
@@ -23,6 +26,7 @@ if (boot) boot.remove();
 const renderer = new Renderer(canvas);
 const input = new Input(canvas);
 const audio = new Audio();
+const music = new Music();
 const settings = new SettingsStore();
 const state = new GameState();
 const hud = new HUD();
@@ -31,6 +35,7 @@ const worldRenderer = new WorldRenderer();
 const towerPanel = new TowerPanel();
 const settingsScreen = new SettingsScreen(settings);
 const levelSelect = new LevelSelect(state.levels, state.save);
+const tutorial = new Tutorial();
 
 let paused = false;
 let showSettings = false;
@@ -51,16 +56,20 @@ window.addEventListener('blur', () => {
   if (settings.get().pauseOnBlur && state.phase === 'playing') paused = true;
 });
 
-// event bus -> audio cues
+// event bus -> audio + particles + music
 state.bus.on('towerPlaced', () => audio.place());
 state.bus.on('towerSold', () => audio.place());
 state.bus.on('towerUpgraded', () => audio.place());
-state.combat.bus.on('hit', () => audio.hit());
-state.combat.bus.on('kill', () => audio.enemyDie());
+state.combat.bus.on('hit', (p) => { audio.hit(); state.particles.hit(new Vec2(p.x, p.y), '#fff'); });
+state.combat.bus.on('kill', (p) => { audio.enemyDie(); state.particles.death(new Vec2(p.x, p.y), p.enemy.color); });
+state.combat.bus.on('splash', (p) => state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4));
 state.bus.on('phaseChanged', ({ to }) => {
-  if (to === 'won') audio.win();
-  if (to === 'lost') audio.lose();
+  if (to === 'won') { audio.win(); music.stop(); }
+  if (to === 'lost') { audio.lose(); music.stop(); }
+  if (to === 'playing') music.start();
+  if (to === 'menu' || to === 'levelSelect') music.stop();
 });
+state.bus.on('spellCast', () => audio.waveStart());
 
 function camOffset(): { camX: number; camY: number } {
   const topBar = 48;
@@ -206,16 +215,22 @@ const update = (dt: number): void => {
     for (const c of input.clicks()) {
       if (c.y < 48) continue; // top bar no-op
       if (c.y > renderer.height - 64) handleHUDClick(c.x, c.y);
-      else handleWorldClick(c.x, c.y);
+      else if (state.selectedSpellId) {
+        const { wx, wy } = screenToWorld(c.x, c.y);
+        state.castSpell(state.selectedSpellId, new Vec2(wx, wy));
+        state.selectedSpellId = null;
+      } else handleWorldClick(c.x, c.y);
     }
 
     if (input.wasKeyPressed('Space')) paused = !paused;
     if (input.wasKeyPressed('Escape')) {
-      if (state.selectedTower) state.selectedTower = null;
+      if (state.selectedSpellId) state.selectedSpellId = null;
+      else if (state.selectedTower) state.selectedTower = null;
       else state.goMenu();
     }
     if (input.wasKeyPressed('KeyS') && state.selectedTower) state.sellTower(state.selectedTower);
     if (input.wasKeyPressed('KeyU') && state.selectedTower) state.upgradeTower(state.selectedTower);
+    if (input.wasKeyPressed('KeyT') && state.selectedTower) state.selectedTower.cycleStrategy();
     for (let i = 0; i < TOWER_LIST.length; i++) {
       if (input.wasKeyPressed(`Digit${i + 1}`)) {
         state.selectedTowerId = TOWER_LIST[i].id;
@@ -223,8 +238,16 @@ const update = (dt: number): void => {
         state.selectedTower = null;
       }
     }
+    // spell hotkeys Q/W/E
+    const spellKeys = ['KeyQ', 'KeyW', 'KeyE'];
+    for (let i = 0; i < spellKeys.length && i < state.spells.length; i++) {
+      if (input.wasKeyPressed(spellKeys[i])) state.selectedSpellId = state.spells[i].def.id;
+    }
 
-    if (!paused) state.update(dt);
+    if (!paused) {
+      state.update(dt);
+      tutorial.update(state);
+    }
   } else {
     // won/lost
     for (const c of input.clicks()) {
@@ -245,13 +268,16 @@ const render = (_alpha: number): void => {
 
   if (state.phase === 'playing' || state.phase === 'won' || state.phase === 'lost') {
     worldRenderer.draw(renderer, state, settings.get());
+    state.particles.draw(renderer);
     hudRegions = hud.draw(renderer, state);
+    drawSpells(renderer);
     if (state.selectedTower && state.phase === 'playing') {
       const s = renderer.toScreen(state.selectedTower.pos);
       towerPanel.draw(renderer, state.selectedTower, state.gold, s.x, s.y);
     } else {
       towerPanel.clear();
     }
+    if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
     if (state.phase === 'won') screens.draw(renderer, 'won', state.score);
     if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score);
@@ -264,6 +290,35 @@ const render = (_alpha: number): void => {
 
   if (showSettings) settingsScreen.draw(renderer);
 };
+
+function drawSpells(r: Renderer): void {
+  // spell bar left of HUD buttons, bottom-right
+  const slotW = 56;
+  const gap = 6;
+  const y = r.height - 64 + 8;
+  let x = r.width - 16 - (slotW + gap) * state.spells.length;
+  for (const sp of state.spells) {
+    const ready = sp.ready && state.gold >= sp.def.cost;
+    r.rect(x, y, slotW, 48, ready ? '#1f2937' : '#0d1320', true);
+    r.rect(x, y, slotW, 48, ready ? '#3a506b' : '#1a1a1a', false);
+    r.text(sp.def.name, x + slotW / 2, y + 6, ready ? '#fff' : '#555', 11, 'center');
+    r.text(`${sp.def.cost}g`, x + slotW / 2, y + 26, ready ? '#ffd54f' : '#555', 10, 'center');
+    if (!sp.ready) {
+      const cdH = Math.round(48 * (sp.cooldown / sp.def.cooldown));
+      r.rect(x, y + 48 - cdH, slotW, cdH, '#00000088', true);
+    }
+    x += slotW + gap;
+  }
+}
+
+function drawTutorial(r: Renderer, text: string): void {
+  const w = 420;
+  const h = 44;
+  const x = (r.width - w) / 2;
+  const y = 60;
+  r.rect(x, y, w, h, '#1f6febcc', true);
+  r.text(text, x + w / 2, y + 14, '#fff', 14, 'center');
+}
 
 new GameLoop(update, render).start();
 logger.info('Praesidium booted');
