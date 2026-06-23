@@ -22,7 +22,8 @@ export class MovementSystem {
     for (const e of enemies) {
       e.update(dt, grid);
       if (e.reachedGoal) {
-        state.lives = Math.max(0, state.lives - 1);
+        const livesLost = e.isBoss ? 5 : 1;
+        state.lives = Math.max(0, state.lives - livesLost);
         this.bus.emit('enemyReachedGoal', { enemy: e });
         this.bus.emit('livesChanged', { lives: state.lives });
       }

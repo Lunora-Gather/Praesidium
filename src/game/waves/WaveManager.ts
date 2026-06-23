@@ -170,10 +170,23 @@ export class WaveManager {
       for (let i = 0; i < scaled; i++) ids.push(g.id);
       total += scaled;
     }
-    // interleave spawn order
-    for (let i = 0; i < total; i++) {
-      const pick = ids[Math.floor(i % ids.length)];
-      this.spawnQueue.push({ id: pick, at: t });
+    // true interleave: shuffle by round-robin groups so enemy types are mixed
+    // group by id, then take one from each group in rotation
+    const groups = new Map<string, number>();
+    for (const id of ids) groups.set(id, (groups.get(id) ?? 0) + 1);
+    const groupIds = [...groups.keys()];
+    const interleaved: string[] = [];
+    while (interleaved.length < total) {
+      for (const gid of groupIds) {
+        const remaining = groups.get(gid)!;
+        if (remaining > 0) {
+          interleaved.push(gid);
+          groups.set(gid, remaining - 1);
+        }
+      }
+    }
+    for (const id of interleaved) {
+      this.spawnQueue.push({ id, at: t });
       t += BALANCE.enemySpawnGap;
     }
     this.enemiesThisWave = total;

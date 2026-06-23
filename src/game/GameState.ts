@@ -104,12 +104,15 @@ export class GameState {
     this.waves.reset();
     this.waves.endless = this.endless;
     if (this.endless) {
-      // pick a fresh random seed each endless run (32-bit); stored on state for HUD/share
-      this.endlessSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
+      // only pick a random seed if none was pre-set (challenge mode sets it before start())
+      if (this.endlessSeed === 0) {
+        this.endlessSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
+      }
       this.waves.endlessSeed = this.endlessSeed;
-      this.waves.reset(); // re-seed the endless RNG with the new seed
+      this.waves.reset(); // re-seed the endless RNG with the seed
       this.waves.setDifficulty(diff.hpMul, diff.countMul);
     } else {
+      this.endlessSeed = 0;
       this.waves.setDifficulty(diff.hpMul, diff.countMul);
     }
     this.setPhase('playing');
