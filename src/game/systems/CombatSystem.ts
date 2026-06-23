@@ -22,24 +22,37 @@ export class CombatSystem {
   resolve(projectiles: readonly Projectile[], enemies: readonly Enemy[], state: GameState): void {
     for (const p of projectiles) {
       if (p.dead) continue;
-      if (!p.target || p.target.dead) continue;
-      const hitR = p.target.radius + 4;
-      if (p.pos.distSq(p.target.pos) > hitR * hitR) continue;
 
+      // Splash weapons: explode on proximity even if target died mid-flight.
+      // Non-splash: skip if target is dead (projectile flies straight until timeout).
       if (p.splash) {
+        // check if projectile is near ANY enemy (not just its original target)
         const r2 = p.splash * p.splash;
+        let hitAny = false;
+        for (const e of enemies) {
+          if (e.dead) continue;
+          if (p.pos.distSq(e.pos) <= r2) {
+            hitAny = true;
+            break;
+          }
+        }
+        if (!hitAny) continue; // not near any enemy yet, keep flying
         for (const e of enemies) {
           if (e.dead) continue;
           if (p.pos.distSq(e.pos) <= r2) this.damage(e, p.damage, p.damageType, state);
         }
         this.bus.emit('splash', { x: p.pos.x, y: p.pos.y, radius: p.splash });
-      } else if (p.target && !p.target.dead) {
+        p.dead = true;
+      } else {
+        if (!p.target || p.target.dead) continue;
+        const hitR = p.target.radius + 4;
+        if (p.pos.distSq(p.target.pos) > hitR * hitR) continue;
         this.damage(p.target, p.damage, p.damageType, state);
+        if (p.slow && !p.target.dead) {
+          p.target.applySlow(p.slow.factor, p.slow.duration);
+        }
+        p.dead = true;
       }
-      if (p.slow && p.target && !p.target.dead) {
-        p.target.applySlow(p.slow.factor, p.slow.duration);
-      }
-      p.dead = true;
     }
   }
 
