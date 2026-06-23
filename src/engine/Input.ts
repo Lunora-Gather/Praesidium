@@ -84,7 +84,8 @@ export class Input {
       this.pointerX = p.x;
       this.pointerY = p.y;
       this.mouseDown = true;
-      this.addClick(p.x, p.y);
+      // do NOT addClick here — tap fires on touchend (matches desktop click semantics:
+      // down+up). this lets touchmove drive the hover/placement preview.
     }
   };
 
@@ -98,6 +99,8 @@ export class Input {
   };
 
   private readonly onTouchEnd = (): void => {
+    // fire the click now that the tap is complete (pointer already at last move position)
+    this.addClick(this.pointerX, this.pointerY);
     this.mouseDown = false;
   };
 

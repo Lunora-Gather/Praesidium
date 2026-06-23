@@ -57,6 +57,12 @@ window.addEventListener('resize', () => renderer.resize());
 window.addEventListener('blur', () => {
   if (settings.get().pauseOnBlur && state.phase === 'playing') paused = true;
 });
+// auto-resume on focus so a returning player isn't stuck on the pause screen
+// (tower defense is long-form; players tab out constantly — forcing a manual
+// Resume click each time is a major流失点)
+window.addEventListener('focus', () => {
+  if (settings.get().pauseOnBlur && paused && state.phase === 'playing') paused = false;
+});
 
 // event bus -> audio + particles + music
 state.bus.on('towerPlaced', () => audio.place());
