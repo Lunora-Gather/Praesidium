@@ -1,6 +1,8 @@
 // Procedural background music via Web Audio — a slow drone + arpeggio loop.
 // No asset files. Starts on user gesture, looped, low volume, toggleable.
 
+import { getAudioContext } from './audioContext';
+
 export class Music {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -11,17 +13,15 @@ export class Music {
   private step = 0;
 
   // minor pentatonic — pleasant, tension-appropriate
-  private readonly notes = [196, 233, 262, 294, 349]; // G3 A#3 C4 D4 F4
+  private readonly notes = [196, 233, 262, 294, 349]; // G3 A#3 C4 F4
 
   ensure(): void {
     if (this.ctx) return;
-    try {
-      this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    this.ctx = getAudioContext();
+    if (this.ctx) {
       this.master = this.ctx.createGain();
       this.master.gain.value = this.muted ? 0 : 0.08;
       this.master.connect(this.ctx.destination);
-    } catch {
-      this.ctx = null;
     }
   }
 

@@ -2,6 +2,8 @@
 // Generates short blips/zaps procedurally. Safe to call before user gesture
 // (AudioContext resumes lazily on first interaction).
 
+import { getAudioContext } from './audioContext';
+
 export class Audio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -9,13 +11,11 @@ export class Audio {
 
   private ensure(): void {
     if (this.ctx) return;
-    try {
-      this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    this.ctx = getAudioContext();
+    if (this.ctx) {
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.25;
+      this.master.gain.value = this.muted ? 0 : 0.25;
       this.master.connect(this.ctx.destination);
-    } catch {
-      this.ctx = null;
     }
   }
 
