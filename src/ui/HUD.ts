@@ -8,7 +8,7 @@ import { Vec2 } from '../engine/math/Vec2';
 
 export class HUD {
   /** Draw the HUD; returns hit regions for click handling (shop buttons, etc.). */
-  draw(r: Renderer, s: GameState): HudRegions {
+  draw(r: Renderer, s: GameState, speed = 1): HudRegions {
     const regions: HudRegions = { shop: [], buttons: [] };
 
     // top bar
@@ -19,6 +19,9 @@ export class HUD {
     r.text(`SCORE ${s.score}`, 460, 14, '#ffffff', 18);
     if (s.endless) {
       r.text(`SEED ${s.endlessSeed.toString(16).toUpperCase().padStart(8, '0')}`, 580, 14, '#ce93d8', 16);
+    }
+    if (speed > 1) {
+      r.text(`${speed}x`, 700, 14, '#fff176', 16);
     }
 
     // tower shop (bottom bar)
@@ -56,6 +59,7 @@ export class HUD {
     const waveLabel = s.waves.inProgress
       ? 'Wave…'
       : s.waves.current >= s.waves.totalWaves ? 'Last wave' : `Send W${s.waves.current + 1}`;
+    drawBtn(`${speed}x`, speed > 1 ? '#6a1b9a' : '#374151', 'speed');
     drawBtn('Settings', '#374151', 'settings');
     drawBtn('Pause', '#374151', 'pause');
     drawBtn('Menu', '#374151', 'menu');
@@ -83,3 +87,6 @@ export interface HudRegions {
   shop: Array<{ x: number; y: number; w: number; h: number; towerId: string }>;
   buttons: Array<{ x: number; y: number; w: number; h: number; action: string }>;
 }
+
+/** Speed options for the speed-control button. */
+export const SPEED_OPTIONS = [1, 2, 3] as const;

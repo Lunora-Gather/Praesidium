@@ -46,6 +46,7 @@ let hudRegions: HudRegions = { shop: [], buttons: [] };
 let lastFpsUpdate = 0;
 let frameCount = 0;
 let placingMode = true; // true=click places tower, false=click selects tower
+let gameSpeed = 1; // 1x/2x/3x speed control
 
 // sync audio mute with stored setting
 audio.setMuted(settings.get().muted);
@@ -109,6 +110,9 @@ function handleHUDClick(x: number, y: number): void {
     if (state.waves.forceNext()) audio.waveStart();
   } else if (btn === 'pause') {
     paused = !paused;
+  } else if (btn === 'speed') {
+    gameSpeed = gameSpeed >= 3 ? 1 : gameSpeed + 1;
+    loop.timeScale = gameSpeed;
   } else if (btn === 'menu') {
     state.goMenu();
   } else if (btn === 'settings') {
@@ -301,7 +305,7 @@ const render = (_alpha: number): void => {
   if (state.phase === 'playing' || state.phase === 'won' || state.phase === 'lost') {
     worldRenderer.draw(renderer, state, settings.get());
     state.particles.draw(renderer);
-    hudRegions = hud.draw(renderer, state);
+    hudRegions = hud.draw(renderer, state, gameSpeed);
     drawSpells(renderer);
     if (state.selectedTower && state.phase === 'playing') {
       const s = renderer.toScreen(state.selectedTower.pos);
@@ -352,5 +356,6 @@ function drawTutorial(r: Renderer, text: string): void {
   r.text(text, x + w / 2, y + 14, '#fff', 14, 'center');
 }
 
-new GameLoop(update, render).start();
+const loop = new GameLoop(update, render);
+loop.start();
 logger.info('Praesidium booted');
