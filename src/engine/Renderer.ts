@@ -1,4 +1,4 @@
-// Canvas 2D drawing primitives + camera. Keeps render code terse.
+// Canvas 2D drawing primitives + camera + screen shake. Keeps render code terse.
 
 import { Vec2 } from './math/Vec2';
 
@@ -10,12 +10,32 @@ export class Renderer {
   camX = 0;
   camY = 0;
   zoom = 1;
+  // screen shake: decays over time, applied as random offset each frame
+  private shakeIntensity = 0;
+  private shakeDecay = 0.9;
 
   constructor(public readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D context unavailable');
     this.ctx = ctx;
     this.resize();
+  }
+
+  /** Trigger screen shake (intensity 1-20). Boss death = 12, spell = 8, wave start = 4. */
+  shake(intensity: number): void {
+    this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
+  }
+
+  /** Call once per frame to decay shake. */
+  updateShake(): void {
+    this.shakeIntensity *= this.shakeDecay;
+    if (this.shakeIntensity < 0.3) this.shakeIntensity = 0;
+  }
+
+  get shakeOffset(): { x: number; y: number } {
+    if (this.shakeIntensity <= 0) return { x: 0, y: 0 };
+    const a = Math.random() * Math.PI * 2;
+    return { x: Math.cos(a) * this.shakeIntensity, y: Math.sin(a) * this.shakeIntensity };
   }
 
   resize(): void {
@@ -30,12 +50,14 @@ export class Renderer {
   }
 
   clear(color = '#0a0e14'): void {
+    const { x: sx, y: sy } = this.shakeOffset;
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.fillRect(sx, sy, this.width, this.height);
   }
 
   toScreen(p: Vec2): Vec2 {
-    return new Vec2((p.x - this.camX) * this.zoom, (p.y - this.camY) * this.zoom);
+    const { x: sx, y: sy } = this.shakeOffset;
+    return new Vec2((p.x - this.camX) * this.zoom + sx, (p.y - this.camY) * this.zoom + sy);
   }
 
   circle(p: Vec2, r: number, color: string, fill = true): void {

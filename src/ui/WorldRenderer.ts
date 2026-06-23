@@ -82,8 +82,17 @@ export class WorldRenderer {
       }
     }
 
-    // projectiles
+    // projectiles + trail
     for (const p of s.projectiles) {
+      // draw fading trail
+      if (p.trail.length > 1) {
+        for (let i = 1; i < p.trail.length; i++) {
+          const alpha = i / p.trail.length;
+          r.ctx.globalAlpha = alpha * 0.5;
+          r.line(p.trail[i - 1], p.trail[i], p.color, p.splash ? 3 : 2);
+        }
+        r.ctx.globalAlpha = 1;
+      }
       r.circle(p.pos, p.splash ? 4 : 3, p.color);
     }
 

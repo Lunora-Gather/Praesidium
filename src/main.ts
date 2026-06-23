@@ -75,8 +75,8 @@ state.bus.on('towerPlaced', () => audio.place());
 state.bus.on('towerSold', () => audio.place());
 state.bus.on('towerUpgraded', () => audio.place());
 state.combat.bus.on('hit', (p) => { audio.hit(); state.particles.hit(new Vec2(p.x, p.y), '#fff'); state.particles.floatText(new Vec2(p.x, p.y - 10), `-${Math.round(p.damage)}`, '#ff8a65'); });
-state.combat.bus.on('kill', (p) => { audio.enemyDie(); state.particles.death(new Vec2(p.x, p.y), p.enemy.color); const reward = Math.round(p.enemy.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul); state.particles.floatText(new Vec2(p.x, p.y - 16), `+${reward}g`, '#ffd54f', 1.0); });
-state.combat.bus.on('splash', (p) => state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4));
+state.combat.bus.on('kill', (p) => { audio.enemyDie(); state.particles.death(new Vec2(p.x, p.y), p.enemy.color); const reward = Math.round(p.enemy.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul); state.particles.floatText(new Vec2(p.x, p.y - 16), `+${reward}g`, '#ffd54f', 1.0); if (p.enemy.isBoss) renderer.shake(12); else renderer.shake(3); });
+state.combat.bus.on('splash', (p) => { state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4); renderer.shake(5); });
 state.bus.on('phaseChanged', ({ to }) => {
   if (to === 'won') { audio.win(); music.stop(); }
   if (to === 'lost') { audio.lose(); music.stop(); }
@@ -312,6 +312,7 @@ const update = (dt: number): void => {
 
 const render = (_alpha: number): void => {
   renderer.clear();
+  renderer.updateShake();
 
   // starfield behind pure overlay screens (menu/levelSelect only;
   // won/lost still show the game world underneath)
