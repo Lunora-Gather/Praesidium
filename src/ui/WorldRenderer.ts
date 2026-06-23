@@ -51,20 +51,117 @@ export class WorldRenderer {
       r.circle(s.selectedTower.pos, s.selectedTower.range, '#1f6feb', false);
     }
 
-    // towers
+    // towers — distinctive shapes per type
     for (const t of s.towers) {
-      r.circle(t.pos, t.def.radius, t.def.color);
-      const barrelEnd = t.pos.add(Vec2.fromAngle(t.angle, t.def.radius + 10));
-      r.line(t.pos, barrelEnd, '#e6e6e6', 3);
+      const ctx = r.ctx;
+      const sp = r.toScreen(t.pos);
+      const z = r.zoom;
+      ctx.save();
+      ctx.translate(sp.x, sp.y);
+      ctx.rotate(t.angle);
+      // base platform (all towers)
+      ctx.fillStyle = '#1c2740';
+      ctx.fillRect(-t.def.radius * z, -t.def.radius * z, t.def.radius * 2 * z, t.def.radius * 2 * z);
+      ctx.strokeStyle = t.def.color;
+      ctx.lineWidth = 2 * z;
+      ctx.strokeRect(-t.def.radius * z, -t.def.radius * z, t.def.radius * 2 * z, t.def.radius * 2 * z);
+      // type-specific barrel/shape
+      ctx.fillStyle = t.def.color;
+      const id = t.def.id;
+      if (id === 'turret') {
+        // short barrel
+        ctx.fillRect(0, -3 * z, (t.def.radius + 10) * z, 6 * z);
+      } else if (id === 'sniper') {
+        // long thin barrel
+        ctx.fillRect(0, -2 * z, (t.def.radius + 16) * z, 4 * z);
+        ctx.fillStyle = '#aaa';
+        ctx.fillRect((t.def.radius + 10) * z, -3 * z, 6 * z, 6 * z);
+      } else if (id === 'mortar') {
+        // wide short barrel
+        ctx.fillRect(0, -5 * z, (t.def.radius + 6) * z, 10 * z);
+      } else if (id === 'frost') {
+        // crystal shape — diamond
+        ctx.beginPath();
+        ctx.moveTo((t.def.radius + 8) * z, 0);
+        ctx.lineTo(0, -6 * z);
+        ctx.lineTo(-(t.def.radius * 0.5) * z, 0);
+        ctx.lineTo(0, 6 * z);
+        ctx.closePath();
+        ctx.fill();
+      } else if (id === 'tesla') {
+        // coil rings
+        ctx.strokeStyle = t.def.color;
+        ctx.lineWidth = 2 * z;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.arc((i * 4 - 4) * z, 0, (4 + i) * z, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        // spark tip
+        ctx.fillStyle = '#fff176';
+        ctx.fillRect((t.def.radius + 4) * z, -2 * z, 8 * z, 4 * z);
+      } else if (id === 'cannon') {
+        // thick barrel + muzzle brake
+        ctx.fillRect(0, -4 * z, (t.def.radius + 8) * z, 8 * z);
+        ctx.fillRect((t.def.radius + 4) * z, -6 * z, 6 * z, 12 * z);
+      }
+      ctx.restore();
+      // synergy glow ring
+      if (t.synergyNeighbors > 0) {
+        r.ctx.globalAlpha = 0.15 + Math.min(t.synergyNeighbors, 4) * 0.05;
+        r.circle(t.pos, t.def.radius + 4, '#ffd54f', false);
+        r.ctx.globalAlpha = 1;
+      }
       // level pips above tower
       for (let i = 0; i < t.level - 1; i++) {
         r.circle(new Vec2(t.pos.x - 6 + i * 5, t.pos.y - t.def.radius - 6), 2, '#ffd54f');
       }
     }
 
-    // enemies + hp bars + slow tint + boss health bar
+    // enemies — distinctive shapes per type
     for (const e of s.enemies) {
-      r.circle(e.pos, e.radius, e.color);
+      const ctx = r.ctx;
+      const sp = r.toScreen(e.pos);
+      const z = r.zoom;
+      const rad = e.radius * z;
+      ctx.save();
+      ctx.translate(sp.x, sp.y);
+      ctx.fillStyle = e.color;
+      const eid = e.id;
+      if (eid === 'grunt') {
+        // circle
+        ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.fill();
+      } else if (eid === 'scout') {
+        // triangle (fast = pointed)
+        ctx.beginPath(); ctx.moveTo(rad, 0); ctx.lineTo(-rad, -rad * 0.7); ctx.lineTo(-rad, rad * 0.7); ctx.closePath(); ctx.fill();
+      } else if (eid === 'brute') {
+        // hexagon (tanky = armored)
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad); }
+        ctx.closePath(); ctx.fill();
+      } else if (eid === 'zealot') {
+        // diamond (fiery = sharp)
+        ctx.beginPath(); ctx.moveTo(0, -rad); ctx.lineTo(rad, 0); ctx.lineTo(0, rad); ctx.lineTo(-rad, 0); ctx.closePath(); ctx.fill();
+      } else if (eid === 'phantom') {
+        // hollow circle (ethereal)
+        ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.strokeStyle = e.color; ctx.lineWidth = 3 * z; ctx.stroke();
+      } else if (eid === 'titan') {
+        // octagon (massive)
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad); }
+        ctx.closePath(); ctx.fill();
+        // inner cross
+        ctx.strokeStyle = '#37474f'; ctx.lineWidth = 3 * z;
+        ctx.beginPath(); ctx.moveTo(-rad * 0.5, 0); ctx.lineTo(rad * 0.5, 0); ctx.moveTo(0, -rad * 0.5); ctx.lineTo(0, rad * 0.5); ctx.stroke();
+      } else if (eid === 'boss') {
+        // large star (commander)
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2; const r2 = i % 2 === 0 ? rad : rad * 0.5; ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); }
+        ctx.closePath(); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(0, 0, rad, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
       if (e.isSlowed) r.circle(e.pos, e.radius + 2, '#80deea', false);
       const barW = e.radius * 2;
       const barX = e.pos.x - e.radius;
