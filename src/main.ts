@@ -209,7 +209,8 @@ const update = (dt: number): void => {
       const a = levelSelect.hit(c.x, c.y);
       if (!a) continue;
       if (a.kind === 'back') state.goMenu();
-      else if (a.kind === 'level') state.selectLevel(a.index);
+      else if (a.kind === 'level') { state.setDifficulty(levelSelect.selectedDiff); state.selectLevel(a.index); }
+      else if (a.kind === 'diff') levelSelect.selectedDiff = a.diff;
     }
     input.endFrame();
     return;

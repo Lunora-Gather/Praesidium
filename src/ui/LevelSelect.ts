@@ -1,13 +1,15 @@
-// Level select screen: shows unlocked levels with name + best score.
+// Level select screen: shows unlocked levels with name + best score + difficulty picker.
 
 import { Renderer } from '../engine/Renderer';
 import { LevelManager } from '../game/grid/LevelManager';
 import { SaveSystem } from '../utils/SaveSystem';
+import { Difficulty, DIFFICULTY_LIST } from '../config/Difficulty';
 
-type ClickAction = { kind: 'level'; index: number } | { kind: 'back' };
+type ClickAction = { kind: 'level'; index: number } | { kind: 'back' } | { kind: 'diff'; diff: Difficulty };
 
 export class LevelSelect {
   private regions: Array<{ x: number; y: number; w: number; h: number; action: ClickAction }> = [];
+  selectedDiff: Difficulty = 'normal';
 
   constructor(
     private readonly levels: LevelManager,
@@ -19,6 +21,20 @@ export class LevelSelect {
     r.rect(0, 0, r.width, r.height, '#0a0e14');
     const cx = r.width / 2;
     r.text('SELECT LEVEL', cx, 70, '#8ab4f8', 32, 'center');
+
+    // difficulty picker row
+    const diffBtnW = 100;
+    const diffGap = 12;
+    const diffTotalW = DIFFICULTY_LIST.length * diffBtnW + (DIFFICULTY_LIST.length - 1) * diffGap;
+    let dx = cx - diffTotalW / 2;
+    const diffY = 110;
+    for (const d of DIFFICULTY_LIST) {
+      const sel = d.id === this.selectedDiff;
+      r.rect(dx, diffY, diffBtnW, 32, sel ? '#1f6feb' : '#374151', true);
+      r.text(d.name, dx + diffBtnW / 2, diffY + 9, '#fff', 13, 'center');
+      this.regions.push({ x: dx, y: diffY, w: diffBtnW, h: 32, action: { kind: 'diff', diff: d.id } });
+      dx += diffBtnW + diffGap;
+    }
 
     const cardW = 280;
     const cardH = 110;
