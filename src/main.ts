@@ -198,7 +198,14 @@ const update = (dt: number): void => {
   if (state.phase === 'menu') {
     for (const c of input.clicks()) {
       const a = screens.hit(c.x, c.y);
-      if (a === 'start') state.goLevelSelect();
+      if (a === 'start') {
+        state.endless = false;
+        state.goLevelSelect();
+      } else if (a === 'endless') {
+        state.endless = true;
+        state.selectLevel(0);
+        paused = false;
+      }
     }
     input.endFrame();
     return;

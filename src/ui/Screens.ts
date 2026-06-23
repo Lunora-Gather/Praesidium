@@ -4,7 +4,7 @@
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
 
-export type MenuClickAction = 'start' | 'resume' | 'restart' | 'menu' | null;
+export type MenuClickAction = 'start' | 'endless' | 'resume' | 'restart' | 'menu' | null;
 
 export class Screens {
   private regions: Array<{ x: number; y: number; w: number; h: number; action: MenuClickAction }> = [];
@@ -35,6 +35,14 @@ export class Screens {
     r.rect(btnX, btnY, btnW, btnH, '#1f6feb', true);
     r.text(t(labelKey), cx, btnY + 15, '#fff', 18, 'center');
     this.regions.push({ x: btnX, y: btnY, w: btnW, h: btnH, action });
+
+    // endless-mode secondary button (menu only)
+    if (kind === 'menu') {
+      const eY = btnY + btnH + 12;
+      r.rect(btnX, eY, btnW, 40, '#6a1b9a', true);
+      r.text(t('menu.endless'), cx, eY + 12, '#fff', 15, 'center');
+      this.regions.push({ x: btnX, y: eY, w: btnW, h: 40, action: 'endless' });
+    }
 
     if (kind !== 'menu') {
       const mY = btnY + btnH + 12;

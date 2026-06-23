@@ -1,4 +1,6 @@
 // Wave manager: spawns queued enemies over time, advances waves, signals end.
+// Supports endless mode: beyond the scripted waves, new waves are generated
+// procedurally with ever-increasing HP/count, so the run only ends on death.
 
 import { BALANCE } from '../../config/balance';
 import type { Grid } from '../grid/Grid';
@@ -31,6 +33,26 @@ function buildWaves(count: number): WaveDef[] {
   return waves;
 }
 
+/** Procedurally generate wave #i (0-based) for endless mode — scales forever. */
+function endlessWave(i: number): WaveDef {
+  // i is the absolute wave index (>= scripted waveCount). Scale aggressively.
+  const gruntCount = 6 + i * 3;
+  const scoutCount = Math.floor(i * 1.1);
+  const bruteCount = Math.floor(i * 0.8);
+  const zealotCount = Math.floor(i * 0.7);
+  // boss every 5th endless wave, then +1 boss each cycle
+  const bossCount = (i + 1) % 5 === 0 ? Math.floor((i / 5)) : 0;
+  return {
+    enemies: [
+      { id: 'grunt', count: gruntCount },
+      { id: 'scout', count: scoutCount },
+      { id: 'brute', count: bruteCount },
+      { id: 'zealot', count: zealotCount },
+      { id: 'boss', count: bossCount },
+    ],
+  };
+}
+
 export class WaveManager {
   readonly waves: WaveDef[];
   current = 0;
@@ -39,6 +61,10 @@ export class WaveManager {
   state: 'idle' | 'running' | 'between' | 'done' = 'idle';
   private betweenTimer = 0;
   enemiesThisWave = 0;
+  /** Endless mode: never reach 'done', keep generating waves forever. */
+  endless = false;
+  /** Extra HP multiplier applied per endless wave (compounds on growth). */
+  endlessHpBonus = 0;
 
   constructor(count = BALANCE.waveCount) {
     this.waves = buildWaves(count);
@@ -51,6 +77,7 @@ export class WaveManager {
     this.betweenTimer = 0;
     this.state = 'idle';
     this.enemiesThisWave = 0;
+    this.endlessHpBonus = 0;
   }
 
   get totalWaves(): number {
@@ -77,13 +104,14 @@ export class WaveManager {
     while (this.spawnQueue.length > 0 && this.timer >= this.spawnQueue[0].at) {
       const spec = this.spawnQueue.shift()!;
       const def = getEnemyDef(spec.id);
-      const hpMul = (1 + (this.current - 1) * (BALANCE.enemyHpGrowth - 1)) * this.diffHpMul;
+      const hpMul = (1 + (this.current - 1) * (BALANCE.enemyHpGrowth - 1)) * this.diffHpMul * (1 + this.endlessHpBonus);
       out.push(new EnemyClass(def, grid.waypoints[0], hpMul));
     }
     if (this.spawnQueue.length === 0) {
       this.state = 'between';
       this.betweenTimer = 0;
-      if (this.current >= this.waves.length) this.state = 'done';
+      // endless: never 'done'; scripted mode: done after last wave
+      if (!this.endless && this.current >= this.waves.length) this.state = 'done';
     }
   }
 
@@ -97,11 +125,19 @@ export class WaveManager {
 
   private startNext(): void {
     this.current++;
-    if (this.current > this.waves.length) {
+    // endless: never done; scripted: done when past last wave
+    if (!this.endless && this.current > this.waves.length) {
       this.state = 'done';
       return;
     }
-    const wave = this.waves[this.current - 1];
+    // scripted waves use index [0..length-1]; endless waves beyond that use endlessWave()
+    const wave = this.current <= this.waves.length
+      ? this.waves[this.current - 1]
+      : endlessWave(this.current - 1);
+    // endless HP ramps each wave past the scripted cap
+    if (this.endless && this.current > this.waves.length) {
+      this.endlessHpBonus += 0.15; // +15% HP per endless wave, compounding
+    }
     this.spawnQueue = [];
     let t = 0;
     let total = 0;

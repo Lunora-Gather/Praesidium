@@ -57,6 +57,8 @@ export class GameState {
   readonly talents = new TalentTree();
   readonly spells = PLAYER_SPELLS.map((s) => new PlayerSpell(s.def));
   difficulty: Difficulty = 'normal';
+  /** Endless mode: waves never end, run only ends on death. */
+  endless = false;
 
   get diffMul(): DifficultyDef { return DIFFICULTIES[this.difficulty]; }
 
@@ -98,6 +100,7 @@ export class GameState {
     this.selectedTower = null;
     this.selectedSpellId = null;
     this.waves.reset();
+    this.waves.endless = this.endless;
     this.waves.setDifficulty(diff.hpMul, diff.countMul);
     this.setPhase('playing');
     logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name });
@@ -205,6 +208,8 @@ export class GameState {
       return;
     }
     if (this.waves.state === 'done' && this.enemies.length === 0) {
+      // endless never reaches 'done' (WaveManager keeps generating); this branch
+      // is the scripted-campaign victory path only.
       this.lastStars = computeStars(this.lives);
       this.talents.awardPoints(this.lastStars);
       this.achievements.recordStars(this.lastStars);
