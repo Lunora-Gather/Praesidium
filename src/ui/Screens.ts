@@ -44,6 +44,13 @@ export class Screens {
       if (seed !== 0) {
         const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
         r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, cy + 48, '#ce93d8', 16, 'center');
+        // share button — copies seed to clipboard for viral sharing
+        const shareY = cy + 72;
+        const shareW = 220;
+        const shareX = cx - shareW / 2;
+        r.rect(shareX, shareY, shareW, 36, '#6a1b9a', true);
+        r.text('📋 Copy Seed to Share', cx, shareY + 10, '#fff', 13, 'center');
+        this.regions.push({ x: shareX, y: shareY, w: shareW, h: 36, action: 'challenge' as MenuClickAction });
       }
     }
 
