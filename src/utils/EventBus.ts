@@ -2,7 +2,7 @@
 
 export type Listener<T> = (payload: T) => void;
 
-export class EventBus<TMap extends Record<string, unknown> = Record<string, unknown>> {
+export class EventBus<TMap = Record<string, unknown>> {
   private readonly listeners = new Map<keyof TMap, Set<Listener<unknown>>>();
 
   on<K extends keyof TMap>(event: K, fn: Listener<TMap[K]>): () => void {

@@ -1,4 +1,4 @@
-// Enemy instance: walks waypoints, takes damage, dies -> reward.
+// Enemy instance: walks waypoints, takes damage, supports slow effects.
 
 import { Vec2 } from '../../engine/math/Vec2';
 import type { Grid } from '../grid/Grid';
@@ -11,7 +11,9 @@ export class Enemy {
   private wpIndex = 0;
   hp: number;
   private readonly maxHp: number;
-  private readonly speed: number;
+  private readonly baseSpeed: number;
+  private slowTimer = 0;
+  private slowFactor = 1; // multiplicative speed factor (0.5 = half speed)
   readonly reward: number;
   readonly radius: number;
   readonly color: string;
@@ -23,13 +25,31 @@ export class Enemy {
     this.radius = def.radius;
     this.hp = def.hp * waveHpMul;
     this.maxHp = this.hp;
-    this.speed = def.speed;
+    this.baseSpeed = def.speed;
     this.reward = Math.round(def.reward * waveHpMul);
     this.pos = Vec2.from(startPos);
   }
 
+  applySlow(factor: number, duration: number): void {
+    // Only the strongest slow owns the duration; weaker slows may extend it.
+    if (factor <= this.slowFactor) {
+      this.slowFactor = factor;
+      this.slowTimer = duration;
+    } else {
+      this.slowTimer = Math.max(this.slowTimer, duration);
+    }
+  }
+
   update(dt: number, grid: Grid): void {
     if (this.dead || this.reachedGoal) return;
+
+    // tick slow
+    if (this.slowTimer > 0) {
+      this.slowTimer -= dt;
+      if (this.slowTimer <= 0) this.slowFactor = 1;
+    }
+    const speed = this.baseSpeed * this.slowFactor;
+
     if (this.wpIndex >= grid.waypoints.length) {
       this.reachedGoal = true;
       this.dead = true;
@@ -38,7 +58,7 @@ export class Enemy {
     const target = grid.waypoints[this.wpIndex];
     const dir = target.sub(this.pos);
     const dist = dir.len();
-    const step = this.speed * dt;
+    const step = speed * dt;
     if (dist <= step) {
       this.pos = Vec2.from(target);
       this.wpIndex++;
@@ -58,6 +78,10 @@ export class Enemy {
 
   get hpRatio(): number {
     return Math.max(0, this.hp / this.maxHp);
+  }
+
+  get isSlowed(): boolean {
+    return this.slowTimer > 0;
   }
 
   /** Distance remaining along waypoints (px), for tower targeting heuristics. */

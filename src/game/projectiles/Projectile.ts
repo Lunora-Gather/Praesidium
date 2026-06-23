@@ -16,10 +16,10 @@ export class Projectile {
   readonly slow: { factor: number; duration: number } | undefined;
   readonly color: string;
 
-  constructor(origin: Vec2, target: Enemy, def: TowerDef) {
+  constructor(origin: Vec2, target: Enemy, def: TowerDef, damageOverride?: number) {
     this.pos = Vec2.from(origin);
     this.target = target;
-    this.damage = def.damage;
+    this.damage = damageOverride ?? def.damage;
     this.speed = def.projectileSpeed;
     this.life = def.projectileLife;
     this.splash = def.splash;

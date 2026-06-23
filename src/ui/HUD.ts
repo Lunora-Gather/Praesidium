@@ -51,9 +51,10 @@ export class HUD {
       bx -= 8;
     };
     const waveLabel = s.waves.inProgress ? 'Wave…' : `Send W${s.waves.current + 1}`;
-    drawBtn(waveLabel, '#1f6feb', 'send');
+    drawBtn('Settings', '#374151', 'settings');
     drawBtn('Pause', '#374151', 'pause');
     drawBtn('Menu', '#374151', 'menu');
+    drawBtn(waveLabel, '#1f6feb', 'send');
 
     return regions;
   }

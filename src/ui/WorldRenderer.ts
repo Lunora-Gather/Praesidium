@@ -6,9 +6,10 @@ import { GameState } from '../game/GameState';
 import { TileType } from '../game/grid/Level';
 import { Vec2 } from '../engine/math/Vec2';
 import { getTowerDef } from '../game/towers/TowerRegistry';
+import type { Settings } from '../config/Settings';
 
 export class WorldRenderer {
-  draw(r: Renderer, s: GameState): void {
+  draw(r: Renderer, s: GameState, settings: Readonly<Settings>): void {
     const g = s.grid;
 
     // center the grid horizontally in available space (between top bar and shop)
@@ -44,17 +45,27 @@ export class WorldRenderer {
     r.circle(g.waypoints[0], 8, '#388e3c');
     r.circle(g.waypoints[g.waypoints.length - 1], 8, '#d32f2f');
 
+    // selected tower: range ring + level pips
+    if (settings.showRange && s.selectedTower) {
+      r.circle(s.selectedTower.pos, s.selectedTower.range, '#1f6feb33', true);
+      r.circle(s.selectedTower.pos, s.selectedTower.range, '#1f6feb', false);
+    }
+
     // towers
     for (const t of s.towers) {
       r.circle(t.pos, t.def.radius, t.def.color);
-      // barrel
       const barrelEnd = t.pos.add(Vec2.fromAngle(t.angle, t.def.radius + 10));
       r.line(t.pos, barrelEnd, '#e6e6e6', 3);
+      // level pips above tower
+      for (let i = 0; i < t.level - 1; i++) {
+        r.circle(new Vec2(t.pos.x - 6 + i * 5, t.pos.y - t.def.radius - 6), 2, '#ffd54f');
+      }
     }
 
-    // enemies + hp bars
+    // enemies + hp bars + slow tint
     for (const e of s.enemies) {
       r.circle(e.pos, e.radius, e.color);
+      if (e.isSlowed) r.circle(e.pos, e.radius + 2, '#80deea', false);
       const barW = e.radius * 2;
       const barX = e.pos.x - e.radius;
       const barY = e.pos.y - e.radius - 6;
@@ -64,11 +75,11 @@ export class WorldRenderer {
 
     // projectiles
     for (const p of s.projectiles) {
-      r.circle(p.pos, 3, p.color);
+      r.circle(p.pos, p.splash ? 4 : 3, p.color);
     }
 
     // hover preview: range circle + placement validity tint
-    if (s.hoverTile && s.selectedTowerId) {
+    if (s.hoverTile && s.selectedTowerId && !s.selectedTower) {
       const def = getTowerDef(s.selectedTowerId);
       const center = g.tileCenter(s.hoverTile.tx, s.hoverTile.ty);
       const ok = g.isBuildable(s.hoverTile.tx, s.hoverTile.ty) &&

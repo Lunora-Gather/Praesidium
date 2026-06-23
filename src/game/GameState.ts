@@ -1,19 +1,34 @@
 // Top-level game state machine + economy/lives + owning all gameplay objects.
-// Rendering is done by ui/Renderer; this holds authoritative simulation state.
+// Combat/movement delegated to systems; this orchestrates them + economy + phases.
 
 import { Grid } from './grid/Grid';
-import { LEVEL_1 } from './grid/Level';
 import { Tower } from './towers/Tower';
 import { Enemy } from './enemies/Enemy';
 import { Projectile } from './projectiles/Projectile';
 import { WaveManager } from './waves/WaveManager';
+import { CombatSystem, CombatEvents } from './systems/CombatSystem';
+import { MovementSystem, MovementEvents } from './systems/MovementSystem';
+import { LevelManager } from './grid/LevelManager';
 import { getTowerDef, TowerDef } from './towers/TowerRegistry';
 import { BALANCE } from '../config/balance';
+import { EventBus } from '../utils/EventBus';
+import { SaveSystem } from '../utils/SaveSystem';
+import { logger } from '../utils/logger';
 
-export type Phase = 'menu' | 'playing' | 'won' | 'lost';
+export type Phase = 'menu' | 'levelSelect' | 'playing' | 'won' | 'lost';
+
+export interface GameEvents {
+  goldChanged: { gold: number };
+  livesChanged: { lives: number };
+  waveChanged: { current: number; total: number };
+  phaseChanged: { from: Phase; to: Phase };
+  towerPlaced: { tx: number; ty: number; id: string };
+  towerUpgraded: { tx: number; ty: number; level: number };
+  towerSold: { tx: number; ty: number; refund: number };
+}
 
 export class GameState {
-  readonly grid: Grid;
+  grid: Grid;
   gold = BALANCE.startGold as number;
   lives = BALANCE.startLives as number;
   phase: Phase = 'menu';
@@ -21,24 +36,69 @@ export class GameState {
   readonly enemies: Enemy[] = [];
   readonly projectiles: Projectile[] = [];
   readonly waves: WaveManager;
-  selectedTowerId: string | null = 'turret'; // shop selection
+  readonly levels = new LevelManager();
+  readonly bus = new EventBus<GameEvents>();
+  readonly combat = new CombatSystem(new EventBus<CombatEvents>());
+  readonly movement = new MovementSystem(new EventBus<MovementEvents>());
+  readonly save = new SaveSystem();
+  selectedTowerId: string | null = 'turret';
   hoverTile: { tx: number; ty: number } | null = null;
+  selectedTower: Tower | null = null; // tower clicked for upgrade/sell panel
   score = 0;
+  fps = 0;
 
   constructor() {
-    this.grid = new Grid(LEVEL_1);
+    this.grid = new Grid(this.levels.current);
     this.waves = new WaveManager(BALANCE.waveCount);
+    logger.info('Praesidium GameState initialized', { levels: this.levels.total });
   }
 
+  private setPhase(p: Phase): void {
+    if (p === this.phase) return;
+    const from = this.phase;
+    this.phase = p;
+    this.bus.emit('phaseChanged', { from, to: p });
+  }
+
+  /** Start a fresh run on the current level. */
   start(): void {
+    this.grid = new Grid(this.levels.current);
     this.gold = BALANCE.startGold;
     this.lives = BALANCE.startLives;
     this.score = 0;
     this.towers.length = 0;
     this.enemies.length = 0;
     this.projectiles.length = 0;
+    this.selectedTower = null;
     this.waves.reset();
-    this.phase = 'playing';
+    this.setPhase('playing');
+    logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name });
+  }
+
+  goMenu(): void {
+    this.setPhase('menu');
+  }
+
+  goLevelSelect(): void {
+    this.setPhase('levelSelect');
+  }
+
+  selectLevel(i: number): void {
+    this.levels.setLevel(i);
+    this.grid = new Grid(this.levels.current);
+    this.start();
+  }
+
+  /** Advance to next level after a win. */
+  advanceLevel(): void {
+    if (!this.levels.hasNext) {
+      logger.info('All levels cleared');
+      this.setPhase('won');
+      return;
+    }
+    this.levels.advance();
+    this.save.recordLevelReached(this.levels.levelNumber);
+    this.start();
   }
 
   /** Try to place a tower of the selected type at a tile. Returns success. */
@@ -50,63 +110,70 @@ export class GameState {
     if (this.towers.some((t) => t.tx === tx && t.ty === ty)) return false;
     this.gold -= def.cost;
     this.towers.push(new Tower(def, tx, ty, this.grid));
+    this.bus.emit('goldChanged', { gold: this.gold });
+    this.bus.emit('towerPlaced', { tx, ty, id: def.id });
+    return true;
+  }
+
+  upgradeTower(t: Tower): boolean {
+    const step = t.nextUpgrade;
+    if (!step || this.gold < step.cost) return false;
+    this.gold -= step.cost;
+    t.upgrade();
+    this.bus.emit('goldChanged', { gold: this.gold });
+    this.bus.emit('towerUpgraded', { tx: t.tx, ty: t.ty, level: t.level });
     return true;
   }
 
   sellTower(t: Tower): void {
-    this.gold += Math.floor(t.def.cost * BALANCE.tower.sellRefund);
+    const refund = t.sellValue;
+    this.gold += refund;
     const i = this.towers.indexOf(t);
     if (i >= 0) this.towers.splice(i, 1);
+    if (this.selectedTower === t) this.selectedTower = null;
+    this.bus.emit('goldChanged', { gold: this.gold });
+    this.bus.emit('towerSold', { tx: t.tx, ty: t.ty, refund });
   }
 
   update(dt: number): void {
     if (this.phase !== 'playing') return;
 
     this.waves.update(dt, this.grid, this.enemies);
+    this.bus.emit('waveChanged', { current: this.waves.current, total: this.waves.totalWaves });
 
-    // towers
+    // towers acquire + fire
     for (const t of this.towers) {
       const { target } = t.update(dt, this.enemies, this.grid);
       if (target && t.canFire()) {
         t.resetCooldown();
-        this.projectiles.push(new Projectile(t.pos, target, t.def));
+        this.projectiles.push(new Projectile(t.pos, target, t.def, t.damage));
       }
     }
 
-    // projectiles
+    // projectiles move
     for (const p of this.projectiles) p.update(dt);
 
-    // collisions / damage
-    for (const p of this.projectiles) {
-      if (p.dead) continue;
-      if (!p.target || p.target.dead) continue;
-      if (p.pos.distSq(p.target.pos) > (p.target.radius + 4) * (p.target.radius + 4)) continue;
-      this.applyHit(p);
-      p.dead = true;
-    }
-
-    // enemies
-    for (const e of this.enemies) e.update(dt, this.grid);
-    for (const e of this.enemies) {
-      if (e.reachedGoal) {
-        this.lives -= 1;
-        if (this.lives <= 0) {
-          this.lives = 0;
-          this.phase = 'lost';
-        }
-      } else if (e.dead) {
-        this.gold += e.reward;
-        this.score += e.reward;
-      }
-    }
-    this.compact(this.enemies);
-
-    // cleanup
+    // combat resolution (damage/splash/slow)
+    this.combat.resolve(this.projectiles, this.enemies, this);
     this.compact(this.projectiles);
 
-    // win check
+    // movement + life loss + cleanup
+    this.movement.update(dt, this.enemies, this.grid, this);
+
+    // win/lose
+    if (this.lives <= 0) {
+      this.setPhase('lost');
+      this.save.recordScore(this.score);
+      return;
+    }
     if (this.waves.state === 'done' && this.enemies.length === 0) {
-      this.phase = 'won';
+      const isNew = this.save.recordScore(this.score);
+      logger.info('Level won', { score: this.score, isNewHigh: isNew });
+      if (this.levels.hasNext) {
+        this.advanceLevel();
+      } else {
+        this.setPhase('won');
+      }
     }
   }
 
@@ -120,21 +187,5 @@ export class GameState {
       }
     }
     arr.length = w;
-  }
-
-  private applyHit(p: Projectile): void {
-    if (p.splash) {
-      const r2 = p.splash * p.splash;
-      for (const e of this.enemies) {
-        if (e.dead) continue;
-        if (p.pos.distSq(e.pos) <= r2) this.damageEnemy(e, p.damage);
-      }
-    } else if (p.target && !p.target.dead) {
-      this.damageEnemy(p.target, p.damage);
-    }
-  }
-
-  private damageEnemy(e: Enemy, dmg: number): void {
-    e.takeDamage(dmg);
   }
 }
