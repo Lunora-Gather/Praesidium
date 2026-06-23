@@ -23,6 +23,7 @@ import { TalentTree } from './Talents';
 import { Difficulty, DIFFICULTIES, DifficultyDef } from '../config/Difficulty';
 import { Vec2 } from '../engine/math/Vec2';
 import { saveRun, clearRun, RunSnapshot } from '../utils/RunSave';
+import { Analytics } from '../utils/Analytics';
 
 export type Phase = 'menu' | 'levelSelect' | 'playing' | 'won' | 'lost';
 
@@ -57,6 +58,7 @@ export class GameState {
   readonly achievements = new AchievementSystem();
   readonly talents = new TalentTree();
   readonly spells = PLAYER_SPELLS.map((s) => new PlayerSpell(s.def));
+  readonly analytics = new Analytics();
   difficulty: Difficulty = 'normal';
   /** Endless mode: waves never end, run only ends on death. */
   endless = false;
@@ -121,6 +123,8 @@ export class GameState {
       this.waves.setDifficulty(diff.hpMul, diff.countMul);
     }
     this.setPhase('playing');
+    this.analytics.startSession();
+    this.analytics.recordLevelStart(this.levels.levelNumber - 1);
     logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name });
   }
 
@@ -242,7 +246,10 @@ export class GameState {
         const stars = Math.min(3, Math.floor(this.waves.current / 4)); // 1 star per 4 waves, max 3
         this.talents.awardPoints(stars);
         this.achievements.recordStars(stars);
+      this.analytics.recordEndlessRun(this.waves.current);
       }
+      this.analytics.recordDeath(this.levels.levelNumber, this.waves.current, this.difficulty);
+      this.analytics.endSession();
       this.save.recordScore(this.score);
       this.setPhase('lost');
       return;
