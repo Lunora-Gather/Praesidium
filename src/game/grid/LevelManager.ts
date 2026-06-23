@@ -66,6 +66,52 @@ const LEVEL_3: LevelDef = {
   ],
 };
 
+// Level 4: Long spiral — maximizes path length for sustained DPS
+const LEVEL_4: LevelDef = {
+  name: 'Vortex',
+  cols: COLS,
+  rows: ROWS,
+  tiles: makeTiles(COLS, ROWS, walkPath([
+    [1, 10], [1, 1], [14, 1], [14, 10], [3, 10], [3, 3], [12, 3], [12, 8], [5, 8], [5, 5], [10, 5], [10, 7],
+  ])),
+  waypoints: [
+    { x: 1, y: 10 }, { x: 1, y: 1 }, { x: 14, y: 1 }, { x: 14, y: 10 },
+    { x: 3, y: 10 }, { x: 3, y: 3 }, { x: 12, y: 3 }, { x: 12, y: 8 },
+    { x: 5, y: 8 }, { x: 5, y: 5 }, { x: 10, y: 5 }, { x: 10, y: 7 },
+  ],
+};
+
+// Level 5: Split decision — two parallel lanes converging
+const LEVEL_5: LevelDef = {
+  name: 'Convergence',
+  cols: COLS,
+  rows: ROWS,
+  tiles: makeTiles(COLS, ROWS, walkPath([
+    [1, 2], [6, 2], [6, 5], [8, 5], [8, 2], [14, 2], [14, 6], [10, 6], [10, 9], [5, 9], [5, 6], [1, 6],
+  ])),
+  waypoints: [
+    { x: 1, y: 2 }, { x: 6, y: 2 }, { x: 6, y: 5 }, { x: 8, y: 5 },
+    { x: 8, y: 2 }, { x: 14, y: 2 }, { x: 14, y: 6 }, { x: 10, y: 6 },
+    { x: 10, y: 9 }, { x: 5, y: 9 }, { x: 5, y: 6 }, { x: 1, y: 6 },
+  ],
+};
+
+// Level 6: Zigzag extreme — tight turns test targeting strategy
+const LEVEL_6: LevelDef = {
+  name: 'Labyrinth',
+  cols: COLS,
+  rows: ROWS,
+  tiles: makeTiles(COLS, ROWS, walkPath([
+    [1, 10], [3, 10], [3, 2], [5, 2], [5, 10], [7, 10], [7, 2], [9, 2], [9, 10], [11, 10], [11, 2], [13, 2], [13, 6],
+  ])),
+  waypoints: [
+    { x: 1, y: 10 }, { x: 3, y: 10 }, { x: 3, y: 2 }, { x: 5, y: 2 },
+    { x: 5, y: 10 }, { x: 7, y: 10 }, { x: 7, y: 2 }, { x: 9, y: 2 },
+    { x: 9, y: 10 }, { x: 11, y: 10 }, { x: 11, y: 2 }, { x: 13, y: 2 },
+    { x: 13, y: 6 },
+  ],
+};
+
 function markSpawnGoal(def: LevelDef): void {
   const first = def.waypoints[0];
   const last = def.waypoints[def.waypoints.length - 1];
@@ -74,8 +120,11 @@ function markSpawnGoal(def: LevelDef): void {
 }
 markSpawnGoal(LEVEL_2);
 markSpawnGoal(LEVEL_3);
+markSpawnGoal(LEVEL_4);
+markSpawnGoal(LEVEL_5);
+markSpawnGoal(LEVEL_6);
 
-export const LEVELS: LevelDef[] = [LEVEL_1, LEVEL_2, LEVEL_3];
+export const LEVELS: LevelDef[] = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6];
 
 export class LevelManager {
   private index = 0;
