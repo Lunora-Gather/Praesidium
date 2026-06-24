@@ -25,14 +25,18 @@ export class HUD {
     r.rect(0, 0, r.width, TOP_H, topGrad);
     r.rect(0, TOP_H - 1, r.width, 1, 'rgba(59,130,246,0.18)');
 
+    const isSmall = r.width < 850;
+    const isTiny = r.width < 640;
+
     // Stat pill helper
     const pill = (icon: string, val: string, color: string, x: number): number => {
-      const icoW = 28;
-      const valW = Math.max(36, val.length * 10);
+      const icoW = isSmall ? 16 : 28;
+      const valW = Math.max(isSmall ? 22 : 36, val.length * (isSmall ? 7.5 : 10));
       const total = icoW + valW + 4;
-      r.text(icon, x + 14, TOP_H / 2, '#64748b', 10, 'center', 'bold', 'middle');
-      r.text(val,  x + icoW + 2, TOP_H / 2, color, 16, 'left', 'bold', 'middle', 'header');
-      return x + total + 12;
+      const displayIcon = isSmall ? icon[0] : icon;
+      r.text(displayIcon, x + icoW / 2, TOP_H / 2, '#64748b', 10, 'center', 'bold', 'middle');
+      r.text(val,  x + icoW + 2, TOP_H / 2, color, isSmall ? 13 : 16, 'left', 'bold', 'middle', 'header');
+      return x + total + (isSmall ? 6 : 12);
     };
 
     let lx = 12;
@@ -50,7 +54,7 @@ export class HUD {
       r.clearShadow();
     }
 
-    if (speed > 1) {
+    if (speed > 1 && !isSmall) {
       r.text(`${speed}×`, r.width / 2 + (s.comboCount >= 3 ? 110 : 0), TOP_H / 2, '#fef08a', 14, 'center', 'bold', 'middle', 'header');
     }
 
@@ -68,26 +72,31 @@ export class HUD {
       if (active) r.setShadow(color, 6);
       r.roundRect(bx, btnY, w, btnH, 6, bg, true, border, 1);
       r.clearShadow();
-      r.text(label, bx + w / 2, btnY + 15, '#e2e8f0', 11, 'center', 'bold', 'middle');
+      r.text(label, bx + w / 2, btnY + btnH / 2, '#e2e8f0', 11, 'center', 'bold', 'middle');
       regions.buttons.push({ x: bx, y: btnY, w, h: btnH, action });
       bx -= 5;
     };
 
     const waveInProg = s.waves.inProgress;
     const waveLabel = waveInProg
-      ? '▶ Running…'
+      ? (isSmall ? '▶ R...' : '▶ Running…')
       : s.waves.current >= s.waves.totalWaves && !s.endless
-        ? '✓ Last Wave'
-        : `⚡ Wave ${s.waves.current + 1}`;
+        ? (isSmall ? '✓ Last' : '✓ Last Wave')
+        : (isSmall ? `⚡ W${s.waves.current + 1}` : `⚡ Wave ${s.waves.current + 1}`);
 
-    topBtn(waveLabel, !waveInProg, '#3b82f6', 'send', 90);
-    topBtn('⏸ Pause',    false, '#475569', 'pause');
-    topBtn(`⚡ ${speed}×`, speed > 1, '#8b5cf6', 'speed');
-    topBtn(autoSend ? '⟳ Auto ✓' : '⟳ Auto', autoSend, '#10b981', 'autoSend', 76);
-    topBtn('☰ Menu',    false, '#475569', 'menu');
-    topBtn('🏆 Stats',   false, '#475569', 'stats');
-    topBtn('⚙ Set',     false, '#475569', 'settings', 60);
-    topBtn('✦ Talent',  false, '#475569', 'talent', 72);
+    if (!isTiny) {
+      topBtn(isSmall ? '✦' : '✦ Talent', false, '#475569', 'talent', isSmall ? 32 : 72);
+      topBtn(isSmall ? '⚙' : '⚙ Set',     false, '#475569', 'settings', isSmall ? 32 : 60);
+      topBtn(isSmall ? '🏆' : '🏆 Stats',   false, '#475569', 'stats', isSmall ? 32 : 68);
+    }
+    topBtn(isSmall ? '☰' : '☰ Menu',      false, '#475569', 'menu', isSmall ? 32 : 68);
+    const autoLabel = autoSend
+      ? (isSmall ? '⟳ A ✓' : '⟳ Auto ✓')
+      : (isSmall ? '⟳ A' : '⟳ Auto');
+    topBtn(autoLabel, autoSend, '#10b981', 'autoSend', isSmall ? 48 : 76);
+    topBtn(isSmall ? `${speed}×` : `⚡ ${speed}×`, speed > 1, '#8b5cf6', 'speed', isSmall ? 36 : 68);
+    topBtn(isSmall ? '⏸' : '⏸ Pause',     false, '#475569', 'pause', isSmall ? 32 : 68);
+    topBtn(waveLabel, !waveInProg, '#3b82f6', 'send', isSmall ? 64 : 90);
 
     // Wave countdown bar
     if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
