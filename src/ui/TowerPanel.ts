@@ -25,10 +25,10 @@ export class TowerPanel {
     r.roundRect(x, y, w, h, 10, 'rgba(15, 23, 42, 0.95)', true, 'rgba(255, 255, 255, 0.08)', 1.5);
     r.clearShadow();
 
-    r.text(`${t.def.name} L${t.level}`, x + 12, y + 8, '#ffffff', 13, 'left', 'bold');
-    r.text(`DMG ${Math.round(t.damage)}`, x + 12, y + 26, '#94a3b8', 11, 'left', 'bold');
-    r.text(`RNG ${Math.round(t.range)}`, x + 12, y + 42, '#94a3b8', 11, 'left', 'bold');
-    r.text(`ROF ${t.fireRate.toFixed(1)}/s`, x + 12, y + 58, '#94a3b8', 11, 'left', 'bold');
+    r.text(`${t.def.name} L${t.level}`, x + 12, y + 8, '#ffffff', 13, 'left', 'bold', 'top', 'header');
+    r.text(`DMG ${Math.round(t.damage)}`, x + 12, y + 26, '#94a3b8', 11, 'left', 'bold', 'top', 'header');
+    r.text(`RNG ${Math.round(t.range)}`, x + 12, y + 42, '#94a3b8', 11, 'left', 'bold', 'top', 'header');
+    r.text(`ROF ${t.fireRate.toFixed(1)}/s`, x + 12, y + 58, '#94a3b8', 11, 'left', 'bold', 'top', 'header');
 
     const up = t.nextUpgrade;
     const btnW = 68;
@@ -55,7 +55,7 @@ export class TowerPanel {
     }
 
     r.roundRect(upX, upY, btnW, btnH, 6, upGrad, true, upBorder, 1);
-    r.text(up ? `Up ${up.cost}g` : 'MAX', upX + btnW / 2, upY + 6, canUp ? '#ffffff' : '#64748b', 10, 'center', 'bold');
+    r.text(up ? `Up ${up.cost}g` : 'MAX', upX + btnW / 2, upY + btnH / 2, canUp ? '#ffffff' : '#64748b', 10, 'center', 'bold', 'middle', 'header');
     this.regions.push({ x: upX, y: upY, w: btnW, h: btnH, kind: 'upgrade' });
 
     const sellGrad = r.linearGradient(upX, sellY, upX, sellY + btnH, [
@@ -63,7 +63,7 @@ export class TowerPanel {
       { offset: 1, color: '#b91c1c' }
     ]);
     r.roundRect(upX, sellY, btnW, btnH, 6, sellGrad, true, '#ef4444', 1);
-    r.text(`Sell ${t.sellValue}g`, upX + btnW / 2, sellY + 6, '#ffffff', 10, 'center', 'bold');
+    r.text(`Sell ${t.sellValue}g`, upX + btnW / 2, sellY + btnH / 2, '#ffffff', 10, 'center', 'bold', 'middle', 'header');
     this.regions.push({ x: upX, y: sellY, w: btnW, h: btnH, kind: 'sell' });
   }
 

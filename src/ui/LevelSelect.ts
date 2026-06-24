@@ -33,7 +33,7 @@ export class LevelSelect {
       { offset: 0, color: '#60a5fa' },
       { offset: 1, color: '#3b82f6' }
     ]);
-    r.text('SELECT LEVEL', cx, 40, titleGrad, 28, 'center', 'bold');
+    r.text('SELECT LEVEL', cx, 40, titleGrad, 28, 'center', 'bold', 'top', 'header');
 
     // Difficulty picker row
     const diffBtnW = 92;
@@ -66,7 +66,7 @@ export class LevelSelect {
       r.roundRect(dx, diffY, diffBtnW, diffH, 13, btnBg, true, btnBorder, 1);
       r.clearShadow();
       
-      r.text(d.name, dx + diffBtnW / 2, diffY + 13, '#ffffff', 11, 'center', 'bold');
+      r.text(d.name, dx + diffBtnW / 2, diffY + diffH / 2, '#ffffff', 11, 'center', 'bold', 'middle', 'header');
       this.regions.push({ x: dx, y: diffY, w: diffBtnW, h: diffH, action: { kind: 'diff', diff: d.id } });
       dx += diffBtnW + diffGap;
     }
@@ -107,7 +107,7 @@ export class LevelSelect {
       r.roundRect(x, y, cardW, cardH, 12, cardBg, true, cardBorder, 1);
       
       // Card content
-      r.text(`LEVEL ${i + 1}`, x + cardW / 2, y + 14, unlocked ? '#94a3b8' : '#475569', 10, 'center', 'bold');
+      r.text(`LEVEL ${i + 1}`, x + cardW / 2, y + 14, unlocked ? '#94a3b8' : '#475569', 10, 'center', 'bold', 'top', 'header');
       r.text(levelName, x + cardW / 2, y + 32, unlocked ? '#ffffff' : '#475569', 15, 'center', 'bold');
       
       if (unlocked) {
@@ -118,7 +118,7 @@ export class LevelSelect {
         for (let s = 0; s < 3; s++) {
           const starX = x + cardW / 2 - 24 + s * 24;
           const active = s < stars;
-          r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#475569', 20, 'center');
+          r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#475569', 20, 'center', 'normal', 'top', 'header');
         }
         r.clearShadow();
         
@@ -140,7 +140,7 @@ export class LevelSelect {
       { offset: 1, color: '#1e293b' }
     ]);
     r.roundRect(bx, btnY, bw, bh, 8, backBtnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text('Menu', cx, btnY + 18, '#ffffff', 13, 'center', 'bold');
+    r.text('Menu', cx, btnY + bh / 2, '#ffffff', 13, 'center', 'bold', 'middle');
     this.regions.push({ x: bx, y: btnY, w: bw, h: bh, action: { kind: 'back' } });
   }
 

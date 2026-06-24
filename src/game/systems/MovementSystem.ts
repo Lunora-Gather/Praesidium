@@ -21,6 +21,16 @@ export class MovementSystem {
   update(dt: number, enemies: Enemy[], grid: Grid, state: GameState): void {
     for (const e of enemies) {
       e.update(dt, grid);
+      // Spawn subtle trail particles
+      if (Math.random() < 12 * dt) {
+        let pColor = e.color;
+        let pSize = 1.5;
+        if (e.isSlowed) {
+          pColor = '#80deea';
+          pSize = 2.0;
+        }
+        state.particles.burst(e.pos, 1, pColor, 15, 0.35, pSize);
+      }
       if (e.reachedGoal) {
         const livesLost = e.isBoss ? 5 : 1;
         state.lives = Math.max(0, state.lives - livesLost);

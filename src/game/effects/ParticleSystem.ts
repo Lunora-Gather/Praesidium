@@ -166,7 +166,7 @@ export class ParticleSystem {
     for (const f of this.floats) {
       const alpha = Math.max(0, f.life / f.maxLife);
       r.ctx.globalAlpha = alpha;
-      r.text(f.text, f.pos.x, f.pos.y, f.color, 13, 'center');
+      r.text(f.text, f.pos.x, f.pos.y, f.color, 12, 'center', 'bold', 'top', 'header');
     }
     r.ctx.globalAlpha = 1;
   }

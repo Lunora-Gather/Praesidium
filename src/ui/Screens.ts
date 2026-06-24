@@ -4,7 +4,7 @@
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
 
-export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'daily' | 'resume' | 'restart' | 'menu' | null;
+export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'daily' | 'resume' | 'restart' | 'menu' | 'settings' | 'stats' | null;
 
 export interface ScreenStats {
   stars?: number;
@@ -72,7 +72,7 @@ export class Screens {
     }
     
     r.setShadow(textGlow, 12, 0, 0);
-    r.text(t(titleKey), cx, cardY + 22, titleGrad, 36, 'center', 'bold');
+    r.text(t(titleKey), cx, cardY + 22, titleGrad, 36, 'center', 'bold', 'top', 'header');
     r.clearShadow();
     
     // Draw specific details inside the card container
@@ -92,14 +92,14 @@ export class Screens {
       for (let i = 0; i < 3; i++) {
         const starX = cx - 40 + i * 40;
         const active = i < starCount;
-        r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#334155', 28, 'center');
+        r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#334155', 28, 'center', 'normal', 'top', 'header');
       }
       r.clearShadow();
       
       // Secondary statistics mini-panel
       const statsY = cardY + 115;
       r.roundRect(cardX + 24, statsY, cardW - 48, 64, 8, 'rgba(10, 15, 30, 0.6)', true, 'rgba(255, 255, 255, 0.03)', 1);
-      r.text(`${t('hud.score')}: ${score}`, cx, statsY + 10, '#ffffff', 16, 'center', 'bold');
+      r.text(`${t('hud.score')}: ${score}`, cx, statsY + 10, '#ffffff', 16, 'center', 'bold', 'top', 'header');
       
       let statDetail = '';
       if (stats?.kills) statDetail += `${t('win.kills')}: ${stats.kills}   |   `;
@@ -110,13 +110,13 @@ export class Screens {
     if (kind === 'lost') {
       const statsY = cardY + 72;
       r.roundRect(cardX + 24, statsY, cardW - 48, 72, 8, 'rgba(10, 15, 30, 0.6)', true, 'rgba(255, 255, 255, 0.03)', 1);
-      r.text(`${t('hud.score')}: ${score}`, cx, statsY + 10, '#ffffff', 16, 'center', 'bold');
-      if (stats?.wave) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, statsY + 32, '#f87171', 13, 'center', 'bold');
-      if (stats?.kills) r.text(t('lose.kills').replace('{kills}', String(stats.kills)), cx, statsY + 50, '#94a3b8', 11, 'center');
+      r.text(`${t('hud.score')}: ${score}`, cx, statsY + 10, '#ffffff', 16, 'center', 'bold', 'top', 'header');
+      if (stats?.wave) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, statsY + 32, '#f87171', 13, 'center', 'bold', 'top', 'header');
+      if (stats?.kills) r.text(t('lose.kills').replace('{kills}', String(stats.kills)), cx, statsY + 50, '#94a3b8', 11, 'center', 'bold', 'top', 'header');
       
       if (seed !== 0) {
         const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
-        r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, cardY + 160, '#c084fc', 12, 'center');
+        r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, cardY + 160, '#c084fc', 12, 'center', 'bold', 'top', 'header');
         
         // Share Seed Button
         const shareY = cardY + 182;
@@ -127,7 +127,7 @@ export class Screens {
           { offset: 1, color: '#7e22ce' }
         ]);
         r.roundRect(shareX, shareY, shareW, 28, 6, shareBtnGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-        r.text(t('share.copy'), cx, shareY + 14, '#ffffff', 11, 'center', 'bold');
+        r.text(t('share.copy'), cx, shareY + 14, '#ffffff', 11, 'center', 'bold', 'middle');
         this.regions.push({ x: shareX, y: shareY, w: shareW, h: 28, action: 'challenge' });
       }
     }
@@ -149,7 +149,7 @@ export class Screens {
       { offset: 1, color: '#1d4ed8' }
     ]);
     r.roundRect(btnX, startButtonY, btnW, btnH, 8, primGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-    r.text(t(labelKey), cx, startButtonY + 19, '#ffffff', 14, 'center', 'bold');
+    r.text(t(labelKey), cx, startButtonY + btnH / 2, '#ffffff', 14, 'center', 'bold', 'middle');
     this.regions.push({ x: btnX, y: startButtonY, w: btnW, h: btnH, action: primaryAction });
     
     let currentY = startButtonY + btnH + 10;
@@ -162,7 +162,7 @@ export class Screens {
         { offset: 1, color: '#6d28d9' }
       ]);
       r.roundRect(btnX, currentY, btnW, btnH, 8, endlessGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-      r.text(t('menu.endless'), cx, currentY + 19, '#ffffff', 13, 'center', 'bold');
+      r.text(t('menu.endless'), cx, currentY + btnH / 2, '#ffffff', 13, 'center', 'bold', 'middle');
       this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'endless' });
       currentY += btnH + 10;
       
@@ -172,7 +172,7 @@ export class Screens {
         { offset: 1, color: '#334155' }
       ]);
       r.roundRect(btnX, currentY, btnW, btnH, 8, challGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-      r.text(t('menu.challenge'), cx, currentY + 19, '#e2e8f0', 13, 'center', 'bold');
+      r.text(t('menu.challenge'), cx, currentY + btnH / 2, '#e2e8f0', 13, 'center', 'bold', 'middle');
       this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'challenge' });
       currentY += btnH + 10;
       
@@ -182,8 +182,32 @@ export class Screens {
         { offset: 1, color: '#047857' }
       ]);
       r.roundRect(btnX, currentY, btnW, btnH, 8, dailyGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-      r.text(t('menu.daily'), cx, currentY + 19, '#ffffff', 13, 'center', 'bold');
+      r.text(t('menu.daily'), cx, currentY + btnH / 2, '#ffffff', 13, 'center', 'bold', 'middle');
       this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'daily' });
+      currentY += btnH + 10;
+
+      // Row 5: Settings & Stats side-by-side
+      const halfW = (btnW - 10) / 2;
+      const leftX = btnX;
+      const rightX = btnX + halfW + 10;
+      
+      // Settings button
+      const setGrad = r.linearGradient(leftX, currentY, leftX, currentY + btnH, [
+        { offset: 0, color: '#475569' },
+        { offset: 1, color: '#334155' }
+      ]);
+      r.roundRect(leftX, currentY, halfW, btnH, 8, setGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
+      r.text(t('menu.settings'), leftX + halfW / 2, currentY + btnH / 2, '#cbd5e1', 13, 'center', 'bold', 'middle');
+      this.regions.push({ x: leftX, y: currentY, w: halfW, h: btnH, action: 'settings' });
+      
+      // Stats button
+      const statsGrad = r.linearGradient(rightX, currentY, rightX, currentY + btnH, [
+        { offset: 0, color: '#475569' },
+        { offset: 1, color: '#334155' }
+      ]);
+      r.roundRect(rightX, currentY, halfW, btnH, 8, statsGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
+      r.text(t('stats.title'), rightX + halfW / 2, currentY + btnH / 2, '#cbd5e1', 13, 'center', 'bold', 'middle', 'header');
+      this.regions.push({ x: rightX, y: currentY, w: halfW, h: btnH, action: 'stats' });
       currentY += btnH + 10;
       
       // Control shortcuts instructions
@@ -195,7 +219,7 @@ export class Screens {
         { offset: 1, color: '#1e293b' }
       ]);
       r.roundRect(btnX, currentY, btnW, btnH, 8, menuGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-      r.text(t('hud.menu'), cx, currentY + 19, '#cbd5e1', 13, 'center', 'bold');
+      r.text(t('hud.menu'), cx, currentY + btnH / 2, '#cbd5e1', 13, 'center', 'bold', 'middle');
       this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'menu' });
     }
   }

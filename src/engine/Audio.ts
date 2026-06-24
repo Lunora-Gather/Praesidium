@@ -118,4 +118,9 @@ export class Audio {
     this.synth(220, 80, 0.3, 'sawtooth', 0.35);
     window.setTimeout(() => this.synth(110, 40, 0.5, 'sawtooth', 0.35), 200);
   }
+
+  achievement(): void {
+    this.synth(523.25, 783.99, 0.3, 'sine', 0.22);
+    window.setTimeout(() => this.synth(659.25, 1046.50, 0.4, 'sine', 0.18), 120);
+  }
 }

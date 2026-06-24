@@ -18,12 +18,13 @@ import { ParticleSystem } from './effects/ParticleSystem';
 import { PlayerSpell, PLAYER_SPELLS } from './spells/PlayerSpells';
 import { StatsTracker } from './StatsTracker';
 import { computeStars } from './Stars';
-import { AchievementSystem } from './Achievements';
+import { AchievementSystem, AchievementDef } from './Achievements';
 import { TalentTree } from './Talents';
 import { Difficulty, DIFFICULTIES, DifficultyDef } from '../config/Difficulty';
 import { Vec2 } from '../engine/math/Vec2';
 import { saveRun, clearRun, RunSnapshot } from '../utils/RunSave';
 import { Analytics } from '../utils/Analytics';
+import { dailySeed } from '../utils/DailyChallenge';
 
 export type Phase = 'menu' | 'levelSelect' | 'playing' | 'won' | 'lost';
 
@@ -38,6 +39,7 @@ export interface GameEvents {
   spellCast: { id: string; x: number; y: number };
   levelWon: { level: number; stars: number };
   towerFire: { id: string; tx: number; ty: number };
+  achievementUnlocked: AchievementDef;
 }
 
 export class GameState {
@@ -58,6 +60,7 @@ export class GameState {
   readonly stats = new StatsTracker();
   readonly achievements = new AchievementSystem();
   readonly talents = new TalentTree();
+  private lastKnownWave = 0;
   readonly spells = PLAYER_SPELLS.map((s) => new PlayerSpell(s.def));
   readonly analytics = new Analytics();
   difficulty: Difficulty = 'normal';
@@ -95,6 +98,7 @@ export class GameState {
   }
 
   start(): void {
+    this.lastKnownWave = 0;
     this.grid = new Grid(this.levels.current);
     const diff = DIFFICULTIES[this.difficulty];
     this.gold = BALANCE.startGold + diff.goldStartBonus;
@@ -163,6 +167,7 @@ export class GameState {
     };
     this.towers.push(new Tower(def, tx, ty, this.grid, tm));
     this.stats.recordPlace();
+    this.achievements.recordPlace();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('towerPlaced', { tx, ty, id: def.id });
     return true;
@@ -174,6 +179,7 @@ export class GameState {
     this.gold -= step.cost;
     t.upgrade();
     this.stats.recordUpgrade();
+    this.achievements.recordUpgrade();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('towerUpgraded', { tx: t.tx, ty: t.ty, level: t.level });
     return true;
@@ -194,6 +200,7 @@ export class GameState {
     if (!sp) return false;
     if (!sp.cast(target, this)) return false;
     this.stats.recordSpell();
+    this.achievements.recordSpell();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('spellCast', { id, x: target.x, y: target.y });
     if (sp.def.damage && sp.def.radius) {
@@ -214,7 +221,13 @@ export class GameState {
     }
 
     this.waves.update(dt, this.grid, this.enemies);
-    this.bus.emit('waveChanged', { current: this.waves.current, total: this.waves.totalWaves });
+    if (this.waves.current !== this.lastKnownWave) {
+      if (this.lastKnownWave > 0) {
+        this.achievements.recordWave();
+      }
+      this.lastKnownWave = this.waves.current;
+      this.bus.emit('waveChanged', { current: this.waves.current, total: this.waves.totalWaves });
+    }
 
     // compute tower synergy neighbors (towers within 2 tiles of each other)
     for (const t of this.towers) {
@@ -235,7 +248,12 @@ export class GameState {
       }
     }
 
-    for (const p of this.projectiles) p.update(dt);
+    for (const p of this.projectiles) {
+      p.update(dt);
+      if (Math.random() < 30 * dt) {
+        this.particles.burst(p.pos, 1, p.color, 30, 0.25, p.splash ? 2 : 1.2);
+      }
+    }
     this.combat.resolve(this.projectiles, this.enemies, this);
     this.compact(this.projectiles);
 
@@ -249,7 +267,15 @@ export class GameState {
         const stars = Math.min(3, Math.floor(this.waves.current / 4)); // 1 star per 4 waves, max 3
         this.talents.awardPoints(stars);
         this.achievements.recordStars(stars);
-      this.analytics.recordEndlessRun(this.waves.current);
+        this.analytics.recordEndlessRun(this.waves.current);
+        
+        // Save endless or daily high scores
+        if (this.endlessSeed === dailySeed()) {
+          const today = new Date().toISOString().slice(0, 10);
+          this.save.recordDailyRun(this.score, this.waves.current, today);
+        } else {
+          this.save.recordEndlessRun(this.score, this.waves.current);
+        }
       }
       this.analytics.recordDeath(this.levels.levelNumber, this.waves.current, this.difficulty);
       this.analytics.endSession();
@@ -268,9 +294,20 @@ export class GameState {
       const newly = this.achievements.newlyUnlocked();
       if (newly.length > 0) logger.info('Achievements unlocked', newly.map((a) => a.id));
       this.save.recordStars(this.levels.levelNumber, this.lastStars);
+      this.save.recordLevelScore(this.levels.levelNumber, this.score);
       const isNew = this.save.recordScore(this.score);
       logger.info('Level won', { score: this.score, stars: this.lastStars, isNewHigh: isNew });
       this.advanceLevel();
+    }
+    this.checkAchievements();
+  }
+
+  checkAchievements(): void {
+    const newly = this.achievements.newlyUnlocked();
+    if (newly.length > 0) {
+      for (const ach of newly) {
+        this.bus.emit('achievementUnlocked', ach);
+      }
     }
   }
 

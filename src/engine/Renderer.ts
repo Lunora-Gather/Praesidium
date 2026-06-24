@@ -147,11 +147,24 @@ export class Renderer {
     this.ctx.stroke();
   }
 
-  text(str: string, x: number, y: number, color: string | CanvasGradient = '#fff', size = 14, align: CanvasTextAlign = 'left', weight = 'normal'): void {
+  text(
+    str: string,
+    x: number,
+    y: number,
+    color: string | CanvasGradient = '#fff',
+    size = 14,
+    align: CanvasTextAlign = 'left',
+    weight = 'normal',
+    baseline: CanvasTextBaseline = 'top',
+    family: 'ui' | 'header' = 'ui'
+  ): void {
     this.ctx.fillStyle = color;
-    this.ctx.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif`;
+    const fontName = family === 'header'
+      ? '"Orbitron", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      : '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    this.ctx.font = `${weight} ${size}px ${fontName}`;
     this.ctx.textAlign = align;
-    this.ctx.textBaseline = 'top';
+    this.ctx.textBaseline = baseline;
     this.ctx.fillText(str, x * this.zoom + this.camX, y * this.zoom + this.camY);
   }
 

@@ -27,11 +27,11 @@ export class HUD {
 
     // Stat pill helper
     const pill = (icon: string, val: string, color: string, x: number): number => {
-      const icoW = 26;
+      const icoW = 28;
       const valW = Math.max(36, val.length * 10);
       const total = icoW + valW + 4;
-      r.text(icon, x + 13, TOP_H / 2, '#64748b', 10, 'center', 'bold');
-      r.text(val,  x + icoW + 2, TOP_H / 2, color, 16, 'left', 'bold');
+      r.text(icon, x + 14, TOP_H / 2, '#64748b', 10, 'center', 'bold', 'middle');
+      r.text(val,  x + icoW + 2, TOP_H / 2, color, 16, 'left', 'bold', 'middle', 'header');
       return x + total + 12;
     };
 
@@ -46,12 +46,12 @@ export class HUD {
 
     if (s.comboCount >= 3) {
       r.setShadow('rgba(239,68,68,0.5)', 8);
-      r.text(`🔥 COMBO ×${s.comboCount}`, r.width / 2, TOP_H / 2, '#f87171', 14, 'center', 'bold');
+      r.text(`🔥 COMBO ×${s.comboCount}`, r.width / 2, TOP_H / 2, '#f87171', 14, 'center', 'bold', 'middle', 'header');
       r.clearShadow();
     }
 
     if (speed > 1) {
-      r.text(`${speed}×`, r.width / 2 + (s.comboCount >= 3 ? 110 : 0), TOP_H / 2, '#fef08a', 14, 'center', 'bold');
+      r.text(`${speed}×`, r.width / 2 + (s.comboCount >= 3 ? 110 : 0), TOP_H / 2, '#fef08a', 14, 'center', 'bold', 'middle', 'header');
     }
 
     // RIGHT BUTTONS in top bar (compact icon-style)
@@ -68,7 +68,7 @@ export class HUD {
       if (active) r.setShadow(color, 6);
       r.roundRect(bx, btnY, w, btnH, 6, bg, true, border, 1);
       r.clearShadow();
-      r.text(label, bx + w / 2, btnY + 15, '#e2e8f0', 11, 'center', 'bold');
+      r.text(label, bx + w / 2, btnY + 15, '#e2e8f0', 11, 'center', 'bold', 'middle');
       regions.buttons.push({ x: bx, y: btnY, w, h: btnH, action });
       bx -= 5;
     };
@@ -153,14 +153,14 @@ export class HUD {
       const textX = sx + 22;
       if (cardW >= 95) {
         r.text(def.name, textX, cardY + 9, affordable ? '#f1f5f9' : '#475569', 11, 'left', 'bold');
-        r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? '#fbbf24' : '#374151', 10, 'left', 'bold');
+        r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? '#fbbf24' : '#374151', 10, 'left', 'bold', 'top', 'header');
         // Key shortcut hint
         const idx = TOWER_LIST.findIndex(d => d.id === def.id) + 1;
-        r.text(`[${idx}]`, sx + cardW - 16, cardY + 9, 'rgba(100,116,139,0.7)', 9, 'right');
+        r.text(`[${idx}]`, sx + cardW - 16, cardY + 9, 'rgba(100,116,139,0.7)', 9, 'right', 'normal', 'top', 'header');
       } else {
         // Compact mode: just name abbreviated
         r.text(def.name.slice(0, 4), textX, cardY + cardH / 2 - 6, affordable ? '#f1f5f9' : '#475569', 10, 'left', 'bold');
-        r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? '#fbbf24' : '#374151', 9, 'left', 'bold');
+        r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? '#fbbf24' : '#374151', 9, 'left', 'bold', 'top', 'header');
       }
 
       regions.shop.push({ x: sx, y: cardY, w: cardW, h: cardH, towerId: def.id });

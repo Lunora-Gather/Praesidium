@@ -73,6 +73,14 @@ let showTalent = false;
 let showStats = false;
 let autoSend = false;
 
+interface Toast {
+  title: string;
+  desc: string;
+  timer: number;
+  maxTime: number;
+}
+let activeToasts: Toast[] = [];
+
 // restore mid-run save if present (player closed tab mid-game)
 const savedRun = loadRun();
 if (savedRun && savedRun.v === 1) {
@@ -151,6 +159,15 @@ state.bus.on('spellCast', ({ id }) => {
 });
 // mid-run save on every wave boundary
 state.bus.on('waveChanged', () => state.autoSave());
+state.bus.on('achievementUnlocked', (ach) => {
+  audio.achievement();
+  activeToasts.push({
+    title: ach.name,
+    desc: ach.description,
+    timer: 4.0,
+    maxTime: 4.0
+  });
+});
 
 function camOffset(): { camX: number; camY: number } {
   const availW = renderer.width;
@@ -257,6 +274,12 @@ const update = (dt: number): void => {
   // starfield runs on every overlay screen (menu/levelSelect/won/lost)
   starfield.update(dt, renderer.width, renderer.height);
 
+  // update achievement toasts
+  for (const t of activeToasts) {
+    t.timer -= dt;
+  }
+  activeToasts = activeToasts.filter(t => t.timer > 0);
+
   // settings overlay takes priority
   if (showSettings) {
     for (const c of input.clicks()) {
@@ -268,6 +291,28 @@ const update = (dt: number): void => {
         music.setMuted(settings.get().muted);
       }
     }
+    input.endFrame();
+    return;
+  }
+
+  // stats overlay takes priority
+  if (showStats) {
+    for (const c of input.clicks()) {
+      const action = statsScreen.hit(c.x, c.y);
+      if (action) {
+        if (action === 'menu') {
+          state.goMenu();
+          showStats = false;
+        } else if (action === 'close') {
+          showStats = false;
+        } else {
+          statsScreen.apply(action);
+        }
+      } else {
+        showStats = false; // click outside close
+      }
+    }
+    if (input.wasKeyPressed('Escape')) showStats = false;
     input.endFrame();
     return;
   }
@@ -314,6 +359,10 @@ const update = (dt: number): void => {
         state.endlessSeed = dailySeed();
         state.selectLevel(0);
         paused = false;
+      } else if (a === 'settings') {
+        showSettings = true;
+      } else if (a === 'stats') {
+        showStats = true;
       }
     }
     input.endFrame();
@@ -335,17 +384,7 @@ const update = (dt: number): void => {
         else showTalent = false; // click outside closes
         continue;
       }
-      // stats panel takes priority when open
-      if (showStats) {
-        const hitBtn = statsScreen.hit(c.x, c.y);
-        if (hitBtn) {
-          state.goMenu();
-          showStats = false;
-        } else {
-          showStats = false; // click outside closes
-        }
-        continue;
-      }
+
       if (c.y < TOP_H) continue; // top bar no-op
       if (c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y);
       else if (state.selectedSpellId) {
@@ -357,8 +396,7 @@ const update = (dt: number): void => {
 
     if (input.wasKeyPressed('Space')) paused = !paused;
     if (input.wasKeyPressed('Escape')) {
-      if (showStats) showStats = false;
-      else if (state.selectedSpellId) state.selectedSpellId = null;
+      if (state.selectedSpellId) state.selectedSpellId = null;
       else if (state.selectedTower) state.selectedTower = null;
       else state.goMenu();
     }
@@ -451,7 +489,6 @@ const render = (_alpha: number): void => {
     
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
-    if (showStats && state.phase === 'playing') statsScreen.draw(renderer, state.analytics.get());
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
     if (state.phase === 'won') screens.draw(renderer, 'won', state.score, 0, { stars: state.lastStars, kills: state.stats.get().kills, gold: state.stats.get().goldEarned });
     if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed, { wave: state.waves.current, kills: state.stats.get().kills });
@@ -469,10 +506,14 @@ const render = (_alpha: number): void => {
     }
   }
 
-  // Settings screen is always screen space
+  // Stats & Settings screens are always screen space
   renderer.camX = 0;
   renderer.camY = 0;
+  if (showStats) statsScreen.draw(renderer, state.analytics.get(), state.save);
   if (showSettings) settingsScreen.draw(renderer);
+
+  // Render active toasts
+  drawToasts(renderer);
 };
 
 function drawSpells(r: Renderer): void {
@@ -502,7 +543,7 @@ function drawSpells(r: Renderer): void {
     r.clearShadow();
     
     r.text(sp.def.name, x + slotW / 2, y + 6, ready ? '#f8fafc' : '#475569', 11, 'center', 'bold');
-    r.text(`${sp.def.cost}g`, x + slotW / 2, y + 26, ready ? '#fbbf24' : '#475569', 10, 'center', 'bold');
+    r.text(`${sp.def.cost}g`, x + slotW / 2, y + 26, ready ? '#fbbf24' : '#475569', 10, 'center', 'bold', 'top', 'header');
     
     if (!sp.ready) {
       const cdH = Math.round(48 * (sp.cooldown / sp.def.cooldown));
@@ -519,7 +560,42 @@ function drawTutorial(r: Renderer, text: string): void {
   const x = (r.width - w) / 2;
   const y = 60;
   r.rect(x, y, w, h, '#1f6febcc', true);
-  r.text(text, x + w / 2, y + 14, '#fff', 14, 'center');
+  r.text(text, x + w / 2, y + h / 2, '#fff', 14, 'center', 'normal', 'middle');
+}
+
+function drawToasts(r: Renderer): void {
+  const toastW = 280;
+  const toastH = 50;
+  const startX = 16;
+  const bottomY = r.height - BOT_H - 16; // anchor above bottom shop
+
+  for (let i = 0; i < activeToasts.length; i++) {
+    const t = activeToasts[i];
+    const targetY = bottomY - i * (toastH + 10) - toastH;
+
+    // Slide in/out animation logic
+    let slideX = startX;
+    if (t.maxTime - t.timer < 0.4) {
+      // Slide in from left
+      const progress = (t.maxTime - t.timer) / 0.4; // 0 -> 1
+      slideX = startX - toastW * (1 - progress);
+    } else if (t.timer < 0.4) {
+      // Slide out to left
+      const progress = t.timer / 0.4; // 1 -> 0
+      slideX = startX - toastW * (1 - progress);
+    }
+
+    // Draw Toast Card
+    r.setShadow('rgba(251, 191, 36, 0.25)', 12, 0, 0);
+    // Glass container with glowing gold border
+    r.roundRect(slideX, targetY, toastW, toastH, 8, 'rgba(15, 23, 42, 0.95)', true, '#fbbf24', 1.5);
+    r.clearShadow();
+
+    // Text drawing: Orbitron title, Inter description
+    r.text('🏆 ACHIEVEMENT UNLOCKED!', slideX + 12, targetY + 8, '#fbbf24', 9, 'left', 'bold', 'top', 'header');
+    r.text(t.title, slideX + 12, targetY + 22, '#ffffff', 12, 'left', 'bold');
+    r.text(t.desc, slideX + 12, targetY + 36, '#94a3b8', 9, 'left');
+  }
 }
 
 const loop = new GameLoop(update, render);

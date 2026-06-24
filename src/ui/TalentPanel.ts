@@ -26,11 +26,11 @@ export class TalentPanel {
       { offset: 0, color: '#60a5fa' },
       { offset: 1, color: '#3b82f6' }
     ]);
-    r.text(t('talent.title'), cx, 24, titleGrad, 26, 'center', 'bold');
+    r.text(t('talent.title'), cx, 24, titleGrad, 26, 'center', 'bold', 'top', 'header');
     
     // Points count
     r.setShadow('rgba(251, 191, 36, 0.3)', 10, 0, 0);
-    r.text(`${t('talent.points')}: ${talents.talentPoints}`, cx, 58, '#fbbf24', 16, 'center', 'bold');
+    r.text(`${t('talent.points')}: ${talents.talentPoints}`, cx, 58, '#fbbf24', 16, 'center', 'bold', 'top', 'header');
     r.clearShadow();
 
     const cardW = 190;
@@ -95,14 +95,14 @@ export class TalentPanel {
       }
 
       // Rank status text
-      r.text(`${rank}/${def.maxRank}`, x + cardW / 2, y + 62, '#ffffff', 11, 'center', 'bold');
+      r.text(`${rank}/${def.maxRank}`, x + cardW / 2, y + 62, '#ffffff', 11, 'center', 'bold', 'top', 'header');
 
       // Spend cost hint
       const hintY = y + 80;
       if (isMax) {
-        r.text('MAXED', x + cardW / 2, hintY, '#fbbf24', 10, 'center', 'bold');
+        r.text('MAXED', x + cardW / 2, hintY, '#fbbf24', 10, 'center', 'bold', 'top', 'header');
       } else {
-        r.text(`${def.costPerRank} PT`, x + cardW / 2, hintY, canUp ? '#fbbf24' : '#475569', 10, 'center', 'bold');
+        r.text(`${def.costPerRank} PT`, x + cardW / 2, hintY, canUp ? '#fbbf24' : '#475569', 10, 'center', 'bold', 'top', 'header');
       }
 
       if (canUp) {

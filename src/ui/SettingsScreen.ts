@@ -3,7 +3,7 @@
 import { Renderer } from '../engine/Renderer';
 import { SettingsStore, Settings } from '../config/Settings';
 import { Vec2 } from '../engine/math/Vec2';
-import { getLocale, setLocale } from '../utils/i18n';
+import { getLocale, setLocale, t } from '../utils/i18n';
 
 type ClickAction = 'back' | 'toggleMute' | 'toggleFps' | 'toggleRange' | 'togglePauseOnBlur' | 'cycleLang';
 
@@ -41,15 +41,15 @@ export class SettingsScreen {
       { offset: 0, color: '#60a5fa' },
       { offset: 1, color: '#3b82f6' }
     ]);
-    r.text('SETTINGS', cx, cardY + 20, titleGrad, 24, 'center', 'bold');
+    r.text('SETTINGS', cx, cardY + 20, titleGrad, 24, 'center', 'bold', 'top', 'header');
     
     const s = this.store.get();
     const langLabel = getLocale() === 'en' ? 'Language: English' : '语言：中文';
     const rows: Array<{ label: string; value: boolean; action: ClickAction }> = [
-      { label: 'Sound', value: !s.muted, action: 'toggleMute' },
-      { label: 'Show FPS', value: s.showFps, action: 'toggleFps' },
-      { label: 'Show Tower Range', value: s.showRange, action: 'toggleRange' },
-      { label: 'Pause on Blur', value: s.pauseOnBlur, action: 'togglePauseOnBlur' },
+      { label: t('settings.sound'), value: !s.muted, action: 'toggleMute' },
+      { label: t('settings.fps'), value: s.showFps, action: 'toggleFps' },
+      { label: t('settings.range'), value: s.showRange, action: 'toggleRange' },
+      { label: t('settings.blur'), value: s.pauseOnBlur, action: 'togglePauseOnBlur' },
       { label: langLabel, value: getLocale() === 'zh', action: 'cycleLang' },
     ];
     
@@ -63,7 +63,7 @@ export class SettingsScreen {
       r.line(new Vec2(startX, y + rowH), new Vec2(startX + rowW, y + rowH), 'rgba(255, 255, 255, 0.05)', 1);
       
       // Label text
-      r.text(row.label, startX + 4, y + 23, '#e2e8f0', 14, 'left', 'bold');
+      r.text(row.label, startX + 4, y + rowH / 2, '#e2e8f0', 14, 'left', 'bold', 'middle');
       
       // Modern slide toggle switch
       const toggleW = 38;
@@ -96,7 +96,7 @@ export class SettingsScreen {
       { offset: 1, color: '#1e293b' }
     ]);
     r.roundRect(btnX, btnY, btnW, btnH, 8, btnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text('Back', cx, btnY + 18, '#ffffff', 13, 'center', 'bold');
+    r.text('Back', cx, btnY + btnH / 2, '#ffffff', 13, 'center', 'bold', 'middle');
     
     this.regions.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: 'back' });
   }

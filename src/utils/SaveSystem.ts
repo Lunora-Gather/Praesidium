@@ -10,6 +10,12 @@ export interface SaveData {
   maxLevelReached: number; // 1-based index into LEVELS
   unlockedTowers: string[];
   levelStars: Record<number, number>; // levelNumber (1-based) -> best stars 0..3
+  levelHighScores: Record<number, number>; // levelNumber (1-based) -> best score
+  endlessHighScore: number;
+  endlessMaxWave: number;
+  dailyHighScore: number;
+  dailyMaxWave: number;
+  dailyDate: string;
 }
 
 const KEY = 'save';
@@ -22,6 +28,12 @@ const DEFAULTS: SaveData = {
   maxLevelReached: 1,
   unlockedTowers: ['turret'],
   levelStars: {},
+  levelHighScores: {},
+  endlessHighScore: 0,
+  endlessMaxWave: 0,
+  dailyHighScore: 0,
+  dailyMaxWave: 0,
+  dailyDate: '',
 };
 
 export class SaveSystem {
@@ -81,6 +93,50 @@ export class SaveSystem {
 
   getStars(levelNumber: number): number {
     return this.data.levelStars[levelNumber] ?? 0;
+  }
+
+  recordLevelScore(levelNumber: number, score: number): boolean {
+    const prev = this.data.levelHighScores[levelNumber] ?? 0;
+    if (score > prev) {
+      this.data.levelHighScores[levelNumber] = score;
+      this.persist();
+      return true;
+    }
+    return false;
+  }
+
+  recordEndlessRun(score: number, wave: number): boolean {
+    let updated = false;
+    if (score > this.data.endlessHighScore) {
+      this.data.endlessHighScore = score;
+      updated = true;
+    }
+    if (wave > this.data.endlessMaxWave) {
+      this.data.endlessMaxWave = wave;
+      updated = true;
+    }
+    if (updated) this.persist();
+    return updated;
+  }
+
+  recordDailyRun(score: number, wave: number, dateStr: string): boolean {
+    let updated = false;
+    if (this.data.dailyDate !== dateStr) {
+      this.data.dailyDate = dateStr;
+      this.data.dailyHighScore = 0;
+      this.data.dailyMaxWave = 0;
+      updated = true;
+    }
+    if (score > this.data.dailyHighScore) {
+      this.data.dailyHighScore = score;
+      updated = true;
+    }
+    if (wave > this.data.dailyMaxWave) {
+      this.data.dailyMaxWave = wave;
+      updated = true;
+    }
+    if (updated) this.persist();
+    return updated;
   }
 
   reset(): void {
