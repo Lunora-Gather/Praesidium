@@ -99,9 +99,12 @@ export class Tower {
     return Targeting.acquire(this.strategy, this.pos, this.range, enemies, grid);
   }
 
+  currentTarget: Enemy | null = null;
+
   update(dt: number, enemies: readonly Enemy[], grid: Grid): { target: Enemy | null } {
     this.cooldown -= dt;
     const target = this.acquireTarget(enemies, grid);
+    this.currentTarget = target;
     if (target) this.angle = target.pos.sub(this.pos).angle();
     return { target };
   }

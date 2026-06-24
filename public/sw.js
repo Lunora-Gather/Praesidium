@@ -2,7 +2,7 @@
 // Enables offline play after first visit — critical for mobile retention.
 
 const CACHE = 'praesidium-v1';
-const PRECACHE = ['/'];
+const PRECACHE = ['./'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));

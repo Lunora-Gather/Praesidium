@@ -57,7 +57,7 @@ export class Renderer {
 
   toScreen(p: Vec2): Vec2 {
     const { x: sx, y: sy } = this.shakeOffset;
-    return new Vec2((p.x - this.camX) * this.zoom + sx, (p.y - this.camY) * this.zoom + sy);
+    return new Vec2(p.x * this.zoom + this.camX + sx, p.y * this.zoom + this.camY + sy);
   }
 
   circle(p: Vec2, r: number, color: string, fill = true): void {
@@ -69,13 +69,71 @@ export class Renderer {
     else this.ctx.stroke();
   }
 
-  rect(x: number, y: number, w: number, h: number, color: string, fill = true): void {
-    const sx = (x - this.camX) * this.zoom;
-    const sy = (y - this.camY) * this.zoom;
-    this.ctx.fillStyle = color;
-    this.ctx.strokeStyle = color;
-    if (fill) this.ctx.fillRect(sx, sy, w * this.zoom, h * this.zoom);
-    else this.ctx.strokeRect(sx, sy, w * this.zoom, h * this.zoom);
+  rect(x: number, y: number, w: number, h: number, color: string | CanvasGradient, fill = true): void {
+    const sx = x * this.zoom + this.camX;
+    const sy = y * this.zoom + this.camY;
+    if (fill) {
+      this.ctx.fillStyle = color;
+      this.ctx.fillRect(sx, sy, w * this.zoom, h * this.zoom);
+    } else {
+      this.ctx.strokeStyle = color;
+      this.ctx.strokeRect(sx, sy, w * this.zoom, h * this.zoom);
+    }
+  }
+
+  roundRect(x: number, y: number, w: number, h: number, r: number, color: string | CanvasGradient, fill = true, strokeColor?: string | CanvasGradient, strokeWidth = 1): void {
+    const sx = x * this.zoom + this.camX;
+    const sy = y * this.zoom + this.camY;
+    const sw = w * this.zoom;
+    const sh = h * this.zoom;
+    const sr = r * this.zoom;
+
+    this.ctx.beginPath();
+    if (typeof this.ctx.roundRect === 'function') {
+      this.ctx.roundRect(sx, sy, sw, sh, sr);
+    } else {
+      this.ctx.moveTo(sx + sr, sy);
+      this.ctx.arcTo(sx + sw, sy, sx + sw, sy + sh, sr);
+      this.ctx.arcTo(sx + sw, sy + sh, sx, sy + sh, sr);
+      this.ctx.arcTo(sx, sy + sh, sx, sy, sr);
+      this.ctx.arcTo(sx, sy, sx + sw, sy, sr);
+    }
+
+    if (fill) {
+      this.ctx.fillStyle = color;
+      this.ctx.fill();
+    }
+    if (strokeColor) {
+      this.ctx.strokeStyle = strokeColor;
+      this.ctx.lineWidth = strokeWidth * this.zoom;
+      this.ctx.stroke();
+    }
+  }
+
+  linearGradient(x1: number, y1: number, x2: number, y2: number, stops: Array<{ offset: number; color: string }>): CanvasGradient {
+    const sx1 = x1 * this.zoom + this.camX;
+    const sy1 = y1 * this.zoom + this.camY;
+    const sx2 = x2 * this.zoom + this.camX;
+    const sy2 = y2 * this.zoom + this.camY;
+    const grad = this.ctx.createLinearGradient(sx1, sy1, sx2, sy2);
+    for (const stop of stops) {
+      grad.addColorStop(stop.offset, stop.color);
+    }
+    return grad;
+  }
+
+  setShadow(color: string, blur: number, offsetX = 0, offsetY = 0): void {
+    this.ctx.shadowColor = color;
+    this.ctx.shadowBlur = blur * this.zoom;
+    this.ctx.shadowOffsetX = offsetX * this.zoom;
+    this.ctx.shadowOffsetY = offsetY * this.zoom;
+  }
+
+  clearShadow(): void {
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 0;
   }
 
   line(a: Vec2, b: Vec2, color: string, width = 1): void {
@@ -89,12 +147,12 @@ export class Renderer {
     this.ctx.stroke();
   }
 
-  text(str: string, x: number, y: number, color = '#fff', size = 14, align: CanvasTextAlign = 'left'): void {
+  text(str: string, x: number, y: number, color: string | CanvasGradient = '#fff', size = 14, align: CanvasTextAlign = 'left', weight = 'normal'): void {
     this.ctx.fillStyle = color;
-    this.ctx.font = `${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    this.ctx.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif`;
     this.ctx.textAlign = align;
     this.ctx.textBaseline = 'top';
-    this.ctx.fillText(str, (x - this.camX) * this.zoom, (y - this.camY) * this.zoom);
+    this.ctx.fillText(str, x * this.zoom + this.camX, y * this.zoom + this.camY);
   }
 
   path(points: readonly Vec2[], color: string, width = 2): void {

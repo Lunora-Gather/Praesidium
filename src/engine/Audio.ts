@@ -33,7 +33,9 @@ export class Audio {
     return this.muted;
   }
 
-  private blip(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.5): void {
+
+
+  private synth(f1: number, f2: number, dur: number, type: OscillatorType = 'square', vol = 0.5): void {
     if (this.muted) return;
     this.ensure();
     if (!this.ctx || !this.master) return;
@@ -41,7 +43,8 @@ export class Audio {
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = type;
-    osc.frequency.value = freq;
+    osc.frequency.setValueAtTime(f1, t);
+    osc.frequency.exponentialRampToValueAtTime(f2, t + dur);
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     osc.connect(g);
@@ -51,34 +54,52 @@ export class Audio {
   }
 
   shoot(): void {
-    this.blip(660, 0.08, 'square', 0.18);
+    this.synth(800, 200, 0.1, 'sawtooth', 0.15); // futuristic laser chirp
   }
 
   hit(): void {
-    this.blip(220, 0.06, 'triangle', 0.25);
+    this.synth(180, 60, 0.08, 'triangle', 0.22); // deep solid impact thud
   }
 
   enemyDie(): void {
-    this.blip(140, 0.18, 'sawtooth', 0.3);
+    this.synth(140, 30, 0.22, 'sawtooth', 0.25); // rumbling explosion sound
   }
 
   place(): void {
-    this.blip(440, 0.12, 'sine', 0.35);
+    this.synth(440, 880, 0.12, 'sine', 0.3); // positive rising UI sweep
   }
 
   waveStart(): void {
-    this.blip(330, 0.15, 'sawtooth', 0.3);
-    window.setTimeout(() => this.blip(494, 0.2, 'sawtooth', 0.3), 130);
+    this.synth(220, 440, 0.2, 'sawtooth', 0.25);
+    window.setTimeout(() => this.synth(330, 660, 0.25, 'sawtooth', 0.25), 120);
+  }
+
+  spellCast(id: string): void {
+    if (this.muted) return;
+    if (id === 'meteor') {
+      // Roaring impact + rumble
+      this.synth(300, 60, 0.55, 'sawtooth', 0.4);
+      window.setTimeout(() => this.synth(120, 30, 0.7, 'triangle', 0.45), 100);
+    } else if (id === 'freeze') {
+      // Shimmering upward sweep
+      this.synth(500, 1500, 0.35, 'sine', 0.3);
+      window.setTimeout(() => this.synth(700, 2100, 0.3, 'sine', 0.2), 50);
+    } else if (id === 'repair') {
+      // Harmonious ascending healing chime
+      this.synth(523, 1046, 0.2, 'sine', 0.3);
+      window.setTimeout(() => this.synth(659, 1318, 0.2, 'sine', 0.3), 100);
+      window.setTimeout(() => this.synth(784, 1568, 0.3, 'sine', 0.3), 200);
+    }
   }
 
   win(): void {
-    this.blip(523, 0.15, 'sine', 0.35);
-    window.setTimeout(() => this.blip(659, 0.15, 'sine', 0.35), 140);
-    window.setTimeout(() => this.blip(784, 0.25, 'sine', 0.35), 280);
+    this.synth(523, 1046, 0.15, 'sine', 0.35);
+    window.setTimeout(() => this.synth(659, 1318, 0.15, 'sine', 0.35), 140);
+    window.setTimeout(() => this.synth(784, 1568, 0.25, 'sine', 0.35), 280);
   }
 
   lose(): void {
-    this.blip(220, 0.3, 'sawtooth', 0.35);
-    window.setTimeout(() => this.blip(110, 0.5, 'sawtooth', 0.35), 200);
+    this.synth(220, 80, 0.3, 'sawtooth', 0.35);
+    window.setTimeout(() => this.synth(110, 40, 0.5, 'sawtooth', 0.35), 200);
   }
 }

@@ -49,23 +49,26 @@ export class Starfield {
 
   draw(r: Renderer): void {
     const ctx = r.ctx;
+    const dpr = window.devicePixelRatio || 1;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const pWidth = r.width * dpr;
+    const pHeight = r.height * dpr;
     for (const s of this.stars) {
-      const px = s.x * r.width;
-      const py = s.y * r.height;
-      const size = 0.5 + s.z * 1.8;
+      const px = s.x * pWidth;
+      const py = s.y * pHeight;
+      const size = (0.5 + s.z * 1.8) * dpr;
       const twinkle = 0.5 + 0.5 * Math.sin(s.tw);
       const alpha = (0.3 + s.z * 0.6) * twinkle;
       ctx.fillStyle = `rgba(180,210,255,${alpha.toFixed(3)})`;
       ctx.fillRect(px, py, size, size);
     }
     // faint horizon glow for depth
-    const grad = ctx.createLinearGradient(0, r.height * 0.6, 0, r.height);
+    const grad = ctx.createLinearGradient(0, pHeight * 0.6, 0, pHeight);
     grad.addColorStop(0, 'rgba(31,111,235,0)');
     grad.addColorStop(1, 'rgba(31,111,235,0.08)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, r.height * 0.6, r.width, r.height * 0.4);
+    ctx.fillRect(0, pHeight * 0.6, pWidth, pHeight * 0.4);
     ctx.restore();
   }
 }

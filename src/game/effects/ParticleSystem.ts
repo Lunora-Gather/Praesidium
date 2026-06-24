@@ -1,5 +1,5 @@
 // Particle system: ephemeral visual effects (explosions, sparks, death bursts,
-// floating damage/gold text). Pool-friendly: particles mutate in place.
+// floating damage/gold text, expanding shockwaves). Pool-friendly: particles mutate in place.
 
 import { Vec2 } from '../../engine/math/Vec2';
 import type { Renderer } from '../../engine/Renderer';
@@ -23,9 +23,19 @@ export interface FloatText {
   dead: boolean;
 }
 
+export interface Shockwave {
+  pos: Vec2;
+  radius: number;
+  maxRadius: number;
+  life: number;
+  maxLife: number;
+  color: string;
+}
+
 export class ParticleSystem {
   private readonly particles: Particle[] = [];
   private readonly floats: FloatText[] = [];
+  private readonly shockwaves: Shockwave[] = [];
 
   /** Burst `count` particles from `origin` with given color/speed. */
   burst(origin: Vec2, count: number, color: string, speed = 120, life = 0.5, size = 3): void {
@@ -63,6 +73,18 @@ export class ParticleSystem {
       maxLife: life,
       color,
       dead: false,
+    });
+  }
+
+  /** Spawn expanding shockwave ring. */
+  shockwave(pos: Vec2, maxRadius: number, color: string, life = 0.4): void {
+    this.shockwaves.push({
+      pos: Vec2.from(pos),
+      radius: 0,
+      maxRadius,
+      life,
+      maxLife: life,
+      color,
     });
   }
 
@@ -106,9 +128,35 @@ export class ParticleSystem {
       }
     }
     this.floats.length = fw;
+
+    // update shockwaves
+    for (const s of this.shockwaves) {
+      s.life -= dt;
+      s.radius = s.maxRadius * (1 - Math.max(0, s.life / s.maxLife));
+    }
+    // compact shockwaves
+    let sw = 0;
+    for (let r = 0; r < this.shockwaves.length; r++) {
+      if (this.shockwaves[r].life > 0) {
+        if (sw !== r) this.shockwaves[sw] = this.shockwaves[r];
+        sw++;
+      }
+    }
+    this.shockwaves.length = sw;
   }
 
   draw(r: Renderer): void {
+    // draw shockwaves
+    for (const s of this.shockwaves) {
+      const alpha = Math.max(0, s.life / s.maxLife);
+      r.ctx.save();
+      r.ctx.globalAlpha = alpha * 0.45;
+      r.ctx.strokeStyle = s.color;
+      r.ctx.lineWidth = 3 * r.zoom;
+      r.circle(s.pos, s.radius, s.color, false);
+      r.ctx.restore();
+    }
+
     for (const p of this.particles) {
       const alpha = Math.max(0, p.life / p.maxLife);
       r.ctx.globalAlpha = alpha;
@@ -126,5 +174,6 @@ export class ParticleSystem {
   clear(): void {
     this.particles.length = 0;
     this.floats.length = 0;
+    this.shockwaves.length = 0;
   }
 }

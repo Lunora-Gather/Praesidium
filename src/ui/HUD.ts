@@ -1,85 +1,174 @@
-// HUD: top bar with gold/lives/wave/score + bottom tower shop + control buttons.
-// All drawn directly to canvas via the Renderer; no DOM widgets.
+// HUD: top stat bar + bottom tower shop. Completely redesigned for clarity and responsiveness.
 
 import { Renderer } from '../engine/Renderer';
 import { GameState } from '../game/GameState';
 import { TOWER_LIST } from '../game/towers/TowerRegistry';
 import { Vec2 } from '../engine/math/Vec2';
 
+export interface HudRegions {
+  shop: Array<{ x: number; y: number; w: number; h: number; towerId: string }>;
+  buttons: Array<{ x: number; y: number; w: number; h: number; action: string }>;
+}
+
+export const TOP_H = 52;   // height of top stat bar
+export const BOT_H = 72;   // height of bottom shop bar
+
 export class HUD {
-  /** Draw the HUD; returns hit regions for click handling (shop buttons, etc.). */
   draw(r: Renderer, s: GameState, speed = 1, autoSend = false): HudRegions {
     const regions: HudRegions = { shop: [], buttons: [] };
 
-    // top bar
-    r.rect(0, 0, r.width, 48, '#11182788');
-    r.text(`GOLD ${s.gold}`, 16, 14, '#ffd54f', 18);
-    r.text(`LIVES ${s.lives}`, 160, 14, s.lives <= 5 ? (Math.floor(Date.now() / 300) % 2 === 0 ? '#ff1744' : '#e57373') : '#e57373', 18);
-    r.text(`WAVE ${s.waves.current}/${s.waves.totalWaves}`, 300, 14, '#81c784', 18);
-    r.text(`SCORE ${s.score}`, 460, 14, '#ffffff', 18);
-    if (s.endless) {
-      r.text(`SEED ${s.endlessSeed.toString(16).toUpperCase().padStart(8, '0')}`, 580, 14, '#ce93d8', 16);
-    }
-    if (speed > 1) {
-      r.text(`${speed}x`, 700, 14, '#fff176', 16);
-    }
+    // ─── TOP BAR ─────────────────────────────────────────────────────────────
+    const topGrad = r.linearGradient(0, 0, 0, TOP_H, [
+      { offset: 0, color: 'rgba(6, 10, 15, 0.98)' },
+      { offset: 1, color: 'rgba(10, 16, 28, 0.95)' },
+    ]);
+    r.rect(0, 0, r.width, TOP_H, topGrad);
+    r.rect(0, TOP_H - 1, r.width, 1, 'rgba(59,130,246,0.18)');
+
+    // Stat pill helper
+    const pill = (icon: string, val: string, color: string, x: number): number => {
+      const icoW = 26;
+      const valW = Math.max(36, val.length * 10);
+      const total = icoW + valW + 4;
+      r.text(icon, x + 13, TOP_H / 2 - 8, '#64748b', 10, 'center', 'bold');
+      r.text(val,  x + icoW + 2, TOP_H / 2 - 7, color, 16, 'left', 'bold');
+      return x + total + 12;
+    };
+
+    let lx = 12;
+    lx = pill('GOLD',  `${s.gold}`,  '#fbbf24', lx);
+    const livesCol = s.lives <= 5
+      ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f87171')
+      : '#f87171';
+    lx = pill('LIVES', `${s.lives}`, livesCol, lx);
+    lx = pill('WAVE',  `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399', lx);
+    pill('SCORE', `${s.score}`, '#e2e8f0', lx);
+
     if (s.comboCount >= 3) {
-      r.text(`COMBO x${s.comboCount}`, 760, 14, '#ff5722', 16);
+      r.setShadow('rgba(239,68,68,0.5)', 8);
+      r.text(`🔥 COMBO ×${s.comboCount}`, r.width / 2, TOP_H / 2 - 8, '#f87171', 14, 'center', 'bold');
+      r.clearShadow();
     }
 
-    // tower shop (bottom bar)
-    const shopH = 64;
-    const shopY = r.height - shopH;
-    r.rect(0, shopY, r.width, shopH, '#11182788');
-    const slotW = 120;
+    if (speed > 1) {
+      r.text(`${speed}×`, r.width / 2 + (s.comboCount >= 3 ? 110 : 0), TOP_H / 2 - 8, '#fef08a', 14, 'center', 'bold');
+    }
+
+    // RIGHT BUTTONS in top bar (compact icon-style)
+    const btnH = 30;
+    const btnY = (TOP_H - btnH) / 2;
+    let bx = r.width - 8;
+
+    const topBtn = (label: string, active: boolean, color: string, action: string, w = 68): void => {
+      bx -= w;
+      const bg = active
+        ? r.linearGradient(bx, btnY, bx, btnY + btnH, [{ offset: 0, color }, { offset: 1, color }])
+        : 'rgba(20,30,50,0.8)';
+      const border = active ? color : 'rgba(255,255,255,0.07)';
+      if (active) r.setShadow(color, 6);
+      r.roundRect(bx, btnY, w, btnH, 6, bg, true, border, 1);
+      r.clearShadow();
+      r.text(label, bx + w / 2, btnY + 8, '#e2e8f0', 11, 'center', 'bold');
+      regions.buttons.push({ x: bx, y: btnY, w, h: btnH, action });
+      bx -= 5;
+    };
+
+    const waveInProg = s.waves.inProgress;
+    const waveLabel = waveInProg
+      ? '▶ Running…'
+      : s.waves.current >= s.waves.totalWaves && !s.endless
+        ? '✓ Last Wave'
+        : `⚡ Wave ${s.waves.current + 1}`;
+
+    topBtn(waveLabel, !waveInProg, '#3b82f6', 'send', 90);
+    topBtn('⏸ Pause',    false, '#475569', 'pause');
+    topBtn(`⚡ ${speed}×`, speed > 1, '#8b5cf6', 'speed');
+    topBtn(autoSend ? '⟳ Auto ✓' : '⟳ Auto', autoSend, '#10b981', 'autoSend', 76);
+    topBtn('☰ Menu',    false, '#475569', 'menu');
+    topBtn('🏆 Stats',   false, '#475569', 'stats');
+    topBtn('⚙ Set',     false, '#475569', 'settings', 60);
+    topBtn('✦ Talent',  false, '#475569', 'talent', 72);
+
+    // Wave countdown bar
+    if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
+      const bw = 240; const bwY = TOP_H - 2;
+      const bwX = (r.width - bw) / 2;
+      r.roundRect(bwX, bwY, bw, 2, 1, 'rgba(255,255,255,0.06)', true);
+      r.roundRect(bwX, bwY, bw * s.waves.betweenProgress, 2, 1, '#3b82f6', true);
+    }
+
+    // ─── BOTTOM SHOP ─────────────────────────────────────────────────────────
+    const botY = r.height - BOT_H;
+    const botGrad = r.linearGradient(0, botY, 0, r.height, [
+      { offset: 0, color: 'rgba(6, 10, 15, 0.95)' },
+      { offset: 1, color: 'rgba(10, 16, 28, 0.98)' },
+    ]);
+    r.rect(0, botY, r.width, BOT_H, botGrad);
+    r.rect(0, botY, r.width, 1, 'rgba(59,130,246,0.12)');
+
+    // Adaptive tower card width to always fit on screen
+    const gap = 8;
     const padding = 12;
-    let x = padding;
+    const availShop = r.width - padding * 2;
+    const cardW = Math.max(80, Math.min(120, (availShop - gap * (TOWER_LIST.length - 1)) / TOWER_LIST.length));
+
+    let sx = padding;
     for (const def of TOWER_LIST) {
       const selected = s.selectedTowerId === def.id;
       const affordable = s.gold >= def.cost;
-      r.rect(x, shopY + 8, slotW, shopH - 16, selected ? '#1f6feb' : '#1f2937', true);
-      r.rect(x, shopY + 8, slotW, shopH - 16, affordable ? '#3a3a3a' : '#2a2a2a', false);
-      r.text(def.name, x + 8, shopY + 14, affordable ? '#e6e6e6' : '#666', 14);
-      r.text(`${def.cost}g`, x + 8, shopY + 38, affordable ? '#ffd54f' : '#666', 13);
-      // mini icon
-      r.circle(new Vec2(x + slotW - 22, shopY + 28), 10, def.color);
-      regions.shop.push({ x, y: shopY + 8, w: slotW, h: shopH - 16, towerId: def.id });
-      x += slotW + padding;
+      const cardY = botY + 8;
+      const cardH = BOT_H - 16;
+
+      let bg: string | CanvasGradient;
+      let border: string;
+      if (selected) {
+        bg = r.linearGradient(sx, cardY, sx, cardY + cardH, [
+          { offset: 0, color: 'rgba(59,130,246,0.3)' },
+          { offset: 1, color: 'rgba(37,99,235,0.15)' },
+        ]);
+        border = '#3b82f6';
+        r.setShadow('rgba(59,130,246,0.5)', 14);
+      } else if (affordable) {
+        bg = r.linearGradient(sx, cardY, sx, cardY + cardH, [
+          { offset: 0, color: 'rgba(20,32,56,0.9)' },
+          { offset: 1, color: 'rgba(10,16,28,0.9)' },
+        ]);
+        border = 'rgba(255,255,255,0.12)';
+      } else {
+        bg = 'rgba(10,15,25,0.6)';
+        border = 'rgba(255,255,255,0.03)';
+      }
+
+      r.roundRect(sx, cardY, cardW, cardH, 8, bg, true, border, selected ? 1.5 : 1);
+      r.clearShadow();
+
+      // Tower color dot
+      const dotX = sx + 12;
+      const dotY = cardY + cardH / 2 - 2;
+      r.setShadow(def.color, selected ? 10 : 4);
+      r.circle(new Vec2(dotX, dotY), 5, def.color);
+      r.clearShadow();
+
+      // Tower name + cost
+      const textX = sx + 22;
+      if (cardW >= 95) {
+        r.text(def.name, textX, cardY + 9, affordable ? '#f1f5f9' : '#475569', 11, 'left', 'bold');
+        r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? '#fbbf24' : '#374151', 10, 'left', 'bold');
+        // Key shortcut hint
+        const idx = TOWER_LIST.findIndex(d => d.id === def.id) + 1;
+        r.text(`[${idx}]`, sx + cardW - 16, cardY + 9, 'rgba(100,116,139,0.7)', 9, 'right');
+      } else {
+        // Compact mode: just name abbreviated
+        r.text(def.name.slice(0, 4), textX, cardY + cardH / 2 - 6, affordable ? '#f1f5f9' : '#475569', 10, 'left', 'bold');
+        r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? '#fbbf24' : '#374151', 9, 'left', 'bold');
+      }
+
+      regions.shop.push({ x: sx, y: cardY, w: cardW, h: cardH, towerId: def.id });
+      sx += cardW + gap;
     }
 
-    // send-wave / pause buttons (right side of top bar)
-    let bx = r.width - 16;
-    const btnW = 96;
-    const btnH = 32;
-    const btnY = 8;
-    const drawBtn = (label: string, color: string, action: string): void => {
-      bx -= btnW;
-      r.rect(bx, btnY, btnW, btnH, color, true);
-      r.text(label, bx + btnW / 2, btnY + 9, '#fff', 13, 'center');
-      regions.buttons.push({ x: bx, y: btnY, w: btnW, h: btnH, action });
-      bx -= 8;
-    };
-    const waveLabel = s.waves.inProgress
-      ? 'Wave…'
-      : s.waves.current >= s.waves.totalWaves && !s.endless ? 'Last wave' : `Send W${s.waves.current + 1}`;
-    drawBtn(`${speed}x`, speed > 1 ? '#6a1b9a' : '#374151', 'speed');
-    drawBtn(autoSend ? 'Auto✓' : 'Auto', autoSend ? '#1b5e20' : '#374151', 'autoSend');
-    drawBtn('Talents', '#374151', 'talent');
-    drawBtn('Stats', '#374151', 'stats');
-    drawBtn('Settings', '#374151', 'settings');
-    drawBtn('Pause', '#374151', 'pause');
-    drawBtn('Menu', '#374151', 'menu');
-    drawBtn(waveLabel, '#1f6feb', 'send');
-
-    // wave countdown bar (between waves, shows time until auto-send)
-    if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
-      const barW = 200;
-      const barH = 4;
-      const barX = (r.width - barW) / 2;
-      const barY = 44;
-      r.rect(barX, barY, barW, barH, '#222', true);
-      r.rect(barX, barY, barW * s.waves.betweenProgress, barH, '#1f6feb', true);
-    }
+    // Spell slots — right of shop (if space allows)
+    // (handled separately in main.ts drawSpells — left unchanged)
 
     return regions;
   }
@@ -97,11 +186,6 @@ export class HUD {
     }
     return null;
   }
-}
-
-export interface HudRegions {
-  shop: Array<{ x: number; y: number; w: number; h: number; towerId: string }>;
-  buttons: Array<{ x: number; y: number; w: number; h: number; action: string }>;
 }
 
 /** Speed options for the speed-control button. */

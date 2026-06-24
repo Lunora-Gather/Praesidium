@@ -14,10 +14,35 @@ export class SettingsScreen {
 
   draw(r: Renderer): void {
     this.regions = [];
-    r.rect(0, 0, r.width, r.height, '#0a0e14ee');
+    
+    // Dim background with overlay gradient
+    const bgGrad = r.linearGradient(0, 0, 0, r.height, [
+      { offset: 0, color: 'rgba(10, 14, 20, 0.8)' },
+      { offset: 1, color: 'rgba(17, 24, 39, 0.9)' }
+    ]);
+    r.rect(0, 0, r.width, r.height, bgGrad);
+    
     const cx = r.width / 2;
-    r.text('SETTINGS', cx, 80, '#8ab4f8', 36, 'center');
-
+    const cy = r.height / 2;
+    
+    // Modal card container
+    const cardW = Math.min(r.width - 32, 380);
+    const cardH = 380;
+    const cardX = cx - cardW / 2;
+    const cardY = cy - cardH / 2;
+    
+    r.setShadow('rgba(59, 130, 246, 0.15)', 24, 0, 4);
+    // Draw card
+    r.roundRect(cardX, cardY, cardW, cardH, 16, 'rgba(15, 23, 42, 0.9)', true, 'rgba(255, 255, 255, 0.08)', 1.5);
+    r.clearShadow();
+    
+    // Gradient header
+    const titleGrad = r.linearGradient(cx - 80, cardY + 24, cx + 80, cardY + 24, [
+      { offset: 0, color: '#60a5fa' },
+      { offset: 1, color: '#3b82f6' }
+    ]);
+    r.text('SETTINGS', cx, cardY + 20, titleGrad, 24, 'center', 'bold');
+    
     const s = this.store.get();
     const langLabel = getLocale() === 'en' ? 'Language: English' : '语言：中文';
     const rows: Array<{ label: string; value: boolean; action: ClickAction }> = [
@@ -27,31 +52,52 @@ export class SettingsScreen {
       { label: 'Pause on Blur', value: s.pauseOnBlur, action: 'togglePauseOnBlur' },
       { label: langLabel, value: getLocale() === 'zh', action: 'cycleLang' },
     ];
-
-    const rowH = 56;
-    const rowW = 320;
+    
+    const rowH = 46;
+    const rowW = cardW - 48;
     const startX = cx - rowW / 2;
-    let y = 160;
+    let y = cardY + 68;
+    
     for (const row of rows) {
-      r.rect(startX, y, rowW, rowH, '#1f2937', true);
-      r.text(row.label, startX + 16, y + 19, '#e6e6e6', 16);
-      const toggleX = startX + rowW - 60;
-      r.rect(toggleX, y + 16, 40, 24, row.value ? '#1f6feb' : '#374151', true);
+      // Row separator line
+      r.line(new Vec2(startX, y + rowH), new Vec2(startX + rowW, y + rowH), 'rgba(255, 255, 255, 0.05)', 1);
+      
+      // Label text
+      r.text(row.label, startX + 4, y + 14, '#e2e8f0', 14, 'left', 'bold');
+      
+      // Modern slide toggle switch
+      const toggleW = 38;
+      const toggleH = 20;
+      const toggleX = startX + rowW - toggleW - 4;
+      const toggleY = y + 12;
+      
+      // Toggle track background
+      r.roundRect(toggleX, toggleY, toggleW, toggleH, 10, row.value ? '#10b981' : '#334155', true);
+      
+      // Toggle handle circular slider
       r.circle(
-        new Vec2(row.value ? toggleX + 30 : toggleX + 10, y + 28),
-        9,
-        '#fff',
+        new Vec2(row.value ? toggleX + toggleW - 10 : toggleX + 10, toggleY + 10),
+        7,
+        '#ffffff'
       );
+      
       this.regions.push({ x: startX, y, w: rowW, h: rowH, action: row.action });
-      y += rowH + 12;
+      y += rowH;
     }
-
-    const btnW = 200;
-    const btnH = 44;
+    
+    // Back button at the bottom of the settings card
+    const btnW = cardW - 64;
+    const btnH = 36;
     const btnX = cx - btnW / 2;
-    const btnY = y + 12;
-    r.rect(btnX, btnY, btnW, btnH, '#374151', true);
-    r.text('Back', cx, btnY + 13, '#fff', 16, 'center');
+    const btnY = cardY + cardH - btnH - 20;
+    
+    const btnGrad = r.linearGradient(btnX, btnY, btnX, btnY + btnH, [
+      { offset: 0, color: '#475569' },
+      { offset: 1, color: '#1e293b' }
+    ]);
+    r.roundRect(btnX, btnY, btnW, btnH, 8, btnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
+    r.text('Back', cx, btnY + 10, '#ffffff', 13, 'center', 'bold');
+    
     this.regions.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: 'back' });
   }
 

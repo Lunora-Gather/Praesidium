@@ -6,7 +6,7 @@ import { Input } from './engine/Input';
 import { Renderer } from './engine/Renderer';
 import { Audio } from './engine/Audio';
 import { GameState } from './game/GameState';
-import { HUD, HudRegions } from './ui/HUD';
+import { HUD, HudRegions, TOP_H, BOT_H } from './ui/HUD';
 import { Screens, MenuClickAction } from './ui/Screens';
 import { WorldRenderer } from './ui/WorldRenderer';
 import { TOWER_LIST } from './game/towers/TowerRegistry';
@@ -31,16 +31,19 @@ import { dailySeed } from './utils/DailyChallenge';
 // Logs the error and shows a subtle red indicator instead of a blank screen.
 window.addEventListener('error', (e) => {
   console.error('[Praesidium] Unhandled error:', e.error ?? e.message);
-  const indicator = document.getElementById('err-indicator');
-  if (indicator) indicator.textContent = '⚠ Error — see console';
+  const el = document.getElementById('err');
+  const msg = document.getElementById('err-msg');
+  if (el && msg) { msg.textContent = (e.error?.stack) ?? e.message ?? 'Error'; el.style.display = 'flex'; }
 });
 window.addEventListener('unhandledrejection', (e) => {
   console.error('[Praesidium] Unhandled promise rejection:', e.reason);
+  const el = document.getElementById('err');
+  const msg = document.getElementById('err-msg');
+  if (el && msg) { msg.textContent = (e.reason?.stack) ?? String(e.reason) ?? 'Promise rejected'; el.style.display = 'flex'; }
 });
 
-const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-const boot = document.getElementById('boot');
-if (boot) boot.remove();
+const canvas = document.getElementById('c') as HTMLCanvasElement;
+if (!canvas) throw new Error('Canvas element #c not found in DOM');
 
 const renderer = new Renderer(canvas);
 const input = new Input(canvas);
@@ -124,25 +127,34 @@ state.bus.on('towerSold', () => audio.place());
 state.bus.on('towerUpgraded', () => audio.place());
 state.combat.bus.on('hit', (p) => { audio.hit(); state.particles.hit(new Vec2(p.x, p.y), '#fff'); state.particles.floatText(new Vec2(p.x, p.y - 10), `-${Math.round(p.damage)}`, '#ff8a65'); });
 state.combat.bus.on('kill', (p) => { audio.enemyDie(); state.particles.death(new Vec2(p.x, p.y), p.enemy.color); const reward = Math.round(p.enemy.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul); state.particles.floatText(new Vec2(p.x, p.y - 16), `+${reward}g`, '#ffd54f', 1.0); if (p.enemy.isBoss) renderer.shake(12); else renderer.shake(3); });
-state.combat.bus.on('splash', (p) => { state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4); renderer.shake(5); });
+state.combat.bus.on('splash', (p) => {
+  state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4);
+  state.particles.shockwave(new Vec2(p.x, p.y), p.radius, '#ff8a65', 0.4);
+  renderer.shake(5);
+});
 state.bus.on('phaseChanged', ({ to }) => {
   if (to === 'won') { audio.win(); music.stop(); state.clearSave(); }
   if (to === 'lost') { audio.lose(); music.stop(); state.clearSave(); }
   if (to === 'playing') music.start();
   if (to === 'menu' || to === 'levelSelect') music.stop();
 });
-state.bus.on('spellCast', () => audio.waveStart());
+state.bus.on('spellCast', ({ id }) => {
+  audio.spellCast(id);
+  if (id === 'meteor') {
+    renderer.shake(16);
+  } else if (id === 'freeze') {
+    renderer.shake(8);
+  }
+});
 // mid-run save on every wave boundary
 state.bus.on('waveChanged', () => state.autoSave());
 
 function camOffset(): { camX: number; camY: number } {
-  const topBar = 48;
-  const shopH = 64;
   const availW = renderer.width;
-  const availH = renderer.height - topBar - shopH;
+  const availH = renderer.height - TOP_H - BOT_H;
   return {
     camX: (availW - state.grid.widthPx) / 2,
-    camY: topBar + Math.max(0, (availH - state.grid.heightPx) / 2),
+    camY: TOP_H + Math.max(0, (availH - state.grid.heightPx) / 2),
   };
 }
 
@@ -319,8 +331,8 @@ const update = (dt: number): void => {
         else showTalent = false; // click outside closes
         continue;
       }
-      if (c.y < 48) continue; // top bar no-op
-      if (c.y > renderer.height - 64) handleHUDClick(c.x, c.y);
+      if (c.y < TOP_H) continue; // top bar no-op
+      if (c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y);
       else if (state.selectedSpellId) {
         const { wx, wy } = screenToWorld(c.x, c.y);
         state.castSpell(state.selectedSpellId, new Vec2(wx, wy));
@@ -372,26 +384,40 @@ const render = (_alpha: number): void => {
   renderer.clear();
   renderer.updateShake();
 
-  // starfield behind pure overlay screens (menu/levelSelect only;
-  // won/lost still show the game world underneath)
+  // Reset camera for background starfield (screen-space)
+  renderer.camX = 0;
+  renderer.camY = 0;
   if (state.phase === 'menu' || state.phase === 'levelSelect') starfield.draw(renderer);
 
   const { camX, camY } = camOffset();
-  renderer.camX = camX;
-  renderer.camY = camY;
-  renderer.zoom = 1;
 
   if (state.phase === 'playing' || state.phase === 'won' || state.phase === 'lost') {
+    // Translate camera for world-space entities
+    renderer.camX = camX;
+    renderer.camY = camY;
+    renderer.zoom = 1;
     worldRenderer.draw(renderer, state, settings.get());
     state.particles.draw(renderer);
+
+    // Compute screen position of selected tower before resetting camera
+    let towerScreenPos: Vec2 | null = null;
+    if (state.selectedTower && state.phase === 'playing') {
+      towerScreenPos = renderer.toScreen(state.selectedTower.pos);
+    }
+
+    // Reset camera for screen-space HUD and overlays
+    renderer.camX = 0;
+    renderer.camY = 0;
+
     hudRegions = hud.draw(renderer, state, gameSpeed, autoSend);
     drawSpells(renderer);
-    if (state.selectedTower && state.phase === 'playing') {
-      const s = renderer.toScreen(state.selectedTower.pos);
-      towerPanel.draw(renderer, state.selectedTower, state.gold, s.x, s.y);
+    
+    if (towerScreenPos && state.selectedTower && state.phase === 'playing') {
+      towerPanel.draw(renderer, state.selectedTower, state.gold, towerScreenPos.x, towerScreenPos.y);
     } else {
       towerPanel.clear();
     }
+    
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
     if (showStats && state.phase === 'playing') statsScreen.draw(renderer, state.analytics.get());
@@ -399,12 +425,22 @@ const render = (_alpha: number): void => {
     if (state.phase === 'won') screens.draw(renderer, 'won', state.score, 0, { stars: state.lastStars, kills: state.stats.get().kills, gold: state.stats.get().goldEarned });
     if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed, { wave: state.waves.current, kills: state.stats.get().kills });
     if (settings.get().showFps) renderer.text(`${state.fps} fps`, 8, 52, '#555', 11);
-  } else if (state.phase === 'levelSelect') {
-    levelSelect.draw(renderer);
   } else {
-    screens.draw(renderer, 'menu');
+    // Reset camera for pure menus and level select overlays
+    renderer.camX = 0;
+    renderer.camY = 0;
+    renderer.zoom = 1;
+
+    if (state.phase === 'levelSelect') {
+      levelSelect.draw(renderer);
+    } else {
+      screens.draw(renderer, 'menu');
+    }
   }
 
+  // Settings screen is always screen space
+  renderer.camX = 0;
+  renderer.camY = 0;
   if (showSettings) settingsScreen.draw(renderer);
 };
 
@@ -412,17 +448,35 @@ function drawSpells(r: Renderer): void {
   // spell bar left of HUD buttons, bottom-right
   const slotW = 56;
   const gap = 6;
-  const y = r.height - 64 + 8;
+  const y = r.height - BOT_H + 8;
   let x = r.width - 16 - (slotW + gap) * state.spells.length;
   for (const sp of state.spells) {
     const ready = sp.ready && state.gold >= sp.def.cost;
-    r.rect(x, y, slotW, 48, ready ? '#1f2937' : '#0d1320', true);
-    r.rect(x, y, slotW, 48, ready ? '#3a506b' : '#1a1a1a', false);
-    r.text(sp.def.name, x + slotW / 2, y + 6, ready ? '#fff' : '#555', 11, 'center');
-    r.text(`${sp.def.cost}g`, x + slotW / 2, y + 26, ready ? '#ffd54f' : '#555', 10, 'center');
+    
+    let bg: string | CanvasGradient;
+    let border: string;
+    if (ready) {
+      bg = r.linearGradient(x, y, x, y + 48, [
+        { offset: 0, color: 'rgba(30, 41, 59, 0.9)' },
+        { offset: 1, color: 'rgba(15, 23, 42, 0.9)' }
+      ]);
+      border = '#fbbf24'; // glowing gold border
+      r.setShadow('rgba(251, 191, 36, 0.35)', 8, 0, 0);
+    } else {
+      bg = 'rgba(15, 23, 42, 0.4)';
+      border = 'rgba(255, 255, 255, 0.03)';
+    }
+    
+    r.roundRect(x, y, slotW, 48, 6, bg, true, border, 1);
+    r.clearShadow();
+    
+    r.text(sp.def.name, x + slotW / 2, y + 6, ready ? '#f8fafc' : '#475569', 11, 'center', 'bold');
+    r.text(`${sp.def.cost}g`, x + slotW / 2, y + 26, ready ? '#fbbf24' : '#475569', 10, 'center', 'bold');
+    
     if (!sp.ready) {
       const cdH = Math.round(48 * (sp.cooldown / sp.def.cooldown));
-      r.rect(x, y + 48 - cdH, slotW, cdH, '#00000088', true);
+      // Cooldown semi-transparent overlay
+      r.roundRect(x, y + 48 - cdH, slotW, cdH, 0, 'rgba(0, 0, 0, 0.65)', true);
     }
     x += slotW + gap;
   }

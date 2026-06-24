@@ -18,33 +18,69 @@ export class LevelSelect {
 
   draw(r: Renderer): void {
     this.regions = [];
-    r.rect(0, 0, r.width, r.height, '#0a0e14');
+    
+    // Smooth dark background gradient
+    const bgGrad = r.linearGradient(0, 0, 0, r.height, [
+      { offset: 0, color: '#090d16' },
+      { offset: 1, color: '#02060c' }
+    ]);
+    r.rect(0, 0, r.width, r.height, bgGrad);
+    
     const cx = r.width / 2;
-    r.text('SELECT LEVEL', cx, 70, '#8ab4f8', 32, 'center');
+    
+    // Header gradient title
+    const titleGrad = r.linearGradient(cx - 100, 48, cx + 100, 48, [
+      { offset: 0, color: '#60a5fa' },
+      { offset: 1, color: '#3b82f6' }
+    ]);
+    r.text('SELECT LEVEL', cx, 40, titleGrad, 28, 'center', 'bold');
 
-    // difficulty picker row
-    const diffBtnW = 100;
-    const diffGap = 12;
+    // Difficulty picker row
+    const diffBtnW = 92;
+    const diffGap = 10;
     const diffTotalW = DIFFICULTY_LIST.length * diffBtnW + (DIFFICULTY_LIST.length - 1) * diffGap;
     let dx = cx - diffTotalW / 2;
-    const diffY = 110;
+    const diffY = 86;
+    const diffH = 26;
+    
     for (const d of DIFFICULTY_LIST) {
       const sel = d.id === this.selectedDiff;
-      r.rect(dx, diffY, diffBtnW, 32, sel ? '#1f6feb' : '#374151', true);
-      r.text(d.name, dx + diffBtnW / 2, diffY + 9, '#fff', 13, 'center');
-      this.regions.push({ x: dx, y: diffY, w: diffBtnW, h: 32, action: { kind: 'diff', diff: d.id } });
+      let btnBg: string | CanvasGradient;
+      let btnBorder: string;
+      
+      if (sel) {
+        btnBg = r.linearGradient(dx, diffY, dx, diffY + diffH, [
+          { offset: 0, color: '#3b82f6' },
+          { offset: 1, color: '#1d4ed8' }
+        ]);
+        btnBorder = '#3b82f6';
+        r.setShadow('rgba(59, 130, 246, 0.4)', 8, 0, 0);
+      } else {
+        btnBg = r.linearGradient(dx, diffY, dx, diffY + diffH, [
+          { offset: 0, color: '#334155' },
+          { offset: 1, color: '#1e293b' }
+        ]);
+        btnBorder = 'rgba(255, 255, 255, 0.08)';
+      }
+      
+      r.roundRect(dx, diffY, diffBtnW, diffH, 13, btnBg, true, btnBorder, 1);
+      r.clearShadow();
+      
+      r.text(d.name, dx + diffBtnW / 2, diffY + 6, '#ffffff', 11, 'center', 'bold');
+      this.regions.push({ x: dx, y: diffY, w: diffBtnW, h: diffH, action: { kind: 'diff', diff: d.id } });
       dx += diffBtnW + diffGap;
     }
 
-    const cardW = 180;
-    const cardH = 100;
+    // Grid Level Cards
+    const cardW = 190;
+    const cardH = 110;
     const gap = 16;
     const total = this.levels.total;
-    const cols = Math.min(3, total); // max 3 per row, wraps on mobile
+    const cols = Math.min(3, total); // wraps on smaller width
     const rows = Math.ceil(total / cols);
     const totalW = cols * cardW + (cols - 1) * gap;
     const startX = cx - totalW / 2;
-    const startY = 160;
+    const startY = 135;
 
     for (let i = 0; i < total; i++) {
       const col = i % cols;
@@ -53,29 +89,59 @@ export class LevelSelect {
       const y = startY + row * (cardH + gap);
       const unlocked = i + 1 <= this.save.get().maxLevelReached;
       const levelName = this.levels.levelAt(i).name;
-      r.rect(x, y, cardW, cardH, unlocked ? '#1f2937' : '#0d1320', true);
-      r.rect(x, y, cardW, cardH, unlocked ? '#3a506b' : '#1a1a1a', false);
-      r.text(`Level ${i + 1}`, x + cardW / 2, y + 18, unlocked ? '#fff' : '#555', 18, 'center');
-      r.text(levelName, x + cardW / 2, y + 48, unlocked ? '#9aa0a6' : '#444', 13, 'center');
+      
+      let cardBg: string | CanvasGradient;
+      let cardBorder: string;
+      
       if (unlocked) {
-        // show best stars as ★/☆
+        cardBg = r.linearGradient(x, y, x, y + cardH, [
+          { offset: 0, color: 'rgba(30, 41, 59, 0.8)' },
+          { offset: 1, color: 'rgba(15, 23, 42, 0.8)' }
+        ]);
+        cardBorder = 'rgba(255, 255, 255, 0.1)';
+      } else {
+        cardBg = 'rgba(15, 23, 42, 0.4)';
+        cardBorder = 'rgba(255, 255, 255, 0.03)';
+      }
+
+      r.roundRect(x, y, cardW, cardH, 12, cardBg, true, cardBorder, 1);
+      
+      // Card content
+      r.text(`LEVEL ${i + 1}`, x + cardW / 2, y + 14, unlocked ? '#94a3b8' : '#475569', 10, 'center', 'bold');
+      r.text(levelName, x + cardW / 2, y + 32, unlocked ? '#ffffff' : '#475569', 15, 'center', 'bold');
+      
+      if (unlocked) {
+        // Glowing stars
         const stars = this.save.getStars(i + 1);
-        const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
-        r.text(starStr, x + cardW / 2, y + 70, stars >= 3 ? '#ffd54f' : '#9aa0a6', 16, 'center');
-        r.text('Click to play', x + cardW / 2, y + 92, '#8ab4f8', 11, 'center');
+        const starY = y + 54;
+        r.setShadow('rgba(251, 191, 36, 0.3)', 8, 0, 0);
+        for (let s = 0; s < 3; s++) {
+          const starX = cx - (cardW / 2) + col * (cardW + gap) + (cardW / 2) - 24 + s * 24;
+          const active = s < stars;
+          r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#475569', 20, 'center');
+        }
+        r.clearShadow();
+        
+        r.text('CLICK TO PLAY', x + cardW / 2, y + 84, '#60a5fa', 10, 'center', 'bold');
         this.regions.push({ x, y, w: cardW, h: cardH, action: { kind: 'level', index: i } });
       } else {
-        r.text('Locked', x + cardW / 2, y + 78, '#555', 12, 'center');
+        r.text('LOCKED', x + cardW / 2, y + 64, '#475569', 12, 'center', 'bold');
       }
     }
 
-    const btnY = startY + rows * (cardH + gap) + 20;
-    r.text('← Back to Menu (click below)', cx, btnY, '#9aa0a6', 14, 'center');
-    const bw = 160;
+    // Back to Menu Button
+    const btnY = startY + rows * (cardH + gap) + 15;
+    const bw = 180;
+    const bh = 36;
     const bx = cx - bw / 2;
-    r.rect(bx, btnY + 20, bw, 40, '#374151', true);
-    r.text('Menu', cx, btnY + 33, '#fff', 14, 'center');
-    this.regions.push({ x: bx, y: btnY + 20, w: bw, h: 40, action: { kind: 'back' } });
+    
+    const backBtnGrad = r.linearGradient(bx, btnY, bx, btnY + bh, [
+      { offset: 0, color: '#475569' },
+      { offset: 1, color: '#1e293b' }
+    ]);
+    r.roundRect(bx, btnY, bw, bh, 8, backBtnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
+    r.text('Menu', cx, btnY + 9, '#ffffff', 13, 'center', 'bold');
+    this.regions.push({ x: bx, y: btnY, w: bw, h: bh, action: { kind: 'back' } });
   }
 
   hit(x: number, y: number): ClickAction | null {

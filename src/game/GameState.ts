@@ -196,7 +196,8 @@ export class GameState {
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('spellCast', { id, x: target.x, y: target.y });
     if (sp.def.damage && sp.def.radius) {
-      this.particles.burst(target, 20, sp.def.color, 200, 0.6, 5);
+      this.particles.burst(target, 24, sp.def.color, 200, 0.65, 5);
+      this.particles.shockwave(target, sp.def.radius, sp.def.color, 0.65);
     }
     return true;
   }

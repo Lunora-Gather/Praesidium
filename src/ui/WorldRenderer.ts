@@ -10,6 +10,8 @@ import { TileType } from '../game/grid/Level';
 import { Vec2 } from '../engine/math/Vec2';
 import { getTowerDef } from '../game/towers/TowerRegistry';
 import type { Settings } from '../config/Settings';
+import { DamageType } from '../game/DamageType';
+import { TOP_H, BOT_H } from './HUD';
 
 export class WorldRenderer {
   private staticCanvas: HTMLCanvasElement | null = null;
@@ -20,12 +22,10 @@ export class WorldRenderer {
     const g = s.grid;
 
     // center the grid horizontally in available space (between top bar and shop)
-    const topBar = 48;
-    const shopH = 64;
     const availW = r.width;
-    const availH = r.height - topBar - shopH;
+    const availH = r.height - TOP_H - BOT_H;
     r.camX = (availW - g.widthPx) / 2;
-    r.camY = topBar + Math.max(0, (availH - g.heightPx) / 2);
+    r.camY = TOP_H + Math.max(0, (availH - g.heightPx) / 2);
     r.zoom = 1;
 
     // cache key = level dimensions + tile size + waypoint signature.
@@ -39,9 +39,10 @@ export class WorldRenderer {
     // blit cached static layer (already in world space; draw through identity cam)
     if (this.staticCanvas) {
       const ctx = r.ctx;
+      const dpr = window.devicePixelRatio || 1;
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(this.staticCanvas, r.camX, r.camY);
+      ctx.drawImage(this.staticCanvas, r.camX * dpr, r.camY * dpr);
       ctx.restore();
     }
 
@@ -116,6 +117,13 @@ export class WorldRenderer {
       for (let i = 0; i < t.level - 1; i++) {
         r.circle(new Vec2(t.pos.x - 6 + i * 5, t.pos.y - t.def.radius - 6), 2, '#ffd54f');
       }
+      // laser targeting pointer (draw a faint laser line from tower to enemy target)
+      if (t.currentTarget && !t.currentTarget.dead) {
+        r.ctx.save();
+        r.ctx.globalAlpha = 0.12; // very faint
+        r.line(t.pos, t.currentTarget.pos, t.def.color, 1.5);
+        r.ctx.restore();
+      }
     }
 
     // enemies — distinctive shapes per type
@@ -181,14 +189,20 @@ export class WorldRenderer {
 
     // projectiles + trail
     for (const p of s.projectiles) {
-      // draw fading trail
-      if (p.trail.length > 1) {
-        for (let i = 1; i < p.trail.length; i++) {
-          const alpha = i / p.trail.length;
-          r.ctx.globalAlpha = alpha * 0.5;
-          r.line(p.trail[i - 1], p.trail[i], p.color, p.splash ? 3 : 2);
+      if (p.damageType === DamageType.Lightning) {
+        if (p.trail.length > 0) {
+          this.drawLightning(r.ctx, r, p.trail[0], p.pos, p.color, r.zoom);
         }
-        r.ctx.globalAlpha = 1;
+      } else {
+        // draw fading trail
+        if (p.trail.length > 1) {
+          for (let i = 1; i < p.trail.length; i++) {
+            const alpha = i / p.trail.length;
+            r.ctx.globalAlpha = alpha * 0.5;
+            r.line(p.trail[i - 1], p.trail[i], p.color, p.splash ? 3 : 2);
+          }
+          r.ctx.globalAlpha = 1;
+        }
       }
       r.circle(p.pos, p.splash ? 4 : 3, p.color);
     }
@@ -204,6 +218,47 @@ export class WorldRenderer {
       r.circle(center, def.range, ok ? '#1f6feb' : '#e57373', false);
       r.rect(s.hoverTile.tx * g.tile, s.hoverTile.ty * g.tile, g.tile, g.tile, ok ? '#1f6feb55' : '#e5737355', true);
     }
+  }
+
+  private drawLightning(ctx: CanvasRenderingContext2D, r: Renderer, from: Vec2, to: Vec2, color: string, z: number): void {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5 * z;
+    ctx.beginPath();
+    
+    const sFrom = r.toScreen(from);
+    const sTo = r.toScreen(to);
+    
+    const diff = sTo.sub(sFrom);
+    const dist = diff.len();
+    if (dist <= 0.1) {
+      ctx.restore();
+      return;
+    }
+    const segments = Math.max(3, Math.floor(dist / 12));
+    
+    ctx.moveTo(sFrom.x, sFrom.y);
+    for (let i = 1; i <= segments; i++) {
+      const t = i / segments;
+      const targetPoint = sFrom.add(diff.mul(t));
+      if (i < segments) {
+        const dir = diff.normalize();
+        const perp = new Vec2(-dir.y, dir.x);
+        const offset = (Math.random() - 0.5) * 8 * z;
+        const nextPoint = targetPoint.add(perp.mul(offset));
+        ctx.lineTo(nextPoint.x, nextPoint.y);
+      } else {
+        ctx.lineTo(sTo.x, sTo.y);
+      }
+    }
+    ctx.stroke();
+    
+    // inner white core for electrical look
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 0.8 * z;
+    ctx.stroke();
+    
+    ctx.restore();
   }
 
   /** Render the static layer (tiles + path + spawn/goal) to an offscreen canvas. */

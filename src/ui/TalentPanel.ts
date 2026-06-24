@@ -11,20 +11,35 @@ export class TalentPanel {
 
   draw(r: Renderer, talents: TalentTree): void {
     this.regions = [];
-    // full-screen semi-transparent overlay
-    r.rect(0, 0, r.width, r.height, '#0a0e14dd', true);
+    
+    // Dim background with overlay gradient
+    const bgGrad = r.linearGradient(0, 0, 0, r.height, [
+      { offset: 0, color: 'rgba(10, 14, 20, 0.85)' },
+      { offset: 1, color: 'rgba(17, 24, 39, 0.95)' }
+    ]);
+    r.rect(0, 0, r.width, r.height, bgGrad);
 
     const cx = r.width / 2;
-    r.text(t('talent.title'), cx, 40, '#8ab4f8', 28, 'center');
-    r.text(`${t('talent.points')}: ${talents.talentPoints}`, cx, 75, '#ffd54f', 18, 'center');
+    
+    // Header gradient title
+    const titleGrad = r.linearGradient(cx - 100, 36, cx + 100, 36, [
+      { offset: 0, color: '#60a5fa' },
+      { offset: 1, color: '#3b82f6' }
+    ]);
+    r.text(t('talent.title'), cx, 24, titleGrad, 26, 'center', 'bold');
+    
+    // Points count
+    r.setShadow('rgba(251, 191, 36, 0.3)', 10, 0, 0);
+    r.text(`${t('talent.points')}: ${talents.talentPoints}`, cx, 58, '#fbbf24', 16, 'center', 'bold');
+    r.clearShadow();
 
-    const cardW = 180;
-    const cardH = 100;
+    const cardW = 190;
+    const cardH = 108;
     const gap = 16;
     const cols = 3;
     const totalW = cols * cardW + (cols - 1) * gap;
     const startX = cx - totalW / 2;
-    const startY = 110;
+    const startY = 88;
 
     for (let i = 0; i < TALENTS.length; i++) {
       const def = TALENTS[i];
@@ -35,35 +50,59 @@ export class TalentPanel {
 
       const rank = talents.rank(def.id);
       const canUp = talents.canRankUp(def.id);
-      const bg = canUp ? '#1f2937' : '#111827';
-      const border = rank >= def.maxRank ? '#ffd54f' : canUp ? '#3a506b' : '#1a1a1a';
+      const isMax = rank >= def.maxRank;
+      
+      let cardBg: string | CanvasGradient;
+      let cardBorder: string;
+      
+      if (isMax) {
+        cardBg = r.linearGradient(x, y, x, y + cardH, [
+          { offset: 0, color: 'rgba(10, 15, 30, 0.8)' },
+          { offset: 1, color: 'rgba(15, 23, 42, 0.9)' }
+        ]);
+        cardBorder = '#fbbf24';
+        r.setShadow('rgba(251, 191, 36, 0.2)', 8, 0, 0);
+      } else if (canUp) {
+        cardBg = r.linearGradient(x, y, x, y + cardH, [
+          { offset: 0, color: 'rgba(30, 41, 59, 0.85)' },
+          { offset: 1, color: 'rgba(15, 23, 42, 0.85)' }
+        ]);
+        cardBorder = '#3b82f6';
+        r.setShadow('rgba(59, 130, 246, 0.25)', 8, 0, 0);
+      } else {
+        cardBg = 'rgba(15, 23, 42, 0.4)';
+        cardBorder = 'rgba(255, 255, 255, 0.03)';
+      }
 
-      r.rect(x, y, cardW, cardH, bg, true);
-      r.rect(x, y, cardW, cardH, border, false);
+      r.roundRect(x, y, cardW, cardH, 12, cardBg, true, cardBorder, canUp || isMax ? 1.5 : 1);
+      r.clearShadow();
 
-      r.text(def.name, x + cardW / 2, y + 12, '#e6e6e6', 14, 'center');
-      r.text(def.description, x + cardW / 2, y + 32, '#9aa0a6', 10, 'center');
+      // Talent name & info
+      r.text(def.name, x + cardW / 2, y + 10, '#f8fafc', 13, 'center', 'bold');
+      r.text(def.description, x + cardW / 2, y + 26, '#94a3b8', 9, 'center');
 
-      // rank bar: filled pips
-      const pipW = 24;
+      // Rank bar with glowing pill pips
+      const pipW = 20;
       const pipGap = 4;
       const pipsW = def.maxRank * pipW + (def.maxRank - 1) * pipGap;
       let px = x + (cardW - pipsW) / 2;
-      const pipY = y + 52;
+      const pipY = y + 46;
       for (let p = 0; p < def.maxRank; p++) {
-        r.rect(px, pipY, pipW, 8, p < rank ? '#1f6feb' : '#222', true);
-        r.rect(px, pipY, pipW, 8, '#3a506b', false);
+        const active = p < rank;
+        const pipColor = active ? (isMax ? '#fbbf24' : '#3b82f6') : '#1e293b';
+        r.roundRect(px, pipY, pipW, 6, 3, pipColor, true);
         px += pipW + pipGap;
       }
 
-      // rank text
-      r.text(`${rank}/${def.maxRank}`, x + cardW / 2, y + 72, '#fff', 12, 'center');
+      // Rank status text
+      r.text(`${rank}/${def.maxRank}`, x + cardW / 2, y + 62, '#ffffff', 11, 'center', 'bold');
 
-      // cost hint
-      if (rank < def.maxRank) {
-        r.text(`${def.costPerRank}pt`, x + cardW / 2, y + 88, canUp ? '#ffd54f' : '#555', 10, 'center');
+      // Spend cost hint
+      const hintY = y + 80;
+      if (isMax) {
+        r.text('MAXED', x + cardW / 2, hintY, '#fbbf24', 10, 'center', 'bold');
       } else {
-        r.text('MAX', x + cardW / 2, y + 88, '#ffd54f', 10, 'center');
+        r.text(`${def.costPerRank} PT`, x + cardW / 2, hintY, canUp ? '#fbbf24' : '#475569', 10, 'center', 'bold');
       }
 
       if (canUp) {
@@ -71,8 +110,9 @@ export class TalentPanel {
       }
     }
 
-    // close hint
-    r.text(t('talent.close'), cx, startY + Math.ceil(TALENTS.length / cols) * (cardH + gap) + 20, '#9aa0a6', 13, 'center');
+    // Close screen hints
+    const closeY = startY + Math.ceil(TALENTS.length / cols) * (cardH + gap) + 12;
+    r.text(t('talent.close'), cx, closeY, '#64748b', 12, 'center', 'bold');
   }
 
   hit(x: number, y: number): string | null {
