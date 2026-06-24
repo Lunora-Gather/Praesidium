@@ -1,123 +1,134 @@
-# Praesidium
+# 🛡️ Praesidium (守望)
 
-> A super large-scale tower defense game — runs in any modern browser, zero install for players.
+> **A Premium Web-Based Sci-Fi Tower Defense Game**
+> 
+> *Zero Install, High Performance, Immersive Aesthetics, and Fully Responsive Play.*
 
-Praesidium (Latin: "defense / protection") is a web-based tower defense game built with **TypeScript + HTML5 Canvas + Vite**. No engine, no runtime dependencies for end users — just open the URL and play.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.2-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
+[![HTML5 Canvas](https://img.shields.io/badge/HTML5-Canvas-E34F26?style=flat-square&logo=html5)](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
+[![Web Audio API](https://img.shields.io/badge/Web_Audio-Synthesis-059669?style=flat-square)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Deploy-22c55e?style=flat-square&logo=github)](https://lunora-gather.github.io/Praesidium/)
 
-## Play
+**Praesidium** (Latin: *"defense / protection"*) is a super-scale, high-fidelity tower defense game built directly on the web with pure **TypeScript, HTML5 Canvas, and Vite**. With zero engine overhead, zero graphic assets (all procedural rendering), and zero audio files (all procedural sound synthesis), the entire game compiles to a tiny self-contained static site (~90 KB total).
+
+👉 **[Play the Online Live Demo Here!](https://lunora-gather.github.io/Praesidium/)** (Ensure your browser has GitHub Actions Pages enabled)
+
+---
+
+## 🎮 How to Play
+
+### Local Development Server
 
 ```bash
+# Install dependencies
 npm install
-npm run dev      # opens http://localhost:5173
+
+# Start the dev server with LAN exposure and hot-reload
+npm run dev
+
+# Open in your browser:
+# Local: http://localhost:5175
+# LAN: http://10.150.246.105:5175 (or your local IP)
 ```
 
-Build for production:
+### Build and Local Preview
 
 ```bash
-npm run build    # outputs static files to dist/
+# Build the production optimized bundle
+npm run build
+
+# Start a local preview of the production build
+npm run preview -- --host --port 4174
+
+# Open: http://localhost:4174
 ```
 
-The `dist/` folder is fully self-contained — drop it on any static host (GitHub Pages, Vercel, Netlify, S3, even a plain `file://` open).
+---
 
-## Features (Phase 3 — full systems suite)
+## ✨ Features
 
-- **Fixed-timestep game loop** with render interpolation (60 Hz update, smooth render)
-- **Data-driven design** — add towers/enemies/spells by dropping a definition object, no engine code changes
-- **Grid map** with serpentine paths, buildable tiles, spawn & goal markers
-- **A\* pathfinding** ready for dynamic obstacle avoidance when towers block tiles
-- **6 tower archetypes**: Turret, Sniper, Mortar(splash), Frost(slow), Tesla, Cannon — each with damage type, target strategy, 3 upgrade levels
-- **5 enemy types**: Grunt, Scout, Brute, Zealot, Boss — with damage resistances (rock-paper-scissors)
-- **Typed damage system**: Physical / Fire / Ice / Lightning + per-enemy resistance maps
-- **Tower targeting strategies**: first/last/strongest/weakest/closest — cyclable per-tower (KeyT)
-- **Homing projectiles** with finite lifetime, splash, slow, damage type
-- **3 player spells**: Meteor (AoE Fire), Freeze (global slow), Repair (heal lives) — cooldown + gold cost
-- **Wave system** — 12 waves with escalating HP, boss every 6th wave, force-next-wave button
-- **Economy** — gold from kills, tower placement cost, upgrade cost, sell refund, spell cost
-- **Lives & win/lose** — lose a life per enemy that reaches the goal; win when all waves cleared
-- **3 levels** with distinct layouts + LevelManager + level select screen
-- **Star rating** per level based on lives retained (3/2/1 stars)
-- **Save system** — high score, level unlocks, tower unlocks, tutorial progress (localStorage)
-- **Settings** — mute/FPS/range/pause-on-blur toggles, persistent
-- **Particle effects** — hit sparks, death bursts, splash explosions
-- **Procedural audio** via Web Audio API — SFX + background music (no asset files)
-- **Tutorial** — contextual first-run hints that disappear after triggered
-- **Run statistics** — kills, towers placed, upgrades, spells cast, gold earned, damage dealt
-- **Unified input** — mouse + touch + keyboard (1-6 tower, Q/W/E spell, Space pause, Esc menu, S sell, U upgrade, T cycle target)
-- **HUD** — gold, lives, wave counter, score, tower shop, spell bar, control buttons
-- **Screen overlays** — main menu, level select, pause, victory, defeat, settings
-- **19 unit tests** — core logic verified (stars, resistance, upgrades, A*, vectors)
+### 🎨 1. Premium Sci-Fi Visual Polish
+* **Dual-Font System**: Integrates Google Fonts CDN (Inter for clean, high-readability labels; Orbitron for futuristic headers, scores, wave numbers, and combos).
+* **Glassmorphism UI**: Modal cards use translucent backdrops, neon glow shadows, and dynamic gradient borders that transition based on state (emerald for victory, coral-red for defeat, sapphire-blue for pause/menu).
+* **Precise Vertical Centering**: Text aligns perfectly across all buttons, cards, list rows, and overlays using native `'middle'` baselines.
 
-## Architecture
+### 📱 2. Fully Responsive HUD for All Devices
+* **Stat Pill Compression**: On screens narrower than 850px, labels automatically contract to single letters (`GOLD` ➔ `G`, `LIVES` ➔ `L`, `W` / `S`) and shrink font sizes to eliminate overlaps.
+* **Micro-Icon Buttons**: Navigation buttons adapt to emoji-based icon mode (e.g., `☰`, `⚙`, `🏆`, `⏸`, `⟳`) on smaller screens.
+* **Intelligent Truncation**: Hides non-critical gameplay features (Stats, Settings, Talents) on screens narrower than 640px to maximize the canvas field.
 
-Designed for scale. Layers are decoupled so the game can grow to hundreds of tower/enemy types and many levels without rewriting core code.
+### 🔊 3. Procedural Audio & Music Synthesizer
+* **Distinct Tower Soundwaves**: Each of the 6 tower types generates distinct synthesizer patterns (laser hums, heavy mortar thuds, electric crackles, sniper reports, icy slows).
+* **Adaptive Music & Alarms**: Synthesises a procedural ambient space music loop in the background, complete with emergency warning sirens and screen shakes on life lost.
+* **Achievement Chimes**: Twin-chime victory sounds triggered upon achievement unlocks.
+
+### 🏆 4. Offline Leaderboards & Challenges
+* **Seeded NPC Leaderboard**: Generates realistic competitor scores based on Level indices or Endless/Daily seeds, enabling offline social comparison.
+* **Daily Challenge**: Compete on a global seed generated daily using your system date.
+* **Defeat Seed Sharing**: Easily copy your endless challenge seed to your clipboard via a one-click button on the game over screen.
+
+### 📈 5. Deep Progression & Economy
+* **Talent Tree**: Earn talent points from level stars to purchase persistent upgrades (Greed, Power, Vision, Haste, Fortitude, Arcane) that carry over to all subsequent runs.
+* **Achievements Panel**: Unlock in-game achievements (Architect, Upgrader, Archmage, Veteran) with smooth slide-in notification cards and audio alerts.
+* **6 Towers & 5 Enemy Types**: Standard rock-paper-scissors armor/type mechanics with physical, fire, ice, and lightning damage scaling.
+
+---
+
+## 🏗️ Architecture
+
+Decoupled model-view-controller setup. Game simulation is completely isolated from visual rendering.
 
 ```
 src/
-├── main.ts                 # entry: wires engine + game + UI, handles clicks
-├── engine/                 # generic engine layer (no game logic)
-│   ├── GameLoop.ts         # fixed-timestep loop + render interpolation
-│   ├── Input.ts            # mouse/touch/keyboard abstraction
-│   ├── Renderer.ts         # Canvas 2D primitives + camera
-│   ├── Audio.ts            # Web Audio procedural SFX
-│   └── math/Vec2.ts        # immutable 2D vector
-├── ecs/
-│   └── World.ts            # entity id allocation + dead-entity reaping
-├── game/                   # authoritative simulation
-│   ├── GameState.ts        # state machine, economy, lives, owns all entities
-│   ├── grid/
-│   │   ├── Grid.ts         # tile lookup, pixel<->tile conversion
-│   │   └── Level.ts        # level data + TileType enum
-│   ├── towers/
-│   │   ├── Tower.ts        # instance: cooldown, targeting, aiming
-│   │   └ TowerRegistry.ts  # data-driven tower definitions
-│   ├── enemies/
-│   │   ├── Enemy.ts        # instance: waypoint walking, HP, reward
-│   │   └── EnemyRegistry.ts# data-driven enemy definitions
-│   ├── projectiles/
-│   │   └── Projectile.ts   # homing bullet with splash/slow fields ready
-│   └── waves/
-│       └ WaveManager.ts    # spawn queue, wave progression, force-next
-├── ui/                     # pure rendering, mutates nothing
-│   ├── HUD.ts              # top bar + tower shop + control buttons
-│   ├── WorldRenderer.ts    # grid/path/towers/enemies/projectiles/hover preview
-│   └── Screens.ts          # menu / pause / victory / defeat overlays
-├── config/
-│   └── balance.ts          # ALL numerical tuning in one place
+├── main.ts                 # Controller: Entry point, wires update loop & clicks
+├── engine/                 # Generic Engine Layer (framework-agnostic)
+│   ├── GameLoop.ts         # Fixed-timestep loop (60Hz) with render interpolation
+│   ├── Input.ts            # Mouse, keyboard, and pointer touch abstractions
+│   ├── Renderer.ts         # Screen camera, lines, shapes, text wrappers
+│   └── Audio.ts            # Web Audio API synthesizers (SFX & music)
+├── game/                   # AUTHORITATIVE Game State
+│   ├── GameState.ts        # Core state machine, grid mapping, reapers, and waves
+│   ├── Achievements.ts     # Achievement definition and unlock trackers
+│   ├── Talents.ts          # Meta-upgrades persistence & multiplier maps
+│   ├── grid/               # Grids and LevelManager definitions
+│   ├── towers/             # Data-driven towers registries (Turret, Sniper, Mortar...)
+│   ├── enemies/            # Enemy stats, speeds, and resistances (Grunt, Boss...)
+│   ├── projectiles/        # Homing bullets, slows, lightning chains
+│   └── waves/              # Procedural WaveManager scaling with seeded Rng
+├── ui/                     # Pure View Layer (Visual layout & drawing only)
+│   ├── HUD.ts              # Stat pills, responsive top bar, and shop card carousel
+│   ├── WorldRenderer.ts    # Game board paths, ranges, level pips, and targets
+│   ├── StatsScreen.ts      # Tabbed panel: Detailed metrics & Rankings leaderboard
+│   ├── SettingsScreen.ts   # Mute, FPS, ranges toggles, and English/Chinese switch
+│   └── Screens.ts          # Main menu, level select, paused, victory overlays
 └── utils/
-    ├── EventBus.ts         # typed pub/sub (reserved for future decoupling)
-    ├── storage.ts          # localStorage persistence helper
-    └── rng.ts              # seeded RNG (mulberry32) for deterministic waves
+    ├── Leaderboard.ts      # Deterministic NPC generator for rankings
+    ├── SaveSystem.ts       # Performance throttled LocalStorage snapshot saver
+    └── rng.ts              # mulberry32 seeded generator for reproducible runs
 ```
 
-### Key design decisions
+---
 
-- **Data-driven registries** — `TowerRegistry` and `EnemyRegistry` are plain object maps. Adding a "Sniper" tower is one object literal; the combat loop never changes.
-- **Authoritative collisions in GameState** — projectiles only move themselves; damage application lives in `GameState.update` so splash/slow logic stays centralized.
-- **In-place array compaction** — dead entities are swept via a write-index rather than `Array.filter` reallocation, avoiding per-frame GC pressure.
-- **No external assets** — graphics are Canvas primitives, audio is synthesized. The whole game ships in ~21 KB JS (gzip ~7.5 KB).
+## 🛠️ Verification & Test Suite
 
-## Roadmap
+The project includes strict verification scripts ensuring no regressions occur during development:
 
-Phase 1 (this release) is the playable foundation. Planned:
+* **TypeScript type check**:
+  ```bash
+  npm run typecheck
+  ```
+* **Authoritative unit testing** (covers vector math, A* pathfinding, upgrade multipliers, resistances):
+  ```bash
+  npx tsx scripts/selftest.ts   # 33 passed, 0 failed
+  ```
+* **Save/Restore persistence round-trip check**:
+  ```bash
+  npx tsx scripts/save-restore-test.ts   # 23 passed, 0 failed
+  ```
 
-- **Phase 2**: multiple tower types (Sniper, Mortar/splash, Frost/slow), tower upgrades, sell UI
-- **Phase 3**: multiple levels + level select, boss enemies, enemy abilities
-- **Phase 4**: meta-progression — persistent unlocks, currency, upgrades across runs
-- **Phase 5**: polish — particle effects, screen shake, sprite art, music, save/load
-- **Phase 6**: accessibility (keyboard-only nav, colorblind palette), localization
+---
 
-## Tech stack
+## 📜 License
 
-| Layer | Choice | Why |
-|-------|--------|-----|
-| Language | TypeScript | Type safety + fast iteration |
-| Rendering | HTML5 Canvas 2D | Zero dependencies, native to browser, perfect for 2D TD |
-| Build | Vite | Instant HMR, tiny production output |
-| Audio | Web Audio API | Synthesized SFX, no asset files |
-| State | localStorage | Save/load without backend |
-
-No game engine, no framework, no runtime libraries shipped to the player.
-
-## License
-
-MIT — see `LICENSE` if added. Otherwise all rights reserved pending decision.
+This project is licensed under the MIT License - see the `LICENSE` file for details.
