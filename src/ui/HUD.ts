@@ -30,8 +30,8 @@ export class HUD {
       const icoW = 26;
       const valW = Math.max(36, val.length * 10);
       const total = icoW + valW + 4;
-      r.text(icon, x + 13, TOP_H / 2 - 8, '#64748b', 10, 'center', 'bold');
-      r.text(val,  x + icoW + 2, TOP_H / 2 - 7, color, 16, 'left', 'bold');
+      r.text(icon, x + 13, TOP_H / 2, '#64748b', 10, 'center', 'bold');
+      r.text(val,  x + icoW + 2, TOP_H / 2, color, 16, 'left', 'bold');
       return x + total + 12;
     };
 
@@ -39,19 +39,19 @@ export class HUD {
     lx = pill('GOLD',  `${s.gold}`,  '#fbbf24', lx);
     const livesCol = s.lives <= 5
       ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f87171')
-      : '#f87171';
+      : '#34d399'; // Emerald green when healthy
     lx = pill('LIVES', `${s.lives}`, livesCol, lx);
     lx = pill('WAVE',  `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399', lx);
     pill('SCORE', `${s.score}`, '#e2e8f0', lx);
 
     if (s.comboCount >= 3) {
       r.setShadow('rgba(239,68,68,0.5)', 8);
-      r.text(`🔥 COMBO ×${s.comboCount}`, r.width / 2, TOP_H / 2 - 8, '#f87171', 14, 'center', 'bold');
+      r.text(`🔥 COMBO ×${s.comboCount}`, r.width / 2, TOP_H / 2, '#f87171', 14, 'center', 'bold');
       r.clearShadow();
     }
 
     if (speed > 1) {
-      r.text(`${speed}×`, r.width / 2 + (s.comboCount >= 3 ? 110 : 0), TOP_H / 2 - 8, '#fef08a', 14, 'center', 'bold');
+      r.text(`${speed}×`, r.width / 2 + (s.comboCount >= 3 ? 110 : 0), TOP_H / 2, '#fef08a', 14, 'center', 'bold');
     }
 
     // RIGHT BUTTONS in top bar (compact icon-style)
@@ -68,7 +68,7 @@ export class HUD {
       if (active) r.setShadow(color, 6);
       r.roundRect(bx, btnY, w, btnH, 6, bg, true, border, 1);
       r.clearShadow();
-      r.text(label, bx + w / 2, btnY + 8, '#e2e8f0', 11, 'center', 'bold');
+      r.text(label, bx + w / 2, btnY + 15, '#e2e8f0', 11, 'center', 'bold');
       regions.buttons.push({ x: bx, y: btnY, w, h: btnH, action });
       bx -= 5;
     };

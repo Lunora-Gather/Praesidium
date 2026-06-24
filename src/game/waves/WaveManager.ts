@@ -166,6 +166,7 @@ export class WaveManager {
     let total = 0;
     const ids: string[] = [];
     for (const g of wave.enemies) {
+      if (g.count <= 0) continue;
       const scaled = Math.max(1, Math.round(g.count * this.diffCountMul));
       for (let i = 0; i < scaled; i++) ids.push(g.id);
       total += scaled;

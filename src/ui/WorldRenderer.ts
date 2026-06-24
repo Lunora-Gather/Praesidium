@@ -114,8 +114,12 @@ export class WorldRenderer {
         r.ctx.globalAlpha = 1;
       }
       // level pips above tower
-      for (let i = 0; i < t.level - 1; i++) {
-        r.circle(new Vec2(t.pos.x - 6 + i * 5, t.pos.y - t.def.radius - 6), 2, '#ffd54f');
+      const pipsCount = t.level - 1;
+      const pipGap = 5;
+      const totalWidth = (pipsCount - 1) * pipGap;
+      const startPipX = t.pos.x - totalWidth / 2;
+      for (let i = 0; i < pipsCount; i++) {
+        r.circle(new Vec2(startPipX + i * pipGap, t.pos.y - t.def.radius - 6), 2, '#ffd54f');
       }
       // laser targeting pointer (draw a faint laser line from tower to enemy target)
       if (t.currentTarget && !t.currentTarget.dead) {

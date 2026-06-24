@@ -66,7 +66,7 @@ export class LevelSelect {
       r.roundRect(dx, diffY, diffBtnW, diffH, 13, btnBg, true, btnBorder, 1);
       r.clearShadow();
       
-      r.text(d.name, dx + diffBtnW / 2, diffY + 6, '#ffffff', 11, 'center', 'bold');
+      r.text(d.name, dx + diffBtnW / 2, diffY + 13, '#ffffff', 11, 'center', 'bold');
       this.regions.push({ x: dx, y: diffY, w: diffBtnW, h: diffH, action: { kind: 'diff', diff: d.id } });
       dx += diffBtnW + diffGap;
     }
@@ -116,7 +116,7 @@ export class LevelSelect {
         const starY = y + 54;
         r.setShadow('rgba(251, 191, 36, 0.3)', 8, 0, 0);
         for (let s = 0; s < 3; s++) {
-          const starX = cx - (cardW / 2) + col * (cardW + gap) + (cardW / 2) - 24 + s * 24;
+          const starX = x + cardW / 2 - 24 + s * 24;
           const active = s < stars;
           r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#475569', 20, 'center');
         }
@@ -140,7 +140,7 @@ export class LevelSelect {
       { offset: 1, color: '#1e293b' }
     ]);
     r.roundRect(bx, btnY, bw, bh, 8, backBtnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text('Menu', cx, btnY + 9, '#ffffff', 13, 'center', 'bold');
+    r.text('Menu', cx, btnY + 18, '#ffffff', 13, 'center', 'bold');
     this.regions.push({ x: bx, y: btnY, w: bw, h: bh, action: { kind: 'back' } });
   }
 

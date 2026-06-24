@@ -101,8 +101,9 @@ if (savedRun && savedRun.v === 1) {
   logger.info('Restored mid-run save', { level: savedRun.levelIndex + 1, wave: savedRun.waveCurrent });
 }
 
-// sync audio mute with stored setting
+// sync audio and music mute with stored settings
 audio.setMuted(settings.get().muted);
+music.setMuted(settings.get().muted);
 
 // resume audio on first interaction (browser autoplay policy)
 const resumeAudio = (): void => audio.resume();
@@ -125,6 +126,8 @@ window.addEventListener('beforeunload', () => { if (state.phase === 'playing') s
 state.bus.on('towerPlaced', () => audio.place());
 state.bus.on('towerSold', () => audio.place());
 state.bus.on('towerUpgraded', () => audio.place());
+state.bus.on('towerFire', ({ id }) => audio.shoot(id));
+state.movement.bus.on('enemyReachedGoal', () => { audio.lifeLost(); renderer.shake(6); });
 state.combat.bus.on('hit', (p) => { audio.hit(); state.particles.hit(new Vec2(p.x, p.y), '#fff'); state.particles.floatText(new Vec2(p.x, p.y - 10), `-${Math.round(p.damage)}`, '#ff8a65'); });
 state.combat.bus.on('kill', (p) => { audio.enemyDie(); state.particles.death(new Vec2(p.x, p.y), p.enemy.color); const reward = Math.round(p.enemy.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul); state.particles.floatText(new Vec2(p.x, p.y - 16), `+${reward}g`, '#ffd54f', 1.0); if (p.enemy.isBoss) renderer.shake(12); else renderer.shake(3); });
 state.combat.bus.on('splash', (p) => {
@@ -135,7 +138,7 @@ state.combat.bus.on('splash', (p) => {
 state.bus.on('phaseChanged', ({ to }) => {
   if (to === 'won') { audio.win(); music.stop(); state.clearSave(); }
   if (to === 'lost') { audio.lose(); music.stop(); state.clearSave(); }
-  if (to === 'playing') music.start();
+  if (to === 'playing') { music.start(); music.setMuted(settings.get().muted); }
   if (to === 'menu' || to === 'levelSelect') music.stop();
 });
 state.bus.on('spellCast', ({ id }) => {
@@ -262,6 +265,7 @@ const update = (dt: number): void => {
         const res = settingsScreen.apply(a);
         if (res === 'close') showSettings = false;
         audio.setMuted(settings.get().muted);
+        music.setMuted(settings.get().muted);
       }
     }
     input.endFrame();
@@ -331,6 +335,17 @@ const update = (dt: number): void => {
         else showTalent = false; // click outside closes
         continue;
       }
+      // stats panel takes priority when open
+      if (showStats) {
+        const hitBtn = statsScreen.hit(c.x, c.y);
+        if (hitBtn) {
+          state.goMenu();
+          showStats = false;
+        } else {
+          showStats = false; // click outside closes
+        }
+        continue;
+      }
       if (c.y < TOP_H) continue; // top bar no-op
       if (c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y);
       else if (state.selectedSpellId) {
@@ -342,7 +357,8 @@ const update = (dt: number): void => {
 
     if (input.wasKeyPressed('Space')) paused = !paused;
     if (input.wasKeyPressed('Escape')) {
-      if (state.selectedSpellId) state.selectedSpellId = null;
+      if (showStats) showStats = false;
+      else if (state.selectedSpellId) state.selectedSpellId = null;
       else if (state.selectedTower) state.selectedTower = null;
       else state.goMenu();
     }
@@ -373,7 +389,22 @@ const update = (dt: number): void => {
     // won/lost
     for (const c of input.clicks()) {
       const a = screens.hit(c.x, c.y);
-      if (a) handleMenuClick(a);
+      if (a === 'challenge') {
+        const seedHex = state.endlessSeed.toString(16).toUpperCase().padStart(8, '0');
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(seedHex)
+            .then(() => {
+              alert(t('share.copied').replace('{seed}', seedHex));
+            })
+            .catch(() => {
+              window.prompt(t('share.prompt'), seedHex);
+            });
+        } else {
+          window.prompt(t('share.prompt'), seedHex);
+        }
+      } else if (a) {
+        handleMenuClick(a);
+      }
     }
   }
 

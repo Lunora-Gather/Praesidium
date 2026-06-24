@@ -37,6 +37,7 @@ export interface GameEvents {
   towerSold: { tx: number; ty: number; refund: number };
   spellCast: { id: string; x: number; y: number };
   levelWon: { level: number; stars: number };
+  towerFire: { id: string; tx: number; ty: number };
 }
 
 export class GameState {
@@ -230,6 +231,7 @@ export class GameState {
       if (target && t.canFire()) {
         t.resetCooldown();
         this.projectiles.push(new Projectile(t.pos, target, t.def, t.damage));
+        this.bus.emit('towerFire', { id: t.def.id, tx: t.tx, ty: t.ty });
       }
     }
 

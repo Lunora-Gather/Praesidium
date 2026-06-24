@@ -63,13 +63,13 @@ export class SettingsScreen {
       r.line(new Vec2(startX, y + rowH), new Vec2(startX + rowW, y + rowH), 'rgba(255, 255, 255, 0.05)', 1);
       
       // Label text
-      r.text(row.label, startX + 4, y + 14, '#e2e8f0', 14, 'left', 'bold');
+      r.text(row.label, startX + 4, y + 23, '#e2e8f0', 14, 'left', 'bold');
       
       // Modern slide toggle switch
       const toggleW = 38;
       const toggleH = 20;
       const toggleX = startX + rowW - toggleW - 4;
-      const toggleY = y + 12;
+      const toggleY = y + 13;
       
       // Toggle track background
       r.roundRect(toggleX, toggleY, toggleW, toggleH, 10, row.value ? '#10b981' : '#334155', true);
@@ -96,7 +96,7 @@ export class SettingsScreen {
       { offset: 1, color: '#1e293b' }
     ]);
     r.roundRect(btnX, btnY, btnW, btnH, 8, btnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text('Back', cx, btnY + 10, '#ffffff', 13, 'center', 'bold');
+    r.text('Back', cx, btnY + 18, '#ffffff', 13, 'center', 'bold');
     
     this.regions.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: 'back' });
   }

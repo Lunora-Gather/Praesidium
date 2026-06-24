@@ -81,7 +81,7 @@ export class Screens {
     }
     
     if (kind === 'paused') {
-      r.text('GAME IS PAUSED', cx, cardY + 75, '#94a3b8', 13, 'center');
+      r.text(t('hud.paused_title'), cx, cardY + 75, '#94a3b8', 13, 'center');
     }
     
     if (kind === 'won') {
@@ -102,8 +102,8 @@ export class Screens {
       r.text(`${t('hud.score')}: ${score}`, cx, statsY + 10, '#ffffff', 16, 'center', 'bold');
       
       let statDetail = '';
-      if (stats?.kills) statDetail += `Kills: ${stats.kills}   |   `;
-      if (stats?.gold) statDetail += `Gold: ${stats.gold}g`;
+      if (stats?.kills) statDetail += `${t('win.kills')}: ${stats.kills}   |   `;
+      if (stats?.gold) statDetail += `${t('win.gold')}: ${stats.gold}g`;
       r.text(statDetail, cx, statsY + 36, '#94a3b8', 12, 'center');
     }
     
@@ -111,8 +111,8 @@ export class Screens {
       const statsY = cardY + 72;
       r.roundRect(cardX + 24, statsY, cardW - 48, 72, 8, 'rgba(10, 15, 30, 0.6)', true, 'rgba(255, 255, 255, 0.03)', 1);
       r.text(`${t('hud.score')}: ${score}`, cx, statsY + 10, '#ffffff', 16, 'center', 'bold');
-      if (stats?.wave) r.text(`Survived ${stats.wave} waves`, cx, statsY + 32, '#f87171', 13, 'center', 'bold');
-      if (stats?.kills) r.text(`Total Kills: ${stats.kills}`, cx, statsY + 50, '#94a3b8', 11, 'center');
+      if (stats?.wave) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, statsY + 32, '#f87171', 13, 'center', 'bold');
+      if (stats?.kills) r.text(t('lose.kills').replace('{kills}', String(stats.kills)), cx, statsY + 50, '#94a3b8', 11, 'center');
       
       if (seed !== 0) {
         const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
@@ -127,7 +127,7 @@ export class Screens {
           { offset: 1, color: '#7e22ce' }
         ]);
         r.roundRect(shareX, shareY, shareW, 28, 6, shareBtnGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-        r.text('📋 Copy Seed to Share', cx, shareY + 6, '#ffffff', 11, 'center', 'bold');
+        r.text(t('share.copy'), cx, shareY + 14, '#ffffff', 11, 'center', 'bold');
         this.regions.push({ x: shareX, y: shareY, w: shareW, h: 28, action: 'challenge' });
       }
     }
@@ -140,7 +140,7 @@ export class Screens {
     // Calculate button vertical layout starting Y coordinate
     let startButtonY = cardY + (isMenu ? 105 : (kind === 'lost' ? (seed !== 0 ? 220 : 160) : (kind === 'won' ? 195 : 170)));
     
-    const labelKey = kind === 'menu' ? 'menu.start' : kind === 'paused' ? 'menu.resume' : 'menu.retry';
+    const labelKey = kind === 'menu' ? 'menu.start' : kind === 'paused' ? 'menu.resume' : (kind === 'won' ? 'menu.playAgain' : 'menu.retry');
     const primaryAction: MenuClickAction = kind === 'menu' ? 'start' : kind === 'paused' ? 'resume' : 'restart';
     
     // 1. Draw Primary Action Button
@@ -149,7 +149,7 @@ export class Screens {
       { offset: 1, color: '#1d4ed8' }
     ]);
     r.roundRect(btnX, startButtonY, btnW, btnH, 8, primGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-    r.text(t(labelKey), cx, startButtonY + 11, '#ffffff', 14, 'center', 'bold');
+    r.text(t(labelKey), cx, startButtonY + 19, '#ffffff', 14, 'center', 'bold');
     this.regions.push({ x: btnX, y: startButtonY, w: btnW, h: btnH, action: primaryAction });
     
     let currentY = startButtonY + btnH + 10;
@@ -162,7 +162,7 @@ export class Screens {
         { offset: 1, color: '#6d28d9' }
       ]);
       r.roundRect(btnX, currentY, btnW, btnH, 8, endlessGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-      r.text(t('menu.endless'), cx, currentY + 11, '#ffffff', 13, 'center', 'bold');
+      r.text(t('menu.endless'), cx, currentY + 19, '#ffffff', 13, 'center', 'bold');
       this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'endless' });
       currentY += btnH + 10;
       
@@ -172,7 +172,7 @@ export class Screens {
         { offset: 1, color: '#334155' }
       ]);
       r.roundRect(btnX, currentY, btnW, btnH, 8, challGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-      r.text(t('menu.challenge'), cx, currentY + 11, '#e2e8f0', 13, 'center', 'bold');
+      r.text(t('menu.challenge'), cx, currentY + 19, '#e2e8f0', 13, 'center', 'bold');
       this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'challenge' });
       currentY += btnH + 10;
       
@@ -182,12 +182,12 @@ export class Screens {
         { offset: 1, color: '#047857' }
       ]);
       r.roundRect(btnX, currentY, btnW, btnH, 8, dailyGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-      r.text(t('menu.daily'), cx, currentY + 11, '#ffffff', 13, 'center', 'bold');
+      r.text(t('menu.daily'), cx, currentY + 19, '#ffffff', 13, 'center', 'bold');
       this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'daily' });
       currentY += btnH + 10;
       
       // Control shortcuts instructions
-      r.text('1-6: Tower Select  |  U: Upgrade  |  S: Sell  |  Space: Pause', cx, cardY + cardH - 24, '#64748b', 10, 'center');
+      r.text(t('menu.shortcuts'), cx, cardY + cardH - 24, '#64748b', 10, 'center');
     } else {
       // Exit to Menu
       const menuGrad = r.linearGradient(btnX, currentY, btnX, currentY + btnH, [
@@ -195,7 +195,7 @@ export class Screens {
         { offset: 1, color: '#1e293b' }
       ]);
       r.roundRect(btnX, currentY, btnW, btnH, 8, menuGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-      r.text(t('hud.menu'), cx, currentY + 11, '#cbd5e1', 13, 'center', 'bold');
+      r.text(t('hud.menu'), cx, currentY + 19, '#cbd5e1', 13, 'center', 'bold');
       this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'menu' });
     }
   }

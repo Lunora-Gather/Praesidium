@@ -117,7 +117,7 @@ export class StatsScreen {
       { offset: 1, color: '#1e293b' }
     ]);
     r.roundRect(btnX, btnY, btnW, btnH, 8, btnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text(t('hud.menu'), cx, btnY + 9, '#ffffff', 12, 'center', 'bold');
+    r.text(t('hud.menu'), cx, btnY + 17, '#ffffff', 12, 'center', 'bold');
     this.regions.push({ x: btnX, y: btnY, w: btnW, h: btnH });
   }
 

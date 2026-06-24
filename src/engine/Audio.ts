@@ -53,8 +53,19 @@ export class Audio {
     osc.stop(t + dur);
   }
 
-  shoot(): void {
-    this.synth(800, 200, 0.1, 'sawtooth', 0.15); // futuristic laser chirp
+  shoot(id: string): void {
+    if (this.muted) return;
+    if (id === 'sniper') {
+      this.synth(400, 80, 0.25, 'sawtooth', 0.25); // Heavy sniper thump
+    } else if (id === 'mortar' || id === 'cannon') {
+      this.synth(200, 50, 0.35, 'triangle', 0.35); // Mortar launch boom
+    } else if (id === 'frost') {
+      this.synth(900, 300, 0.15, 'sine', 0.25); // Frost spell chime
+    } else if (id === 'tesla') {
+      this.synth(1200, 800, 0.08, 'sawtooth', 0.2); // Tesla electric zap
+    } else {
+      this.synth(800, 200, 0.09, 'sawtooth', 0.15); // Regular turret chirp
+    }
   }
 
   hit(): void {
@@ -67,6 +78,11 @@ export class Audio {
 
   place(): void {
     this.synth(440, 880, 0.12, 'sine', 0.3); // positive rising UI sweep
+  }
+
+  lifeLost(): void {
+    this.synth(300, 150, 0.15, 'sawtooth', 0.35); // alarm chirp
+    window.setTimeout(() => this.synth(200, 100, 0.18, 'sawtooth', 0.35), 80);
   }
 
   waveStart(): void {
