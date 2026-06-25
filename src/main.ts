@@ -317,6 +317,24 @@ const update = (dt: number): void => {
     return;
   }
 
+  // pause overlay takes priority if playing and paused
+  if (paused && state.phase === 'playing') {
+    for (const c of input.clicks()) {
+      if (c.y < TOP_H) {
+        handleHUDClick(c.x, c.y);
+        continue;
+      }
+      const a = screens.hit(c.x, c.y);
+      if (a) {
+        handleMenuClick(a);
+      }
+    }
+    if (input.wasKeyPressed('Space')) paused = false;
+    if (input.wasKeyPressed('Escape')) paused = false;
+    input.endFrame();
+    return;
+  }
+
   if (state.phase === 'levelSelect') {
     for (const c of input.clicks()) {
       const a = levelSelect.hit(c.x, c.y);
@@ -385,7 +403,10 @@ const update = (dt: number): void => {
         continue;
       }
 
-      if (c.y < TOP_H) continue; // top bar no-op
+      if (c.y < TOP_H) {
+        handleHUDClick(c.x, c.y);
+        continue;
+      }
       if (c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y);
       else if (state.selectedSpellId) {
         const { wx, wy } = screenToWorld(c.x, c.y);
