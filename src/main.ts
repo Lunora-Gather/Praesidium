@@ -287,6 +287,11 @@ function buildRunSummary(extra: Partial<ScreenStats> = {}): ScreenStats {
     spellsCast: run.spellsCast,
     damageDealt: run.damageDealt,
     durationSec: run.durationSec,
+    isNewHighScore: state.lastRunNewHighScore,
+    isNewLevelScore: state.lastRunNewLevelScore,
+    isStarUpgrade: state.lastRunStarUpgrade,
+    isNewEndlessRecord: state.lastRunNewEndlessRecord,
+    isNewDailyRecord: state.lastRunNewDailyRecord,
     ...extra,
   };
 }
