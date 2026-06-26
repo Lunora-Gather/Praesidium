@@ -7,8 +7,8 @@ This checklist tracks the gap between a strong playable build and a public/marke
 | Level | Target | Status |
 | --- | --- | --- |
 | Portfolio release | Good enough to showcase publicly as a polished project | Close |
-| Public free game | Good enough for GitHub Pages / itch.io style public play | In progress |
-| Market-grade release | Good enough for broader promotion and sustained updates | Needs more polish |
+| Public free game | Good enough for GitHub Pages / itch.io style public play | Close, pending final verification |
+| Market-grade release | Good enough for broader promotion and sustained updates | Needs mobile polish and packaging media |
 
 ## 1. Build and deployment
 
@@ -31,16 +31,16 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 ## 3. First-time player experience
 
-- [ ] First level teaches tower placement clearly.
-- [ ] Upgrade / sell flow is obvious.
-- [ ] Spell usage is taught before it becomes necessary.
-- [ ] Wave preview / Intel Codex are discoverable.
-- [ ] Victory screen gives a clear next action.
-- [ ] Defeat screen gives a useful recovery path.
+- [x] First level teaches tower placement clearly.
+- [x] Upgrade / sell flow is obvious.
+- [x] Spell usage is taught before it becomes necessary.
+- [x] Wave preview / Intel Codex are discoverable.
+- [x] Victory screen gives a clear next action.
+- [x] Defeat screen gives a useful recovery path.
 
 ## 4. UI and mobile polish
 
-- [ ] Main menu looks like a release screen, not a debug menu.
+- [x] Main menu looks like a release screen, not a debug menu.
 - [x] Level select clearly shows progress, stars, scores, and next level.
 - [ ] HUD is readable at common desktop sizes.
 - [ ] HUD is readable on mobile landscape.
@@ -79,16 +79,16 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## 8. Publishing package
 
 - [ ] README includes screenshots or GIFs.
-- [ ] README explains the core loop in under 30 seconds.
-- [ ] README documents verification commands.
+- [x] README explains the core loop in under 30 seconds.
+- [x] README documents verification commands.
 - [ ] Landing/portal card uses current feature text.
-- [ ] License file exists and matches README.
-- [ ] Privacy note explains localStorage-only persistence.
-- [ ] Changelog or release notes exist.
+- [x] License file exists and matches README.
+- [x] Privacy note explains localStorage-only persistence.
+- [x] Changelog or release notes exist.
 
 ## Current estimated gap
 
-- Public free-game release: about 17% remaining.
-- Market-grade release: about 28% remaining.
+- Public free-game release: about 10% remaining.
+- Market-grade release: about 21% remaining.
 
-The biggest remaining blockers are mobile polish, publishing package, first-time player guidance, and final balance confirmation.
+The biggest remaining blockers are mobile polish, final verification, screenshots/GIFs, portal card update, and final balance confirmation.
