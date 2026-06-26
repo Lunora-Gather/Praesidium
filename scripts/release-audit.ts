@@ -52,6 +52,7 @@ const requiredFiles = [
   'docs/RELEASE_NOTES_v0.1.0.md',
   '.github/ISSUE_TEMPLATE/bug_report.md',
   '.github/ISSUE_TEMPLATE/playtest_feedback.md',
+  '.github/workflows/deploy.yml',
   'manifest.json',
   'index.html',
 ];
@@ -67,6 +68,12 @@ check('package has release audit script', !!pkg.scripts?.['release:audit']);
 check('verify runs release audit', !!pkg.scripts?.verify?.includes('release:audit'));
 check('verify runs balance sim', !!pkg.scripts?.verify?.includes('balance:sim'));
 check('verify runs production build', !!pkg.scripts?.verify?.includes('build'));
+
+// CI/deploy workflow
+check('deploy workflow runs npm ci', contains('.github/workflows/deploy.yml', 'npm ci'));
+check('deploy workflow runs verify before publish', contains('.github/workflows/deploy.yml', 'npm run verify'));
+check('deploy workflow publishes dist', contains('.github/workflows/deploy.yml', 'publish_dir: ./dist'));
+check('deploy workflow uses Node 20', contains('.github/workflows/deploy.yml', 'node-version: 20'));
 
 // HTML metadata
 const html = read('index.html');
