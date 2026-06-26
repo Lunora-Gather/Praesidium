@@ -80,6 +80,11 @@ export class GameState {
   score = 0;
   fps = 0;
   lastStars = 0;
+  lastRunNewHighScore = false;
+  lastRunNewLevelScore = false;
+  lastRunStarUpgrade = false;
+  lastRunNewEndlessRecord = false;
+  lastRunNewDailyRecord = false;
   /** Combo streak: kills within 2s window. Resets on timeout. */
   comboCount = 0;
   comboTimer = 0;
@@ -96,6 +101,14 @@ export class GameState {
     const from = this.phase;
     this.phase = p;
     this.bus.emit('phaseChanged', { from, to: p });
+  }
+
+  private resetRunRecordFlags(): void {
+    this.lastRunNewHighScore = false;
+    this.lastRunNewLevelScore = false;
+    this.lastRunStarUpgrade = false;
+    this.lastRunNewEndlessRecord = false;
+    this.lastRunNewDailyRecord = false;
   }
 
   private startAnalyticsSession(): void {
@@ -118,6 +131,7 @@ export class GameState {
     this.lives = BALANCE.startLives + Math.round(this.talents.multiplier('lives'));
     this.score = 0;
     this.lastStars = 0;
+    this.resetRunRecordFlags();
     this.towers.length = 0;
     this.enemies.length = 0;
     this.projectiles.length = 0;
@@ -289,18 +303,18 @@ export class GameState {
         this.talents.awardPoints(stars);
         this.achievements.recordStars(stars);
         this.analytics.recordEndlessRun(this.waves.current);
-        
+
         // Save endless or daily high scores
         if (this.endlessSeed === dailySeed()) {
           const today = new Date().toISOString().slice(0, 10);
-          this.save.recordDailyRun(this.score, this.waves.current, today);
+          this.lastRunNewDailyRecord = this.save.recordDailyRun(this.score, this.waves.current, today);
         } else {
-          this.save.recordEndlessRun(this.score, this.waves.current);
+          this.lastRunNewEndlessRecord = this.save.recordEndlessRun(this.score, this.waves.current);
         }
       }
       this.analytics.recordDeath(this.levels.levelNumber, this.waves.current, this.difficulty);
       this.endAnalyticsSession();
-      this.save.recordScore(this.score);
+      this.lastRunNewHighScore = this.save.recordScore(this.score);
       this.setPhase('lost');
       return;
     }
@@ -315,10 +329,16 @@ export class GameState {
       this.bus.emit('levelWon', { level: this.levels.levelNumber, stars: this.lastStars });
       const newly = this.achievements.newlyUnlocked();
       if (newly.length > 0) logger.info('Achievements unlocked', newly.map((a) => a.id));
-      this.save.recordStars(this.levels.levelNumber, this.lastStars);
-      this.save.recordLevelScore(this.levels.levelNumber, this.score);
-      const isNew = this.save.recordScore(this.score);
-      logger.info('Level won', { score: this.score, stars: this.lastStars, isNewHigh: isNew });
+      this.lastRunStarUpgrade = this.save.recordStars(this.levels.levelNumber, this.lastStars);
+      this.lastRunNewLevelScore = this.save.recordLevelScore(this.levels.levelNumber, this.score);
+      this.lastRunNewHighScore = this.save.recordScore(this.score);
+      logger.info('Level won', {
+        score: this.score,
+        stars: this.lastStars,
+        isNewHigh: this.lastRunNewHighScore,
+        isNewLevelScore: this.lastRunNewLevelScore,
+        isStarUpgrade: this.lastRunStarUpgrade,
+      });
       this.advanceLevel();
     }
     this.checkAchievements();
