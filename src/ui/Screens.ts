@@ -1,5 +1,5 @@
 // Full-screen overlays: main menu, pause, victory, defeat.
-// Rich info: stars on victory, wave count on defeat, keyboard hints on menu.
+// Win/loss screens include a compact battle report so each run ends with useful feedback.
 
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
@@ -11,6 +11,12 @@ export interface ScreenStats {
   wave?: number;
   kills?: number;
   gold?: number;
+  lives?: number;
+  towersPlaced?: number;
+  upgrades?: number;
+  spellsCast?: number;
+  damageDealt?: number;
+  durationSec?: number;
 }
 
 export class Screens {
@@ -18,47 +24,42 @@ export class Screens {
 
   draw(r: Renderer, kind: 'menu' | 'paused' | 'won' | 'lost', score = 0, seed = 0, stats?: ScreenStats): void {
     this.regions = [];
-    
-    // Dim background with a dark slate-gray vertical linear gradient overlay
+
     const bgGrad = r.linearGradient(0, 0, 0, r.height, [
       { offset: 0, color: 'rgba(10, 14, 20, 0.85)' },
       { offset: 1, color: 'rgba(17, 24, 39, 0.95)' }
     ]);
     r.rect(0, 0, r.width, r.height, bgGrad);
-    
+
     const cx = r.width / 2;
     const cy = r.height / 2;
-    
-    // Responsive modal card dimensions
     const isMenu = kind === 'menu';
-    const cardW = Math.min(r.width - 32, 440);
-    const cardH = isMenu ? 440 : 360;
+    const isEndScreen = kind === 'won' || kind === 'lost';
+    const cardW = Math.min(r.width - 32, isEndScreen ? 500 : 440);
+    const cardH = isMenu ? 440 : isEndScreen ? 430 : 360;
     const cardX = cx - cardW / 2;
     const cardY = cy - cardH / 2;
-    
-    // Neon glow shadow determined by the screen state
-    let glowColor = 'rgba(59, 130, 246, 0.15)'; // Blue default (Pause)
-    if (kind === 'won') glowColor = 'rgba(16, 185, 129, 0.2)'; // Emerald (Win)
-    if (kind === 'lost') glowColor = 'rgba(239, 68, 68, 0.2)'; // Coral (Defeat)
-    
+
+    let glowColor = 'rgba(59, 130, 246, 0.15)';
+    if (kind === 'won') glowColor = 'rgba(16, 185, 129, 0.22)';
+    if (kind === 'lost') glowColor = 'rgba(239, 68, 68, 0.22)';
+
     r.setShadow(glowColor, 32, 0, 8);
-    // Draw Glassmorphic Card Container
-    r.roundRect(cardX, cardY, cardW, cardH, 16, 'rgba(15, 23, 42, 0.85)', true, 'rgba(255, 255, 255, 0.08)', 1.5);
+    r.roundRect(cardX, cardY, cardW, cardH, 16, 'rgba(15, 23, 42, 0.88)', true, 'rgba(255, 255, 255, 0.08)', 1.5);
     r.clearShadow();
-    
-    // Logo & Header text styling using vibrant text gradients
+
     const titleKey = kind === 'menu' ? 'app.title' : kind === 'paused' ? 'hud.pause' : kind === 'won' ? 'win.title' : 'lose.title';
     let titleGrad: CanvasGradient;
     let textGlow = 'rgba(59, 130, 246, 0.4)';
-    
+
     if (kind === 'won') {
-      textGlow = 'rgba(52, 211, 153, 0.4)';
+      textGlow = 'rgba(52, 211, 153, 0.45)';
       titleGrad = r.linearGradient(cx - 100, cardY + 24, cx + 100, cardY + 24, [
         { offset: 0, color: '#34d399' },
         { offset: 1, color: '#059669' }
       ]);
     } else if (kind === 'lost') {
-      textGlow = 'rgba(248, 113, 113, 0.4)';
+      textGlow = 'rgba(248, 113, 113, 0.45)';
       titleGrad = r.linearGradient(cx - 100, cardY + 24, cx + 100, cardY + 24, [
         { offset: 0, color: '#f87171' },
         { offset: 1, color: '#dc2626' }
@@ -70,158 +71,143 @@ export class Screens {
         { offset: 1, color: '#f472b6' }
       ]);
     }
-    
+
     r.setShadow(textGlow, 12, 0, 0);
     r.text(t(titleKey), cx, cardY + 22, titleGrad, 36, 'center', 'bold', 'top', 'header');
     r.clearShadow();
-    
-    // Draw specific details inside the card container
+
     if (kind === 'menu') {
       r.text(t('app.tagline'), cx, cardY + 70, '#94a3b8', 13, 'center');
     }
-    
+
     if (kind === 'paused') {
       r.text(t('hud.paused_title'), cx, cardY + 75, '#94a3b8', 13, 'center');
     }
-    
+
     if (kind === 'won') {
-      // Glowing Victory Star Rating UI
-      const starCount = stats?.stars ?? 0;
-      const starY = cardY + 72;
-      r.setShadow('rgba(251, 191, 36, 0.4)', 14, 0, 0);
-      for (let i = 0; i < 3; i++) {
-        const starX = cx - 40 + i * 40;
-        const active = i < starCount;
-        r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#334155', 28, 'center', 'normal', 'top', 'header');
-      }
-      r.clearShadow();
-      
-      // Secondary statistics mini-panel
-      const statsY = cardY + 115;
-      r.roundRect(cardX + 24, statsY, cardW - 48, 64, 8, 'rgba(10, 15, 30, 0.6)', true, 'rgba(255, 255, 255, 0.03)', 1);
-      r.text(`${t('hud.score')}: ${score}`, cx, statsY + 10, '#ffffff', 16, 'center', 'bold', 'top', 'header');
-      
-      let statDetail = '';
-      if (stats?.kills) statDetail += `${t('win.kills')}: ${stats.kills}   |   `;
-      if (stats?.gold) statDetail += `${t('win.gold')}: ${stats.gold}g`;
-      r.text(statDetail, cx, statsY + 36, '#94a3b8', 12, 'center');
+      this.drawVictoryReport(r, cardX, cardY, cardW, score, stats);
     }
-    
+
     if (kind === 'lost') {
-      const statsY = cardY + 72;
-      r.roundRect(cardX + 24, statsY, cardW - 48, 72, 8, 'rgba(10, 15, 30, 0.6)', true, 'rgba(255, 255, 255, 0.03)', 1);
-      r.text(`${t('hud.score')}: ${score}`, cx, statsY + 10, '#ffffff', 16, 'center', 'bold', 'top', 'header');
-      if (stats?.wave) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, statsY + 32, '#f87171', 13, 'center', 'bold', 'top', 'header');
-      if (stats?.kills) r.text(t('lose.kills').replace('{kills}', String(stats.kills)), cx, statsY + 50, '#94a3b8', 11, 'center', 'bold', 'top', 'header');
-      
-      if (seed !== 0) {
-        const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
-        r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, cardY + 160, '#c084fc', 12, 'center', 'bold', 'top', 'header');
-        
-        // Share Seed Button
-        const shareY = cardY + 182;
-        const shareW = 180;
-        const shareX = cx - shareW / 2;
-        const shareBtnGrad = r.linearGradient(shareX, shareY, shareX, shareY + 28, [
-          { offset: 0, color: '#a855f7' },
-          { offset: 1, color: '#7e22ce' }
-        ]);
-        r.roundRect(shareX, shareY, shareW, 28, 6, shareBtnGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-        r.text(t('share.copy'), cx, shareY + 14, '#ffffff', 11, 'center', 'bold', 'middle');
-        this.regions.push({ x: shareX, y: shareY, w: shareW, h: 28, action: 'challenge' });
-      }
+      this.drawDefeatReport(r, cardX, cardY, cardW, score, seed, stats);
     }
-    
-    // Draw modern styled action buttons
+
     const btnW = cardW - 48;
     const btnH = 38;
     const btnX = cx - btnW / 2;
-    
-    // Calculate button vertical layout starting Y coordinate
-    let startButtonY = cardY + (isMenu ? 105 : (kind === 'lost' ? (seed !== 0 ? 220 : 160) : (kind === 'won' ? 195 : 170)));
-    
+    let startButtonY = cardY + (isMenu ? 105 : isEndScreen ? 315 : 170);
+    if (kind === 'lost' && seed !== 0) startButtonY = cardY + 335;
+
     const labelKey = kind === 'menu' ? 'menu.start' : kind === 'paused' ? 'menu.resume' : (kind === 'won' ? 'menu.playAgain' : 'menu.retry');
     const primaryAction: MenuClickAction = kind === 'menu' ? 'start' : kind === 'paused' ? 'resume' : 'restart';
-    
-    // 1. Draw Primary Action Button
-    const primGrad = r.linearGradient(btnX, startButtonY, btnX, startButtonY + btnH, [
-      { offset: 0, color: '#3b82f6' },
-      { offset: 1, color: '#1d4ed8' }
-    ]);
-    r.roundRect(btnX, startButtonY, btnW, btnH, 8, primGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-    r.text(t(labelKey), cx, startButtonY + btnH / 2, '#ffffff', 14, 'center', 'bold', 'middle');
-    this.regions.push({ x: btnX, y: startButtonY, w: btnW, h: btnH, action: primaryAction });
-    
+
+    this.drawButton(r, btnX, startButtonY, btnW, btnH, t(labelKey), primaryAction, '#3b82f6', '#1d4ed8');
     let currentY = startButtonY + btnH + 10;
-    
-    // 2. Draw Secondary Action Buttons
+
     if (isMenu) {
-      // Endless Challenge
-      const endlessGrad = r.linearGradient(btnX, currentY, btnX, currentY + btnH, [
-        { offset: 0, color: '#8b5cf6' },
-        { offset: 1, color: '#6d28d9' }
-      ]);
-      r.roundRect(btnX, currentY, btnW, btnH, 8, endlessGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-      r.text(t('menu.endless'), cx, currentY + btnH / 2, '#ffffff', 13, 'center', 'bold', 'middle');
-      this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'endless' });
+      this.drawButton(r, btnX, currentY, btnW, btnH, t('menu.endless'), 'endless', '#8b5cf6', '#6d28d9');
       currentY += btnH + 10;
-      
-      // Shared Seed Challenge
-      const challGrad = r.linearGradient(btnX, currentY, btnX, currentY + btnH, [
-        { offset: 0, color: '#475569' },
-        { offset: 1, color: '#334155' }
-      ]);
-      r.roundRect(btnX, currentY, btnW, btnH, 8, challGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-      r.text(t('menu.challenge'), cx, currentY + btnH / 2, '#e2e8f0', 13, 'center', 'bold', 'middle');
-      this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'challenge' });
+      this.drawButton(r, btnX, currentY, btnW, btnH, t('menu.challenge'), 'challenge', '#475569', '#334155');
       currentY += btnH + 10;
-      
-      // Daily Global Seed
-      const dailyGrad = r.linearGradient(btnX, currentY, btnX, currentY + btnH, [
-        { offset: 0, color: '#10b981' },
-        { offset: 1, color: '#047857' }
-      ]);
-      r.roundRect(btnX, currentY, btnW, btnH, 8, dailyGrad, true, 'rgba(255, 255, 255, 0.15)', 1);
-      r.text(t('menu.daily'), cx, currentY + btnH / 2, '#ffffff', 13, 'center', 'bold', 'middle');
-      this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'daily' });
+      this.drawButton(r, btnX, currentY, btnW, btnH, t('menu.daily'), 'daily', '#10b981', '#047857');
       currentY += btnH + 10;
 
-      // Row 5: Settings & Stats side-by-side
       const halfW = (btnW - 10) / 2;
-      const leftX = btnX;
-      const rightX = btnX + halfW + 10;
-      
-      // Settings button
-      const setGrad = r.linearGradient(leftX, currentY, leftX, currentY + btnH, [
-        { offset: 0, color: '#475569' },
-        { offset: 1, color: '#334155' }
-      ]);
-      r.roundRect(leftX, currentY, halfW, btnH, 8, setGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-      r.text(t('menu.settings'), leftX + halfW / 2, currentY + btnH / 2, '#cbd5e1', 13, 'center', 'bold', 'middle');
-      this.regions.push({ x: leftX, y: currentY, w: halfW, h: btnH, action: 'settings' });
-      
-      // Stats button
-      const statsGrad = r.linearGradient(rightX, currentY, rightX, currentY + btnH, [
-        { offset: 0, color: '#475569' },
-        { offset: 1, color: '#334155' }
-      ]);
-      r.roundRect(rightX, currentY, halfW, btnH, 8, statsGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-      r.text(t('stats.title'), rightX + halfW / 2, currentY + btnH / 2, '#cbd5e1', 13, 'center', 'bold', 'middle', 'header');
-      this.regions.push({ x: rightX, y: currentY, w: halfW, h: btnH, action: 'stats' });
-      currentY += btnH + 10;
-      
-      // Control shortcuts instructions
+      this.drawButton(r, btnX, currentY, halfW, btnH, t('menu.settings'), 'settings', '#475569', '#334155', 13, false);
+      this.drawButton(r, btnX + halfW + 10, currentY, halfW, btnH, t('stats.title'), 'stats', '#475569', '#334155', 13, false);
       r.text(t('menu.shortcuts'), cx, cardY + cardH - 24, '#64748b', 10, 'center');
     } else {
-      // Exit to Menu
-      const menuGrad = r.linearGradient(btnX, currentY, btnX, currentY + btnH, [
-        { offset: 0, color: '#475569' },
-        { offset: 1, color: '#1e293b' }
-      ]);
-      r.roundRect(btnX, currentY, btnW, btnH, 8, menuGrad, true, 'rgba(255, 255, 255, 0.1)', 1);
-      r.text(t('hud.menu'), cx, currentY + btnH / 2, '#cbd5e1', 13, 'center', 'bold', 'middle');
-      this.regions.push({ x: btnX, y: currentY, w: btnW, h: btnH, action: 'menu' });
+      this.drawButton(r, btnX, currentY, btnW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
     }
+  }
+
+  private drawVictoryReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, stats?: ScreenStats): void {
+    const cx = cardX + cardW / 2;
+    const starCount = stats?.stars ?? 0;
+    const starY = cardY + 70;
+    r.setShadow('rgba(251, 191, 36, 0.45)', 14, 0, 0);
+    for (let i = 0; i < 3; i++) {
+      const starX = cx - 44 + i * 44;
+      const active = i < starCount;
+      r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#334155', 30, 'center', 'normal', 'top', 'header');
+    }
+    r.clearShadow();
+
+    r.text(this.victoryAdvice(starCount), cx, cardY + 112, '#94a3b8', 12, 'center', 'bold', 'top');
+    this.drawReportPanel(r, cardX + 24, cardY + 140, cardW - 48, 142, '#10b981', [
+      [t('hud.score'), score.toLocaleString()],
+      [t('summary.duration'), this.formatTime(stats?.durationSec ?? 0)],
+      [t('win.kills'), `${stats?.kills ?? 0}`],
+      [t('win.gold'), `${stats?.gold ?? 0}g`],
+      [t('summary.towers'), `${stats?.towersPlaced ?? 0}`],
+      [t('summary.upgrades'), `${stats?.upgrades ?? 0}`],
+      [t('summary.spells'), `${stats?.spellsCast ?? 0}`],
+      [t('summary.damage'), `${Math.round(stats?.damageDealt ?? 0)}`],
+    ]);
+  }
+
+  private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, seed: number, stats?: ScreenStats): void {
+    const cx = cardX + cardW / 2;
+    const survived = t('lose.survived').replace('{wave}', String(stats?.wave ?? 0));
+    r.text(survived, cx, cardY + 76, '#f87171', 14, 'center', 'bold', 'top', 'header');
+    r.text(t('summary.defeatAdvice'), cx, cardY + 100, '#94a3b8', 12, 'center', 'bold', 'top');
+
+    this.drawReportPanel(r, cardX + 24, cardY + 128, cardW - 48, 126, '#ef4444', [
+      [t('hud.score'), score.toLocaleString()],
+      [t('summary.duration'), this.formatTime(stats?.durationSec ?? 0)],
+      [t('win.kills'), `${stats?.kills ?? 0}`],
+      [t('win.gold'), `${stats?.gold ?? 0}g`],
+      [t('summary.towers'), `${stats?.towersPlaced ?? 0}`],
+      [t('summary.upgrades'), `${stats?.upgrades ?? 0}`],
+      [t('summary.spells'), `${stats?.spellsCast ?? 0}`],
+      [t('summary.damage'), `${Math.round(stats?.damageDealt ?? 0)}`],
+    ]);
+
+    if (seed !== 0) {
+      const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
+      r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, cardY + 266, '#c084fc', 12, 'center', 'bold', 'top', 'header');
+      this.drawButton(r, cx - 90, cardY + 286, 180, 28, t('share.copy'), 'challenge', '#a855f7', '#7e22ce', 11);
+    }
+  }
+
+  private drawReportPanel(r: Renderer, x: number, y: number, w: number, h: number, accent: string, rows: Array<[string, string]>): void {
+    r.roundRect(x, y, w, h, 10, 'rgba(10, 15, 30, 0.66)', true, 'rgba(255, 255, 255, 0.05)', 1);
+    r.roundRect(x, y, 4, h, 2, accent, true);
+    r.text(t('summary.title'), x + 14, y + 10, '#e2e8f0', 11, 'left', 'bold', 'top', 'header');
+
+    const colW = (w - 28) / 2;
+    for (let i = 0; i < rows.length; i++) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const rx = x + 14 + col * colW;
+      const ry = y + 34 + row * 24;
+      const [label, value] = rows[i];
+      r.text(label, rx, ry, '#64748b', 10, 'left', 'bold');
+      r.text(value, rx + colW - 8, ry, '#f8fafc', 11, 'right', 'bold', 'top', 'header');
+    }
+  }
+
+  private drawButton(r: Renderer, x: number, y: number, w: number, h: number, label: string, action: MenuClickAction, colorA: string, colorB: string, fontSize = 14, strong = true): void {
+    const grad = r.linearGradient(x, y, x, y + h, [
+      { offset: 0, color: colorA },
+      { offset: 1, color: colorB }
+    ]);
+    r.roundRect(x, y, w, h, 8, grad, true, 'rgba(255, 255, 255, 0.12)', 1);
+    r.text(label, x + w / 2, y + h / 2, strong ? '#ffffff' : '#cbd5e1', fontSize, 'center', 'bold', 'middle');
+    this.regions.push({ x, y, w, h, action });
+  }
+
+  private victoryAdvice(stars: number): string {
+    if (stars >= 3) return t('summary.victoryPerfect');
+    if (stars >= 2) return t('summary.victoryGood');
+    return t('summary.victoryPass');
+  }
+
+  private formatTime(sec: number): string {
+    if (sec <= 0) return '0s';
+    const m = Math.floor(sec / 60);
+    const s = Math.round(sec % 60);
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
   }
 
   hit(x: number, y: number): MenuClickAction {
