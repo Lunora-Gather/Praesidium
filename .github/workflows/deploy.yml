@@ -25,8 +25,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Build
-        run: npm run build
+      - name: Verify and build
+        run: npm run verify
       - name: Deploy to GitHub Pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
