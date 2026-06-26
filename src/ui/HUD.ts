@@ -6,6 +6,7 @@ import { TOWER_LIST, getTowerDef } from '../game/towers/TowerRegistry';
 import { getEnemyDef } from '../game/enemies/EnemyRegistry';
 import { Vec2 } from '../engine/math/Vec2';
 import { t } from '../utils/i18n';
+import { enemyName, towerName, traitName as localizedTraitName } from '../utils/displayText';
 
 export interface HudRegions {
   shop: Array<{ x: number; y: number; w: number; h: number; towerId: string }>;
@@ -126,6 +127,7 @@ export class HUD {
       const affordable = s.gold >= def.cost;
       const cardY = botY + 8;
       const cardH = BOT_H - 16;
+      const displayName = towerName(def.id, def.name);
 
       let bg: string | CanvasGradient;
       let border: string;
@@ -158,12 +160,12 @@ export class HUD {
 
       const textX = sx + 22;
       if (cardW >= 95) {
-        r.text(def.name, textX, cardY + 9, affordable ? '#f1f5f9' : '#475569', 11, 'left', 'bold');
+        r.text(displayName, textX, cardY + 9, affordable ? '#f1f5f9' : '#475569', 11, 'left', 'bold');
         r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? '#fbbf24' : '#374151', 10, 'left', 'bold', 'top', 'header');
         const idx = TOWER_LIST.findIndex(d => d.id === def.id) + 1;
         r.text(`[${idx}]`, sx + cardW - 16, cardY + 9, 'rgba(100,116,139,0.7)', 9, 'right', 'normal', 'top', 'header');
       } else {
-        r.text(def.name.slice(0, 4), textX, cardY + cardH / 2 - 6, affordable ? '#f1f5f9' : '#475569', 10, 'left', 'bold');
+        r.text(displayName.slice(0, 4), textX, cardY + cardH / 2 - 6, affordable ? '#f1f5f9' : '#475569', 10, 'left', 'bold');
         r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? '#fbbf24' : '#374151', 9, 'left', 'bold', 'top', 'header');
       }
 
@@ -181,7 +183,10 @@ export class HUD {
 
     const enemyText = preview.enemies
       .slice(0, 5)
-      .map(group => `${getEnemyDef(group.id).name}×${group.count}`)
+      .map(group => {
+        const def = getEnemyDef(group.id);
+        return `${enemyName(def.id, def.name)}×${group.count}`;
+      })
       .join(' · ');
     const more = preview.enemies.length > 5 ? ' · …' : '';
     const threats = this.previewThreats(preview.enemies);
@@ -207,7 +212,7 @@ export class HUD {
       .map(group => {
         const def = getEnemyDef(group.id);
         const trait = def.traits.find(item => item.includes('Resists') || item.includes('Boss') || item.includes('Fast') || item.includes('Siege')) ?? def.traits[0];
-        return `${def.name}(${this.traitName(trait)})`;
+        return `${enemyName(def.id, def.name)}(${localizedTraitName(trait)})`;
       })
       .join(' · ');
   }
@@ -225,7 +230,10 @@ export class HUD {
     return [...scores.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
-      .map(([id]) => getTowerDef(id).name)
+      .map(([id]) => {
+        const def = getTowerDef(id);
+        return towerName(def.id, def.name);
+      })
       .join(' + ');
   }
 
@@ -236,29 +244,6 @@ export class HUD {
     const bossWeight = def.isBoss ? 10 : 0;
     const resistWeight = def.resist ? Object.values(def.resist).length * 2 : 0;
     return count + hpWeight + speedWeight + bossWeight + resistWeight;
-  }
-
-  private traitName(trait: string): string {
-    const map: Record<string, string> = {
-      'Standard': 'trait.standard',
-      'No resistance': 'trait.noResistance',
-      'Fast': 'trait.fast',
-      'Low HP': 'trait.lowHp',
-      'Armored': 'trait.armored',
-      'High HP': 'trait.highHp',
-      'Resists Ice': 'trait.resistsIce',
-      'Aggressive': 'trait.aggressive',
-      'Resists Fire': 'trait.resistsFire',
-      'Boss': 'trait.boss',
-      'Massive HP': 'trait.massiveHp',
-      'Broad resistance': 'trait.broadResistance',
-      'Ethereal': 'trait.ethereal',
-      'Resists Physical': 'trait.resistsPhysical',
-      'Siege': 'trait.siege',
-      'Very high HP': 'trait.veryHighHp',
-      'Elemental resistance': 'trait.elementalResistance',
-    };
-    return t(map[trait] ?? trait);
   }
 
   hitShop(regions: HudRegions, x: number, y: number): string | null {
