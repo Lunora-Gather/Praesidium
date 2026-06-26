@@ -1,5 +1,6 @@
-// Save system: persists meta-progression (unlocks, high score, reached level).
-// Gameplay state is NOT saved mid-run in Phase 2; that's a Phase 3 target.
+// Save system: persists meta-progression such as unlocks, high score, reached level,
+// level stars, level scores, endless records, and daily challenge records.
+// Mid-run snapshots live separately in RunSave.ts.
 
 import { load, save } from './storage';
 import { LEVELS } from '../game/grid/LevelManager';
