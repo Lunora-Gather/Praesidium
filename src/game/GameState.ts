@@ -61,6 +61,7 @@ export class GameState {
   readonly achievements = new AchievementSystem();
   readonly talents = new TalentTree();
   private lastKnownWave = 0;
+  private analyticsSessionActive = false;
   readonly spells = PLAYER_SPELLS.map((s) => new PlayerSpell(s.def));
   readonly analytics = new Analytics();
   difficulty: Difficulty = 'normal';
@@ -97,6 +98,18 @@ export class GameState {
     this.bus.emit('phaseChanged', { from, to: p });
   }
 
+  private startAnalyticsSession(): void {
+    if (this.analyticsSessionActive) return;
+    this.analytics.startSession();
+    this.analyticsSessionActive = true;
+  }
+
+  private endAnalyticsSession(): void {
+    if (!this.analyticsSessionActive) return;
+    this.analytics.endSession();
+    this.analyticsSessionActive = false;
+  }
+
   start(): void {
     this.lastKnownWave = 0;
     this.grid = new Grid(this.levels.current);
@@ -128,12 +141,16 @@ export class GameState {
       this.waves.setDifficulty(diff.hpMul, diff.countMul);
     }
     this.setPhase('playing');
-    this.analytics.startSession();
+    this.startAnalyticsSession();
     this.analytics.recordLevelStart(this.levels.levelNumber - 1);
     logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name });
   }
 
-  goMenu(): void { this.setPhase('menu'); }
+  goMenu(): void {
+    if (this.phase === 'playing') this.endAnalyticsSession();
+    this.setPhase('menu');
+  }
+
   goLevelSelect(): void { this.setPhase('levelSelect'); }
 
   selectLevel(i: number): void {
@@ -146,6 +163,7 @@ export class GameState {
     this.save.recordLevelReached(this.levels.levelNumber + 1);
     if (!this.levels.hasNext) {
       logger.info('All levels cleared');
+      this.endAnalyticsSession();
       this.setPhase('won');
       return;
     }
@@ -167,6 +185,7 @@ export class GameState {
     };
     this.towers.push(new Tower(def, tx, ty, this.grid, tm));
     this.stats.recordPlace();
+    this.analytics.recordTowerPlace(def.id);
     this.achievements.recordPlace();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('towerPlaced', { tx, ty, id: def.id });
@@ -200,6 +219,7 @@ export class GameState {
     if (!sp) return false;
     if (!sp.cast(target, this)) return false;
     this.stats.recordSpell();
+    this.analytics.recordSpellCast(id);
     this.achievements.recordSpell();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('spellCast', { id, x: target.x, y: target.y });
@@ -213,6 +233,7 @@ export class GameState {
   update(dt: number): void {
     if (this.phase !== 'playing') return;
     this.stats.tick(dt);
+    this.analytics.tick(dt);
 
     // combo decay
     if (this.comboCount > 0) {
@@ -278,7 +299,7 @@ export class GameState {
         }
       }
       this.analytics.recordDeath(this.levels.levelNumber, this.waves.current, this.difficulty);
-      this.analytics.endSession();
+      this.endAnalyticsSession();
       this.save.recordScore(this.score);
       this.setPhase('lost');
       return;
@@ -290,6 +311,7 @@ export class GameState {
       this.talents.awardPoints(this.lastStars);
       this.achievements.recordStars(this.lastStars);
       this.achievements.recordLevelComplete();
+      this.analytics.recordLevelWin(this.levels.levelNumber - 1);
       this.bus.emit('levelWon', { level: this.levels.levelNumber, stars: this.lastStars });
       const newly = this.achievements.newlyUnlocked();
       if (newly.length > 0) logger.info('Achievements unlocked', newly.map((a) => a.id));
