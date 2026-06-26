@@ -50,6 +50,7 @@ const requiredFiles = [
   'docs/PLAYTEST_PLAN.md',
   'docs/MARKET_READY_PLAN.md',
   'docs/RELEASE_NOTES_v0.1.0.md',
+  'docs/DEPLOYMENT_STATUS.md',
   '.github/ISSUE_TEMPLATE/bug_report.md',
   '.github/ISSUE_TEMPLATE/playtest_feedback.md',
   '.github/workflows/deploy.yml',
@@ -101,6 +102,8 @@ check('playtest plan references issue templates', contains('docs/PLAYTEST_PLAN.m
 check('market ready plan defines market gate', contains('docs/MARKET_READY_PLAN.md', 'Market-ready gate'));
 check('release notes define v0.1.0', contains('docs/RELEASE_NOTES_v0.1.0.md', 'v0.1.0'));
 check('release notes mention verification', contains('docs/RELEASE_NOTES_v0.1.0.md', 'npm run verify'));
+check('deployment status explains empty combined status', contains('docs/DEPLOYMENT_STATUS.md', 'statuses: []'));
+check('deployment status names pages URL', contains('docs/DEPLOYMENT_STATUS.md', 'https://lunora-gather.github.io/Praesidium/'));
 check('bug template has severity labels', contains('.github/ISSUE_TEMPLATE/bug_report.md', 'S0 Blocker'));
 check('playtest template records first wave timing', contains('.github/ISSUE_TEMPLATE/playtest_feedback.md', 'Time to first wave sent'));
 
