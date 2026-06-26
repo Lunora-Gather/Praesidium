@@ -84,6 +84,7 @@ export class HUD {
         : (isSmall ? `⚡ W${s.waves.current + 1}` : `⚡ Wave ${s.waves.current + 1}`);
 
     if (!isTiny) {
+      topBtn(isSmall ? 'ⓘ' : 'ⓘ Intel', false, '#475569', 'codex', isSmall ? 32 : 68);
       topBtn(isSmall ? '✦' : '✦ Talent', false, '#475569', 'talent', isSmall ? 32 : 72);
       topBtn(isSmall ? '⚙' : '⚙ Set', false, '#475569', 'settings', isSmall ? 32 : 60);
       topBtn(isSmall ? '🏆' : '🏆 Stats', false, '#475569', 'stats', isSmall ? 32 : 68);
