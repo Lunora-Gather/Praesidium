@@ -4,7 +4,7 @@
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
 
-export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'daily' | 'resume' | 'restart' | 'menu' | 'settings' | 'stats' | null;
+export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'daily' | 'resume' | 'restart' | 'next' | 'levels' | 'menu' | 'settings' | 'stats' | null;
 
 export interface ScreenStats {
   stars?: number;
@@ -17,6 +17,7 @@ export interface ScreenStats {
   spellsCast?: number;
   damageDealt?: number;
   durationSec?: number;
+  hasNextLevel?: boolean;
   isNewHighScore?: boolean;
   isNewLevelScore?: boolean;
   isStarUpgrade?: boolean;
@@ -104,27 +105,39 @@ export class Screens {
     let startButtonY = cardY + (isMenu ? 105 : isEndScreen ? 315 : 170);
     if (kind === 'lost' && seed !== 0) startButtonY = cardY + 335;
 
-    const labelKey = kind === 'menu' ? 'menu.start' : kind === 'paused' ? 'menu.resume' : (kind === 'won' ? 'menu.playAgain' : 'menu.retry');
-    const primaryAction: MenuClickAction = kind === 'menu' ? 'start' : kind === 'paused' ? 'resume' : 'restart';
-
-    this.drawButton(r, btnX, startButtonY, btnW, btnH, t(labelKey), primaryAction, '#3b82f6', '#1d4ed8');
-    let currentY = startButtonY + btnH + 10;
-
     if (isMenu) {
+      this.drawButton(r, btnX, startButtonY, btnW, btnH, t('menu.start'), 'start', '#3b82f6', '#1d4ed8');
+      let currentY = startButtonY + btnH + 10;
       this.drawButton(r, btnX, currentY, btnW, btnH, t('menu.endless'), 'endless', '#8b5cf6', '#6d28d9');
       currentY += btnH + 10;
       this.drawButton(r, btnX, currentY, btnW, btnH, t('menu.challenge'), 'challenge', '#475569', '#334155');
       currentY += btnH + 10;
       this.drawButton(r, btnX, currentY, btnW, btnH, t('menu.daily'), 'daily', '#10b981', '#047857');
       currentY += btnH + 10;
-
       const halfW = (btnW - 10) / 2;
       this.drawButton(r, btnX, currentY, halfW, btnH, t('menu.settings'), 'settings', '#475569', '#334155', 13, false);
       this.drawButton(r, btnX + halfW + 10, currentY, halfW, btnH, t('stats.title'), 'stats', '#475569', '#334155', 13, false);
       r.text(t('menu.shortcuts'), cx, cardY + cardH - 24, '#64748b', 10, 'center');
-    } else {
-      this.drawButton(r, btnX, currentY, btnW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
+      return;
     }
+
+    if (kind === 'paused') {
+      this.drawButton(r, btnX, startButtonY, btnW, btnH, t('menu.resume'), 'resume', '#3b82f6', '#1d4ed8');
+      this.drawButton(r, btnX, startButtonY + btnH + 10, btnW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
+      return;
+    }
+
+    if (kind === 'won') {
+      const hasNext = !!stats?.hasNextLevel;
+      this.drawButton(r, btnX, startButtonY, btnW, btnH, hasNext ? t('summary.nextLevel') : t('menu.levels'), hasNext ? 'next' : 'levels', '#10b981', '#047857');
+      const halfW = (btnW - 10) / 2;
+      this.drawButton(r, btnX, startButtonY + btnH + 10, halfW, btnH, t('summary.retryForStars'), 'restart', '#475569', '#334155', 12, false);
+      this.drawButton(r, btnX + halfW + 10, startButtonY + btnH + 10, halfW, btnH, t('menu.levels'), 'levels', '#475569', '#334155', 12, false);
+      return;
+    }
+
+    this.drawButton(r, btnX, startButtonY, btnW, btnH, t('menu.retry'), 'restart', '#3b82f6', '#1d4ed8');
+    this.drawButton(r, btnX, startButtonY + btnH + 10, btnW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
   }
 
   private drawVictoryReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, stats?: ScreenStats): void {
@@ -146,9 +159,7 @@ export class Screens {
 
   private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, seed: number, stats?: ScreenStats): void {
     const cx = cardX + cardW / 2;
-    if (stats?.wave !== undefined) {
-      r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + 76, '#f87171', 14, 'center', 'bold', 'top', 'header');
-    }
+    if (stats?.wave !== undefined) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + 76, '#f87171', 14, 'center', 'bold', 'top', 'header');
     r.text(t('summary.defeatAdvice'), cx, cardY + 100, '#94a3b8', 12, 'center', 'bold', 'top');
     this.drawBadges(r, cx, cardY + 118, this.buildBadges(stats));
     this.drawReportPanel(r, cardX + 24, cardY + 140, cardW - 48, 136, '#ef4444', this.buildRows(score, stats));
