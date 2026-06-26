@@ -46,6 +46,9 @@ const requiredFiles = [
   'docs/RELEASE_CHECKLIST.md',
   'docs/MOBILE_QA.md',
   'docs/FINAL_RELEASE_QA.md',
+  'docs/MEDIA_KIT.md',
+  'docs/PLAYTEST_PLAN.md',
+  'docs/MARKET_READY_PLAN.md',
   'manifest.json',
   'index.html',
 ];
@@ -81,6 +84,9 @@ check('privacy explains localStorage', contains('docs/PRIVACY.md', 'localStorage
 check('changelog has Unreleased section', contains('CHANGELOG.md', '## Unreleased'));
 check('final QA defines release candidate criteria', contains('docs/FINAL_RELEASE_QA.md', 'public free-game release candidate'));
 check('mobile QA covers tower drawer', contains('docs/MOBILE_QA.md', 'Tower drawer'));
+check('media kit defines screenshot list', contains('docs/MEDIA_KIT.md', 'Screenshot capture list'));
+check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'Commercial release gate'));
+check('market ready plan defines market gate', contains('docs/MARKET_READY_PLAN.md', 'Market-ready gate'));
 
 // Manifest
 const manifest = read('manifest.json');
@@ -120,6 +126,10 @@ check('HUD has tiny screen branch', contains('src/ui/HUD.ts', 'isUltraTiny'));
 check('tower panel has mobile drawer', contains('src/ui/TowerPanel.ts', 'drawMobileDrawer'));
 check('screens have compact layout', contains('src/ui/Screens.ts', 'compact'));
 check('tutorial has Intel step', contains('src/utils/Tutorial.ts', 'tutorial.intel'));
+check('particle system has meteor impact', contains('src/game/effects/ParticleSystem.ts', 'meteorImpact'));
+check('particle system has freeze pulse', contains('src/game/effects/ParticleSystem.ts', 'freezePulse'));
+check('particle system has boss death effect', contains('src/game/effects/ParticleSystem.ts', 'bossDeath'));
+check('main wires enhanced spell effects', contains('src/main.ts', 'meteorImpact'));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
