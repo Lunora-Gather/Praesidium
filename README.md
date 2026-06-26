@@ -1,134 +1,210 @@
-# 🛡️ Praesidium (守望)
+<div align="center">
 
-> **A Premium Web-Based Sci-Fi Tower Defense Game**
-> 
-> *Zero Install, High Performance, Immersive Aesthetics, and Fully Responsive Play.*
+# 🛡️ Praesidium / 守望
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.2-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![HTML5 Canvas](https://img.shields.io/badge/HTML5-Canvas-E34F26?style=flat-square&logo=html5)](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
-[![Web Audio API](https://img.shields.io/badge/Web_Audio-Synthesis-059669?style=flat-square)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
-[![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Deploy-22c55e?style=flat-square&logo=github)](https://lunora-gather.github.io/Praesidium/)
+**一款高完成度的科幻塔防网页游戏。**  
+建造防线、升级炮塔、释放技能、解锁天赋，在战役、无尽、每日挑战与种子挑战中守住最后阵地。
 
-**Praesidium** (Latin: *"defense / protection"*) is a super-scale, high-fidelity tower defense game built directly on the web with pure **TypeScript, HTML5 Canvas, and Vite**. With zero engine overhead, zero graphic assets (all procedural rendering), and zero audio files (all procedural sound synthesis), the entire game compiles to a tiny self-contained static site (~90 KB total).
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](#技术栈)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)](#技术栈)
+[![Canvas](https://img.shields.io/badge/HTML5-Canvas-E34F26?style=flat-square&logo=html5&logoColor=white)](#技术栈)
+[![Web Audio](https://img.shields.io/badge/Web%20Audio-Procedural-10B981?style=flat-square)](#技术栈)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-222222?style=flat-square&logo=github&logoColor=white)](https://lunora-gather.github.io/Praesidium/)
 
-👉 **[Play the Online Live Demo Here!](https://lunora-gather.github.io/Praesidium/)** (Ensure your browser has GitHub Actions Pages enabled)
+[在线游玩](https://lunora-gather.github.io/Praesidium/) · [核心玩法](#核心玩法) · [本地运行](#本地运行) · [质量验证](#质量验证)
 
----
-
-## 🎮 How to Play
-
-### Local Development Server
-
-```bash
-# Install dependencies
-npm install
-
-# Start the dev server with LAN exposure and hot-reload
-npm run dev
-
-# Open in your browser:
-# Local: http://localhost:5175
-# LAN: http://10.150.246.105:5175 (or your local IP)
-```
-
-### Build and Local Preview
-
-```bash
-# Build the production optimized bundle
-npm run build
-
-# Start a local preview of the production build
-npm run preview -- --host --port 4174
-
-# Open: http://localhost:4174
-```
+</div>
 
 ---
 
-## ✨ Features
+## 项目简介
 
-### 🎨 1. Premium Sci-Fi Visual Polish
-* **Dual-Font System**: Integrates Google Fonts CDN (Inter for clean, high-readability labels; Orbitron for futuristic headers, scores, wave numbers, and combos).
-* **Glassmorphism UI**: Modal cards use translucent backdrops, neon glow shadows, and dynamic gradient borders that transition based on state (emerald for victory, coral-red for defeat, sapphire-blue for pause/menu).
-* **Precise Vertical Centering**: Text aligns perfectly across all buttons, cards, list rows, and overlays using native `'middle'` baselines.
+**Praesidium** 源自拉丁语，意为“防御 / 守护”。这是一个直接运行在浏览器中的科幻塔防游戏，使用 **TypeScript + HTML5 Canvas + Web Audio API + Vite** 构建。
 
-### 📱 2. Fully Responsive HUD for All Devices
-* **Stat Pill Compression**: On screens narrower than 850px, labels automatically contract to single letters (`GOLD` ➔ `G`, `LIVES` ➔ `L`, `W` / `S`) and shrink font sizes to eliminate overlaps.
-* **Micro-Icon Buttons**: Navigation buttons adapt to emoji-based icon mode (e.g., `☰`, `⚙`, `🏆`, `⏸`, `⟳`) on smaller screens.
-* **Intelligent Truncation**: Hides non-critical gameplay features (Stats, Settings, Talents) on screens narrower than 640px to maximize the canvas field.
-
-### 🔊 3. Procedural Audio & Music Synthesizer
-* **Distinct Tower Soundwaves**: Each of the 6 tower types generates distinct synthesizer patterns (laser hums, heavy mortar thuds, electric crackles, sniper reports, icy slows).
-* **Adaptive Music & Alarms**: Synthesises a procedural ambient space music loop in the background, complete with emergency warning sirens and screen shakes on life lost.
-* **Achievement Chimes**: Twin-chime victory sounds triggered upon achievement unlocks.
-
-### 🏆 4. Offline Leaderboards & Challenges
-* **Seeded NPC Leaderboard**: Generates realistic competitor scores based on Level indices or Endless/Daily seeds, enabling offline social comparison.
-* **Daily Challenge**: Compete on a global seed generated daily using your system date.
-* **Defeat Seed Sharing**: Easily copy your endless challenge seed to your clipboard via a one-click button on the game over screen.
-
-### 📈 5. Deep Progression & Economy
-* **Talent Tree**: Earn talent points from level stars to purchase persistent upgrades (Greed, Power, Vision, Haste, Fortitude, Arcane) that carry over to all subsequent runs.
-* **Achievements Panel**: Unlock in-game achievements (Architect, Upgrader, Archmage, Veteran) with smooth slide-in notification cards and audio alerts.
-* **6 Towers & 5 Enemy Types**: Standard rock-paper-scissors armor/type mechanics with physical, fire, ice, and lightning damage scaling.
+项目不依赖大型游戏引擎，主要通过代码完成地图、敌人、炮塔、弹幕、粒子、音效、UI 与进度系统。它的目标不是简单复刻塔防，而是做成一个完整的轻量级网页游戏作品：可立即游玩、可长期成长、可重复挑战，也便于继续扩展。
 
 ---
 
-## 🏗️ Architecture
+## 在线游玩
 
-Decoupled model-view-controller setup. Game simulation is completely isolated from visual rendering.
-
+```text
+https://lunora-gather.github.io/Praesidium/
 ```
+
+如果页面刚部署后仍显示旧版本，可以强制刷新浏览器缓存。
+
+| 系统 | 快捷键 |
+| --- | --- |
+| Windows / Linux | `Ctrl + F5` |
+| macOS | `Command + Shift + R` |
+
+---
+
+## 核心玩法
+
+| 模块 | 内容 |
+| --- | --- |
+| **战役关卡** | 6 个不同路径布局的关卡，逐步提高防守压力。 |
+| **炮塔系统** | 6 种炮塔：Turret、Sniper、Mortar、Frost、Tesla、Cannon。 |
+| **敌人系统** | 多类型敌人拥有不同速度、生命、奖励和抗性。 |
+| **升级与出售** | 炮塔支持多级升级，也可以出售回收部分金币。 |
+| **目标策略** | 炮塔可切换 first、last、strongest、weakest、closest 等目标策略。 |
+| **协同加成** | 相邻炮塔提供伤害和攻速加成，鼓励布局取舍。 |
+| **玩家技能** | Meteor、Freeze、Repair 三种主动技能用于爆发、控场和续航。 |
+| **天赋成长** | 通过星级获得天赋点，永久强化金币、伤害、射程、攻速、生命和技能冷却。 |
+| **成就系统** | 击杀、金币、建塔、升级、技能、通关等长期目标。 |
+| **统计面板** | 记录游玩次数、时长、关卡胜率、塔使用情况和无尽模式表现。 |
+| **排行榜** | 本地离线排行榜与确定性 NPC 分数，用于无服务器的挑战对比。 |
+
+---
+
+## 游戏模式
+
+### Campaign / 战役
+
+从第 1 关开始逐步推进，完成关卡后解锁下一关。每关根据剩余生命计算星级，并将最佳星级和最高分保存到本地。
+
+### Endless / 无尽模式
+
+敌潮不会在固定波数后结束，而是持续增长。无尽模式会记录最高分和最高波次，适合重复挑战。
+
+### Daily Challenge / 每日挑战
+
+基于当天日期生成固定种子。同一天进入挑战的玩家会面对同一套波次节奏，适合每日刷新纪录。
+
+### Challenge Seed / 种子挑战
+
+输入指定十六进制种子，复现同一局无尽挑战。失败后可以复制种子，方便分享给别人挑战同一局。
+
+---
+
+## 操作说明
+
+| 操作 | 输入 |
+| --- | --- |
+| 选择炮塔 | 点击底部炮塔卡片，或按数字键 `1` - `6` |
+| 放置炮塔 | 选择炮塔后点击可建造地块 |
+| 选择已有炮塔 | 点击地图上的炮塔 |
+| 升级炮塔 | 点击炮塔面板中的 Upgrade，或按 `U` |
+| 出售炮塔 | 点击炮塔面板中的 Sell，或按 `S` |
+| 切换目标策略 | 选中炮塔后按 `T` |
+| 暂停 / 继续 | 空格键，或点击 HUD 按钮 |
+| 释放技能 | `Q` / `W` / `E`，然后点击目标位置或等待技能生效 |
+| 开始下一波 | 点击 `Send Wave` |
+| 加速 | 点击速度按钮切换 `1× / 2× / 3×` |
+
+---
+
+## 系统设计
+
+```text
 src/
-├── main.ts                 # Controller: Entry point, wires update loop & clicks
-├── engine/                 # Generic Engine Layer (framework-agnostic)
-│   ├── GameLoop.ts         # Fixed-timestep loop (60Hz) with render interpolation
-│   ├── Input.ts            # Mouse, keyboard, and pointer touch abstractions
-│   ├── Renderer.ts         # Screen camera, lines, shapes, text wrappers
-│   └── Audio.ts            # Web Audio API synthesizers (SFX & music)
-├── game/                   # AUTHORITATIVE Game State
-│   ├── GameState.ts        # Core state machine, grid mapping, reapers, and waves
-│   ├── Achievements.ts     # Achievement definition and unlock trackers
-│   ├── Talents.ts          # Meta-upgrades persistence & multiplier maps
-│   ├── grid/               # Grids and LevelManager definitions
-│   ├── towers/             # Data-driven towers registries (Turret, Sniper, Mortar...)
-│   ├── enemies/            # Enemy stats, speeds, and resistances (Grunt, Boss...)
-│   ├── projectiles/        # Homing bullets, slows, lightning chains
-│   └── waves/              # Procedural WaveManager scaling with seeded Rng
-├── ui/                     # Pure View Layer (Visual layout & drawing only)
-│   ├── HUD.ts              # Stat pills, responsive top bar, and shop card carousel
-│   ├── WorldRenderer.ts    # Game board paths, ranges, level pips, and targets
-│   ├── StatsScreen.ts      # Tabbed panel: Detailed metrics & Rankings leaderboard
-│   ├── SettingsScreen.ts   # Mute, FPS, ranges toggles, and English/Chinese switch
-│   └── Screens.ts          # Main menu, level select, paused, victory overlays
-└── utils/
-    ├── Leaderboard.ts      # Deterministic NPC generator for rankings
-    ├── SaveSystem.ts       # Performance throttled LocalStorage snapshot saver
-    └── rng.ts              # mulberry32 seeded generator for reproducible runs
+├── main.ts                 # 游戏入口：装配引擎、状态、UI、输入和渲染循环
+├── engine/                 # 通用引擎层
+│   ├── GameLoop.ts         # 固定时间步主循环
+│   ├── Input.ts            # 鼠标、触摸、键盘统一输入
+│   ├── Renderer.ts         # Canvas 绘制、相机、震屏和基础图形封装
+│   └── Audio.ts / Music.ts # Web Audio 程序化音效与背景音乐
+├── game/                   # 玩法权威状态
+│   ├── GameState.ts        # 顶层状态机、经济、生命、波次、技能、存档
+│   ├── towers/             # 炮塔定义、实例、升级和目标策略
+│   ├── enemies/            # 敌人定义、移动、生命、抗性
+│   ├── projectiles/        # 弹幕、追踪、溅射和轨迹
+│   ├── systems/            # 战斗系统与移动系统
+│   ├── waves/              # 波次生成、无尽模式和种子挑战
+│   ├── grid/               # 关卡、路径、地块和寻路
+│   ├── spells/             # 玩家主动技能
+│   ├── Achievements.ts     # 成就系统
+│   └── Talents.ts          # 天赋成长系统
+├── ui/                     # Canvas UI 绘制层
+│   ├── HUD.ts              # 顶部状态栏、底部商店、快捷按钮
+│   ├── WorldRenderer.ts    # 地图、炮塔、敌人、弹幕、范围和特效
+│   ├── Screens.ts          # 主菜单、暂停、胜利、失败界面
+│   ├── LevelSelect.ts      # 关卡选择与难度选择
+│   ├── SettingsScreen.ts   # 设置面板
+│   ├── StatsScreen.ts      # 统计与排行榜面板
+│   └── TalentPanel.ts      # 天赋升级面板
+├── config/                 # 平衡、难度和玩家设置
+├── utils/                  # 本地存档、统计、排行榜、随机数、日志与国际化
+└── scripts/                # 自测脚本与存档回归检查
 ```
 
 ---
 
-## 🛠️ Verification & Test Suite
+## 技术栈
 
-The project includes strict verification scripts ensuring no regressions occur during development:
-
-* **TypeScript type check**:
-  ```bash
-  npm run typecheck
-  ```
-* **Authoritative unit testing** (covers vector math, A* pathfinding, upgrade multipliers, resistances):
-  ```bash
-  npx tsx scripts/selftest.ts   # 33 passed, 0 failed
-  ```
-* **Save/Restore persistence round-trip check**:
-  ```bash
-  npx tsx scripts/save-restore-test.ts   # 23 passed, 0 failed
-  ```
+| 分类 | 技术 |
+| --- | --- |
+| 语言 | TypeScript |
+| 构建 | Vite |
+| 渲染 | HTML5 Canvas 2D |
+| 音频 | Web Audio API |
+| 存储 | LocalStorage |
+| 测试/验证 | TypeScript typecheck + runtime selftests |
+| 部署 | GitHub Actions + GitHub Pages |
 
 ---
 
-## 📜 License
+## 本地运行
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+```bash
+git clone https://github.com/Lunora-Gather/Praesidium.git
+cd Praesidium
+npm install
+npm run dev
+```
+
+默认开发地址：
+
+```text
+http://localhost:5175
+```
+
+生产构建与本地预览：
+
+```bash
+npm run build
+npm run preview
+```
+
+---
+
+## 质量验证
+
+项目提供统一验证入口：
+
+```bash
+npm run verify
+```
+
+该命令会依次执行：
+
+1. TypeScript 类型检查；
+2. 核心玩法自测；
+3. 中途存档 / 恢复回归检查；
+4. 生产构建。
+
+也可以单独运行：
+
+```bash
+npm run typecheck
+npm run selftest
+npm run test:save
+npm run build
+```
+
+---
+
+## 当前优化重点
+
+- 补强移动端塔防交互，例如放置取消、塔详情底部抽屉和更清晰的技能按钮；
+- 增加波次预告、敌人说明和塔克制提示，让策略选择更明确；
+- 引入自动平衡模拟脚本，长期跟踪不同难度和关卡的通关率；
+- 完成 UI 文案国际化，减少界面中英文混杂；
+- 增加封面图、截图和更完整的 GitHub Pages 分享卡。
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
