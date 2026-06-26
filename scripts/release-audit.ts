@@ -49,6 +49,7 @@ const requiredFiles = [
   'docs/MEDIA_KIT.md',
   'docs/PLAYTEST_PLAN.md',
   'docs/MARKET_READY_PLAN.md',
+  'docs/RELEASE_NOTES_v0.1.0.md',
   '.github/ISSUE_TEMPLATE/bug_report.md',
   '.github/ISSUE_TEMPLATE/playtest_feedback.md',
   'manifest.json',
@@ -77,6 +78,7 @@ check('html has Open Graph description', html.includes('og:description'));
 check('html has Twitter title', html.includes('twitter:title'));
 check('html has dark color scheme', html.includes('color-scheme'));
 check('html loads manifest', html.includes('href="./manifest.json"'));
+check('html has portrait orientation hint', html.includes('orientation-hint'));
 
 // README and docs
 check('README mentions quality verification', contains('README.md', 'npm run verify'));
@@ -90,6 +92,8 @@ check('media kit defines screenshot list', contains('docs/MEDIA_KIT.md', 'Screen
 check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'Commercial release gate'));
 check('playtest plan references issue templates', contains('docs/PLAYTEST_PLAN.md', '.github/ISSUE_TEMPLATE/playtest_feedback.md'));
 check('market ready plan defines market gate', contains('docs/MARKET_READY_PLAN.md', 'Market-ready gate'));
+check('release notes define v0.1.0', contains('docs/RELEASE_NOTES_v0.1.0.md', 'v0.1.0'));
+check('release notes mention verification', contains('docs/RELEASE_NOTES_v0.1.0.md', 'npm run verify'));
 check('bug template has severity labels', contains('.github/ISSUE_TEMPLATE/bug_report.md', 'S0 Blocker'));
 check('playtest template records first wave timing', contains('.github/ISSUE_TEMPLATE/playtest_feedback.md', 'Time to first wave sent'));
 
@@ -98,6 +102,9 @@ const manifest = read('manifest.json');
 check('manifest names Praesidium', manifest.includes('Praesidium'));
 check('manifest uses standalone/fullscreen display', manifest.includes('fullscreen') || manifest.includes('standalone'));
 check('manifest start_url is relative', manifest.includes('"start_url"'));
+check('manifest prefers landscape', manifest.includes('"orientation": "landscape"'));
+check('manifest includes game category', manifest.includes('"games"'));
+check('manifest includes app shortcut', manifest.includes('"shortcuts"'));
 
 // Localization and display keys
 const i18n = read('src/utils/i18n.ts');
