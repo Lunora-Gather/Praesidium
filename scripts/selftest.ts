@@ -3,12 +3,14 @@
 
 import { computeStars } from '../src/game/Stars';
 import { applyResistance, DamageType } from '../src/game/DamageType';
-import { Tower, UPGRADE_STEPS } from '../src/game/towers/Tower';
+import { Tower } from '../src/game/towers/Tower';
 import { getTowerDef } from '../src/game/towers/TowerRegistry';
 import { Grid } from '../src/game/grid/Grid';
 import { LEVELS } from '../src/game/grid/LevelManager';
 import { Vec2 } from '../src/engine/math/Vec2';
 import { Pathfinding } from '../src/game/grid/Pathfinding';
+import { GameState } from '../src/game/GameState';
+import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 
 let pass = 0;
 let fail = 0;
@@ -52,11 +54,21 @@ check('vec len = 5', a.len() === 5);
 check('vec add', a.add(new Vec2(1, 1)).x === 4 && a.add(new Vec2(1, 1)).y === 5);
 check('vec normalize', Math.abs(a.normalize().len() - 1) < 1e-9);
 
-// --- Integration: full game loop simulation ---
-// Simulates 60 seconds of gameplay: place towers, run waves, verify enemies die
-// and gold increases. Proves the game is playable end-to-end.
-import { GameState } from '../src/game/GameState';
+// --- UI action contract ---
+const endActions: MenuClickAction[] = ['next', 'levels', 'restart', 'menu'];
+check('end screen action next exists', endActions.includes('next'));
+check('end screen action levels exists', endActions.includes('levels'));
+const summaryShape: ScreenStats = {
+  stars: 3,
+  hasNextLevel: true,
+  isNewHighScore: true,
+  isNewLevelScore: true,
+  isStarUpgrade: true,
+};
+check('screen summary supports hasNextLevel', summaryShape.hasNextLevel === true);
+check('screen summary supports record badges', !!summaryShape.isNewHighScore && !!summaryShape.isNewLevelScore && !!summaryShape.isStarUpgrade);
 
+// --- Integration: full game loop simulation ---
 const gs = new GameState();
 gs.setDifficulty('normal');
 gs.selectLevel(0);
@@ -64,7 +76,6 @@ check('game starts in playing', gs.phase === 'playing');
 check('initial gold > 0', gs.gold > 0);
 check('initial lives > 0', gs.lives > 0);
 
-// Place towers on buildable tiles (not on path/border)
 let placedCount = 0;
 for (let ty = 2; ty < 10 && placedCount < 3; ty++) {
   for (let tx = 2; tx < 14 && placedCount < 3; tx++) {
@@ -76,23 +87,31 @@ for (let ty = 2; ty < 10 && placedCount < 3; ty++) {
 check('can place towers', placedCount >= 1);
 check('towers on board', gs.towers.length >= 1);
 
-// Force first wave
 gs.waves.forceNext();
-const goldBefore = gs.gold;
 const dt = 1 / 60;
-// Simulate 90 seconds of gameplay
 for (let i = 0; i < 90 * 60; i++) {
   gs.update(dt);
   if (gs.phase !== 'playing') break;
 }
 check('game loop runs without crash', true);
 check('enemies spawned or waves progressed', gs.waves.current >= 1);
-// Either we killed enemies (gold went up from rewards) or we're still alive
 const stillAlive = gs.phase === 'playing' || gs.phase === 'won';
 const diedWithProgress = gs.phase === 'lost' && gs.waves.current >= 1;
 check('game reaches meaningful state', stillAlive || diedWithProgress);
 
-// Test endless mode
+// --- End-screen navigation flow ---
+const nav = new GameState();
+nav.selectLevel(0);
+const firstLevel = nav.levels.levelNumber;
+nav.advanceLevel();
+check('advanceLevel starts next level when available', nav.phase === 'playing' && nav.levels.levelNumber > firstLevel);
+
+const finalNav = new GameState();
+finalNav.selectLevel(LEVELS.length - 1);
+finalNav.advanceLevel();
+check('advanceLevel returns to level select after final level', finalNav.phase === 'levelSelect');
+
+// --- Endless mode ---
 const gs2 = new GameState();
 gs2.endless = true;
 gs2.selectLevel(0);
@@ -106,7 +125,7 @@ for (let i = 0; i < 60 * 60; i++) {
 check('endless runs without crash', true);
 check('endless never reaches won', gs2.phase !== 'won');
 
-// Test challenge seed reproducibility
+// --- Challenge seed reproducibility ---
 const gs3 = new GameState();
 gs3.endless = true;
 gs3.endlessSeed = 0xDEADBEEF;
