@@ -75,16 +75,23 @@ export class Enemy {
   }
 
   takeDamage(d: number, type: DamageType = DamageType.Physical): number {
-    const actual = this.resist ? applyResistance(d, type, this.resist) : d;
-    let dmg = actual;
+    const rawDamage = this.resist ? applyResistance(d, type, this.resist) : d;
+    let remaining = rawDamage;
+    let dealt = 0;
+
     if (this.shieldHp > 0) {
-      const absorbed = Math.min(this.shieldHp, dmg);
+      const absorbed = Math.min(this.shieldHp, remaining);
       this.shieldHp -= absorbed;
-      dmg -= absorbed;
+      remaining -= absorbed;
+      dealt += absorbed;
     }
-    this.hp -= dmg;
+
+    const hpDamage = Math.min(this.hp, remaining);
+    this.hp -= hpDamage;
+    dealt += hpDamage;
+
     if (this.hp <= 0) this.dead = true;
-    return actual;
+    return dealt;
   }
 
   heal(amount: number): void {
