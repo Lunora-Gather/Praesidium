@@ -2,7 +2,7 @@
 
 import { Renderer } from '../engine/Renderer';
 import { GameState } from '../game/GameState';
-import { TOWER_LIST } from '../game/towers/TowerRegistry';
+import { TOWER_LIST, getTowerDef } from '../game/towers/TowerRegistry';
 import { getEnemyDef } from '../game/enemies/EnemyRegistry';
 import { Vec2 } from '../engine/math/Vec2';
 import { t } from '../utils/i18n';
@@ -179,18 +179,62 @@ export class HUD {
     if (!preview || preview.enemies.length === 0) return;
 
     const enemyText = preview.enemies
-      .slice(0, 4)
+      .slice(0, 5)
       .map(group => `${getEnemyDef(group.id).name}×${group.count}`)
       .join(' · ');
-    const more = preview.enemies.length > 4 ? ' · …' : '';
-    const label = `${t('hud.nextWave')} ${preview.waveNumber}: ${enemyText}${more}`;
-    const w = Math.min(420, Math.max(260, label.length * 6.2 + 28));
-    const h = 22;
+    const more = preview.enemies.length > 5 ? ' · …' : '';
+    const threats = this.previewThreats(preview.enemies);
+    const recommended = this.previewRecommendations(preview.enemies);
+    const line1 = `${t('hud.nextWave')} ${preview.waveNumber}: ${enemyText}${more}`;
+    const line2 = `${t('hud.threats')}: ${threats}  |  ${t('hud.recommended')}: ${recommended}`;
+    const w = Math.min(620, Math.max(420, Math.max(line1.length, line2.length) * 5.7 + 32));
+    const h = 44;
     const x = (r.width - w) / 2;
-    const y = TOP_H - h - 4;
+    const y = TOP_H + 8;
 
-    r.roundRect(x, y, w, h, 11, 'rgba(15, 23, 42, 0.72)', true, 'rgba(59, 130, 246, 0.22)', 1);
-    r.text(label, r.width / 2, y + h / 2, '#bfdbfe', 10, 'center', 'bold', 'middle');
+    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.82)', true, 'rgba(59, 130, 246, 0.24)', 1);
+    r.text(line1, r.width / 2, y + 10, '#bfdbfe', 10, 'center', 'bold', 'top', 'header');
+    r.text(line2, r.width / 2, y + 27, '#94a3b8', 9.5, 'center', 'bold', 'top');
+  }
+
+  private previewThreats(enemies: Array<{ id: string; count: number }>): string {
+    const sorted = [...enemies]
+      .sort((a, b) => this.threatScore(b.id, b.count) - this.threatScore(a.id, a.count))
+      .slice(0, 3);
+
+    return sorted
+      .map(group => {
+        const def = getEnemyDef(group.id);
+        const trait = def.traits.find(item => item.includes('Resists') || item.includes('Boss') || item.includes('Fast') || item.includes('Siege')) ?? def.traits[0];
+        return `${def.name}(${trait})`;
+      })
+      .join(' · ');
+  }
+
+  private previewRecommendations(enemies: Array<{ id: string; count: number }>): string {
+    const scores = new Map<string, number>();
+    for (const group of enemies) {
+      const def = getEnemyDef(group.id);
+      const weight = this.threatScore(group.id, group.count);
+      for (const id of def.recommendedTowerIds) {
+        scores.set(id, (scores.get(id) ?? 0) + weight);
+      }
+    }
+
+    return [...scores.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([id]) => getTowerDef(id).name)
+      .join(' + ');
+  }
+
+  private threatScore(id: string, count: number): number {
+    const def = getEnemyDef(id);
+    const hpWeight = def.hp / 40;
+    const speedWeight = def.speed / 70;
+    const bossWeight = def.isBoss ? 10 : 0;
+    const resistWeight = def.resist ? Object.values(def.resist).length * 2 : 0;
+    return count + hpWeight + speedWeight + bossWeight + resistWeight;
   }
 
   hitShop(regions: HudRegions, x: number, y: number): string | null {
