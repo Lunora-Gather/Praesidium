@@ -4,6 +4,7 @@
 import { Renderer } from '../engine/Renderer';
 import type { Tower } from '../game/towers/Tower';
 import { t } from '../utils/i18n';
+import { towerName } from '../utils/displayText';
 
 export type TowerPanelAction = 'upgrade' | 'sell';
 
@@ -24,7 +25,7 @@ export class TowerPanel {
     r.clearShadow();
 
     const levelText = t('tower.level').replace('{level}', String(tower.level));
-    r.text(`${tower.def.name} ${levelText}`, x + 12, y + 8, '#ffffff', 13, 'left', 'bold', 'top', 'header');
+    r.text(`${towerName(tower.def.id, tower.def.name)} ${levelText}`, x + 12, y + 8, '#ffffff', 13, 'left', 'bold', 'top', 'header');
     r.text(`${t('tower.damage')} ${Math.round(tower.damage)}`, x + 12, y + 26, '#94a3b8', 11, 'left', 'bold', 'top', 'header');
     r.text(`${t('tower.range')} ${Math.round(tower.range)}`, x + 12, y + 42, '#94a3b8', 11, 'left', 'bold', 'top', 'header');
     r.text(`${t('tower.rate')} ${tower.fireRate.toFixed(1)}/s`, x + 12, y + 58, '#94a3b8', 11, 'left', 'bold', 'top', 'header');
