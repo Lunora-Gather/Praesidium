@@ -11,6 +11,7 @@ import { Vec2 } from '../src/engine/math/Vec2';
 import { Pathfinding } from '../src/game/grid/Pathfinding';
 import { GameState } from '../src/game/GameState';
 import { setLocale, t as tr } from '../src/utils/i18n';
+import { achievementName, enemyName, spellName, towerName, traitName } from '../src/utils/displayText';
 import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 
 let pass = 0;
@@ -59,13 +60,7 @@ check('vec normalize', Math.abs(a.normalize().len() - 1) < 1e-9);
 const endActions: MenuClickAction[] = ['next', 'levels', 'restart', 'menu'];
 check('end screen action next exists', endActions.includes('next'));
 check('end screen action levels exists', endActions.includes('levels'));
-const summaryShape: ScreenStats = {
-  stars: 3,
-  hasNextLevel: true,
-  isNewHighScore: true,
-  isNewLevelScore: true,
-  isStarUpgrade: true,
-};
+const summaryShape: ScreenStats = { stars: 3, hasNextLevel: true, isNewHighScore: true, isNewLevelScore: true, isStarUpgrade: true };
 check('screen summary supports hasNextLevel', summaryShape.hasNextLevel === true);
 check('screen summary supports record badges', !!summaryShape.isNewHighScore && !!summaryShape.isNewLevelScore && !!summaryShape.isStarUpgrade);
 
@@ -74,6 +69,14 @@ const i18nKeys = [
   'tower.damage',
   'tower.upgrade',
   'tower.sell',
+  'towerDef.turret.name',
+  'towerDef.cannon.desc',
+  'spell.meteor.name',
+  'spell.freeze.desc',
+  'enemy.grunt.name',
+  'enemy.boss.desc',
+  'achievement.first_blood.name',
+  'achievement.conqueror.desc',
   'talent.gold.name',
   'talent.damage.desc',
   'achievement.unlocked',
@@ -84,6 +87,11 @@ setLocale('en');
 for (const key of i18nKeys) check(`i18n en ${key}`, tr(key) !== key);
 setLocale('zh');
 for (const key of i18nKeys) check(`i18n zh ${key}`, tr(key) !== key);
+check('localized tower helper zh', towerName('turret', 'Turret') === '哨戒塔');
+check('localized enemy helper zh', enemyName('boss', 'Warlord') === '战争领主');
+check('localized spell helper zh', spellName('meteor', 'Meteor') === '陨石');
+check('localized achievement helper zh', achievementName('first_blood', 'First Blood') === '第一滴血');
+check('localized trait helper zh', traitName('Resists Ice') === '抗冰霜');
 setLocale('en');
 
 // --- Integration: full game loop simulation ---
