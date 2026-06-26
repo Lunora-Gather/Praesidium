@@ -1,5 +1,6 @@
-// Data-driven tower registry. Phase 3: 6 archetypes with damage types.
-// Splash/slow fields honored by CombatSystem; damage type by Enemy.takeDamage.
+// Data-driven tower registry. Adding a tower should primarily mean adding one
+// TowerDef entry here, while combat behavior is interpreted by shared systems.
+// Splash, slow, damage type, and targeting strategy are honored by gameplay code.
 
 import { BALANCE } from '../../config/balance';
 import { DamageType } from '../DamageType';
