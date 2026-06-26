@@ -6,6 +6,7 @@ import { TOWER_LIST, getTowerDef } from '../game/towers/TowerRegistry';
 import { ENEMY_DEFS } from '../game/enemies/EnemyRegistry';
 import { DamageType } from '../game/DamageType';
 import { t } from '../utils/i18n';
+import { enemyDescription, enemyName, strategyName, towerDescription, towerName, traitName } from '../utils/displayText';
 
 type CodexTab = 'towers' | 'enemies';
 type CodexAction = 'close' | 'tab_towers' | 'tab_enemies';
@@ -84,10 +85,10 @@ export class CodexScreen {
       r.setShadow(tower.color, 8, 0, 0);
       r.circle(new Vec2(tx + 16, ty + 20), 6, tower.color);
       r.clearShadow();
-      r.text(tower.name, tx + 30, ty + 10, '#f8fafc', 13, 'left', 'bold', 'top', 'header');
+      r.text(towerName(tower.id, tower.name), tx + 30, ty + 10, '#f8fafc', 13, 'left', 'bold', 'top', 'header');
       r.text(`${this.damageTypeName(tower.damageType)} · ${tower.cost}g · R${Math.round(tower.range)}`, tx + cardW - 12, ty + 11, '#94a3b8', 10, 'right', 'bold', 'top', 'header');
-      r.text(tower.description, tx + 14, ty + 34, '#cbd5e1', 10.5, 'left', 'normal');
-      r.text(`${t('codex.strategy')}: ${tower.defaultStrategy}`, tx + 14, ty + rowH - 20, '#64748b', 10, 'left', 'bold', 'top');
+      r.text(towerDescription(tower.id, tower.description), tx + 14, ty + 34, '#cbd5e1', 10.5, 'left', 'normal');
+      r.text(`${t('codex.strategy')}: ${strategyName(tower.defaultStrategy, tower.defaultStrategy)}`, tx + 14, ty + rowH - 20, '#64748b', 10, 'left', 'bold', 'top');
     }
   }
 
@@ -106,12 +107,15 @@ export class CodexScreen {
       r.circle(new Vec2(x + 17, ey + 20), enemy.isBoss ? 8 : 6, enemy.color);
       r.clearShadow();
 
-      r.text(enemy.name, x + 34, ey + 10, '#f8fafc', 13, 'left', 'bold', 'top', 'header');
-      r.text(enemy.traits.slice(0, 3).map(trait => this.traitName(trait)).join(' · '), x + w - 12, ey + 11, '#94a3b8', 10, 'right', 'bold', 'top');
-      r.text(enemy.description, x + 14, ey + 33, '#cbd5e1', 10, 'left', 'normal');
+      r.text(enemyName(enemy.id, enemy.name), x + 34, ey + 10, '#f8fafc', 13, 'left', 'bold', 'top', 'header');
+      r.text(enemy.traits.slice(0, 3).map(trait => traitName(trait)).join(' · '), x + w - 12, ey + 11, '#94a3b8', 10, 'right', 'bold', 'top');
+      r.text(enemyDescription(enemy.id, enemy.description), x + 14, ey + 33, '#cbd5e1', 10, 'left', 'normal');
 
       const resist = this.resistanceSummary(enemy.resist);
-      const counters = enemy.recommendedTowerIds.map(id => getTowerDef(id).name).join(' + ');
+      const counters = enemy.recommendedTowerIds.map(id => {
+        const def = getTowerDef(id);
+        return towerName(def.id, def.name);
+      }).join(' + ');
       r.text(`${t('codex.resist')}: ${resist}`, x + 14, ey + rowH - 19, '#64748b', 10, 'left', 'bold', 'top');
       r.text(`${t('codex.counters')}: ${counters}`, x + w - 14, ey + rowH - 19, '#fbbf24', 10, 'right', 'bold', 'top');
     }
@@ -134,29 +138,6 @@ export class CodexScreen {
       case DamageType.Lightning: return t('damage.lightning');
       default: return t('codex.none');
     }
-  }
-
-  private traitName(trait: string): string {
-    const map: Record<string, string> = {
-      'Standard': 'trait.standard',
-      'No resistance': 'trait.noResistance',
-      'Fast': 'trait.fast',
-      'Low HP': 'trait.lowHp',
-      'Armored': 'trait.armored',
-      'High HP': 'trait.highHp',
-      'Resists Ice': 'trait.resistsIce',
-      'Aggressive': 'trait.aggressive',
-      'Resists Fire': 'trait.resistsFire',
-      'Boss': 'trait.boss',
-      'Massive HP': 'trait.massiveHp',
-      'Broad resistance': 'trait.broadResistance',
-      'Ethereal': 'trait.ethereal',
-      'Resists Physical': 'trait.resistsPhysical',
-      'Siege': 'trait.siege',
-      'Very high HP': 'trait.veryHighHp',
-      'Elemental resistance': 'trait.elementalResistance',
-    };
-    return t(map[trait] ?? trait);
   }
 
   hit(x: number, y: number): CodexAction | null {
