@@ -55,8 +55,13 @@ export class Screens {
     const cx = r.width / 2;
     const cy = r.height / 2;
     const isEndScreen = kind === 'won' || kind === 'lost';
-    const cardW = Math.min(r.width - 32, kind === 'menu' ? 520 : isEndScreen ? 500 : 440);
-    const cardH = kind === 'menu' ? Math.min(540, r.height - 40) : isEndScreen ? 430 : 360;
+    const compact = r.height < 620 || r.width < 430;
+    const cardW = Math.min(r.width - 24, kind === 'menu' ? 520 : isEndScreen ? 500 : 440);
+    const cardH = kind === 'menu'
+      ? Math.min(compact ? 500 : 540, r.height - 24)
+      : isEndScreen
+        ? Math.min(compact ? 398 : 430, r.height - 24)
+        : Math.min(360, r.height - 24);
     const cardX = cx - cardW / 2;
     const cardY = cy - cardH / 2;
 
@@ -93,23 +98,23 @@ export class Screens {
     }
 
     r.setShadow(textGlow, 12, 0, 0);
-    r.text(t(titleKey), cx, cardY + 22, titleGrad, kind === 'menu' ? 40 : 36, 'center', 'bold', 'top', 'header');
+    r.text(t(titleKey), cx, cardY + 22, titleGrad, kind === 'menu' ? (compact ? 34 : 40) : (compact ? 31 : 36), 'center', 'bold', 'top', 'header');
     r.clearShadow();
 
     if (kind === 'menu') {
-      this.drawReleaseMenu(r, cardX, cardY, cardW, cardH);
+      this.drawReleaseMenu(r, cardX, cardY, cardW, cardH, compact);
       return;
     }
 
     if (kind === 'paused') r.text(t('hud.paused_title'), cx, cardY + 75, '#94a3b8', 13, 'center');
-    if (kind === 'won') this.drawVictoryReport(r, cardX, cardY, cardW, score, stats);
-    if (kind === 'lost') this.drawDefeatReport(r, cardX, cardY, cardW, score, seed, stats);
+    if (kind === 'won') this.drawVictoryReport(r, cardX, cardY, cardW, score, stats, compact);
+    if (kind === 'lost') this.drawDefeatReport(r, cardX, cardY, cardW, score, seed, stats, compact);
 
     const btnW = cardW - 48;
-    const btnH = 38;
+    const btnH = compact ? 34 : 38;
     const btnX = cx - btnW / 2;
-    let startButtonY = cardY + (isEndScreen ? 315 : 170);
-    if (kind === 'lost' && seed !== 0) startButtonY = cardY + 335;
+    let startButtonY = cardY + (isEndScreen ? (compact ? cardH - 102 : 315) : 170);
+    if (kind === 'lost' && seed !== 0) startButtonY = cardY + (compact ? cardH - 84 : 335);
 
     if (kind === 'paused') {
       this.drawButton(r, btnX, startButtonY, btnW, btnH, t('menu.resume'), 'resume', '#3b82f6', '#1d4ed8');
@@ -121,8 +126,8 @@ export class Screens {
       const hasNext = !!stats?.hasNextLevel;
       this.drawButton(r, btnX, startButtonY, btnW, btnH, hasNext ? t('summary.nextLevel') : t('menu.levels'), hasNext ? 'next' : 'levels', '#10b981', '#047857');
       const halfW = (btnW - 10) / 2;
-      this.drawButton(r, btnX, startButtonY + btnH + 10, halfW, btnH, t('summary.retryForStars'), 'restart', '#475569', '#334155', 12, false);
-      this.drawButton(r, btnX + halfW + 10, startButtonY + btnH + 10, halfW, btnH, t('menu.levels'), 'levels', '#475569', '#334155', 12, false);
+      this.drawButton(r, btnX, startButtonY + btnH + 10, halfW, btnH, t('summary.retryForStars'), 'restart', '#475569', '#334155', compact ? 10.5 : 12, false);
+      this.drawButton(r, btnX + halfW + 10, startButtonY + btnH + 10, halfW, btnH, t('menu.levels'), 'levels', '#475569', '#334155', compact ? 10.5 : 12, false);
       return;
     }
 
@@ -130,13 +135,14 @@ export class Screens {
     this.drawButton(r, btnX, startButtonY + btnH + 10, btnW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
   }
 
-  private drawReleaseMenu(r: Renderer, cardX: number, cardY: number, cardW: number, cardH: number): void {
+  private drawReleaseMenu(r: Renderer, cardX: number, cardY: number, cardW: number, cardH: number, compact: boolean): void {
     const cx = cardX + cardW / 2;
-    r.text(t('app.tagline'), cx, cardY + 72, '#cbd5e1', 13, 'center', 'bold');
-    r.text('Campaign · Endless · Daily · Challenge Seed', cx, cardY + 92, '#64748b', 10, 'center', 'bold', 'top', 'header');
+    r.text(t('app.tagline'), cx, cardY + (compact ? 64 : 72), '#cbd5e1', compact ? 12 : 13, 'center', 'bold');
+    r.text('Campaign · Endless · Daily · Challenge Seed', cx, cardY + (compact ? 82 : 92), '#64748b', compact ? 9 : 10, 'center', 'bold', 'top', 'header');
 
-    const stripY = cardY + 118;
-    const chipGap = 8;
+    const stripY = cardY + (compact ? 106 : 118);
+    const chipGap = compact ? 6 : 8;
+    const chipH = compact ? 34 : 42;
     const chipW = (cardW - 48 - chipGap * 3) / 4;
     const chips: Array<[string, string, string]> = [
       ['★', t('level.level'), '#60a5fa'],
@@ -146,31 +152,32 @@ export class Screens {
     ];
     let chipX = cardX + 24;
     for (const [icon, label, color] of chips) {
-      r.roundRect(chipX, stripY, chipW, 42, 12, 'rgba(2, 6, 23, 0.44)', true, `${color}55`, 1);
-      r.text(icon, chipX + chipW / 2, stripY + 9, color, 13, 'center', 'bold', 'top', 'header');
-      r.text(label, chipX + chipW / 2, stripY + 25, '#cbd5e1', 8.5, 'center', 'bold', 'top', 'header');
+      r.roundRect(chipX, stripY, chipW, chipH, 12, 'rgba(2, 6, 23, 0.44)', true, `${color}55`, 1);
+      r.text(icon, chipX + chipW / 2, stripY + (compact ? 6 : 9), color, compact ? 11 : 13, 'center', 'bold', 'top', 'header');
+      r.text(label, chipX + chipW / 2, stripY + (compact ? 20 : 25), '#cbd5e1', compact ? 7.5 : 8.5, 'center', 'bold', 'top', 'header');
       chipX += chipW + chipGap;
     }
 
     const btnW = cardW - 64;
-    const btnH = 38;
+    const btnH = compact ? 34 : 38;
+    const rowGap = compact ? 8 : 10;
     const btnX = cx - btnW / 2;
-    let y = cardY + 182;
+    let y = cardY + (compact ? 154 : 182);
     this.drawButton(r, btnX, y, btnW, btnH, t('menu.start'), 'start', '#3b82f6', '#1d4ed8');
-    y += btnH + 10;
+    y += btnH + rowGap;
     this.drawButton(r, btnX, y, btnW, btnH, t('menu.endless'), 'endless', '#8b5cf6', '#6d28d9');
-    y += btnH + 10;
+    y += btnH + rowGap;
 
     const halfW = (btnW - 10) / 2;
-    this.drawButton(r, btnX, y, halfW, btnH, t('menu.daily'), 'daily', '#10b981', '#047857', 13);
-    this.drawButton(r, btnX + halfW + 10, y, halfW, btnH, t('menu.challenge'), 'challenge', '#a855f7', '#7e22ce', 13);
-    y += btnH + 12;
-    this.drawButton(r, btnX, y, halfW, btnH, t('menu.settings'), 'settings', '#475569', '#334155', 13, false);
-    this.drawButton(r, btnX + halfW + 10, y, halfW, btnH, t('stats.title'), 'stats', '#475569', '#334155', 13, false);
+    this.drawButton(r, btnX, y, halfW, btnH, t('menu.daily'), 'daily', '#10b981', '#047857', compact ? 11 : 13);
+    this.drawButton(r, btnX + halfW + 10, y, halfW, btnH, t('menu.challenge'), 'challenge', '#a855f7', '#7e22ce', compact ? 11 : 13);
+    y += btnH + rowGap;
+    this.drawButton(r, btnX, y, halfW, btnH, t('menu.settings'), 'settings', '#475569', '#334155', compact ? 11 : 13, false);
+    this.drawButton(r, btnX + halfW + 10, y, halfW, btnH, t('stats.title'), 'stats', '#475569', '#334155', compact ? 11 : 13, false);
 
-    const hintY = Math.min(cardY + cardH - 46, y + btnH + 24);
-    r.roundRect(cardX + 24, hintY - 8, cardW - 48, 34, 10, 'rgba(2, 6, 23, 0.35)', true, 'rgba(148, 163, 184, 0.08)', 1);
-    r.text(t('menu.shortcuts'), cx, hintY + 1, '#64748b', 9.5, 'center');
+    const hintY = Math.min(cardY + cardH - 38, y + btnH + (compact ? 16 : 24));
+    r.roundRect(cardX + 24, hintY - 8, cardW - 48, compact ? 28 : 34, 10, 'rgba(2, 6, 23, 0.35)', true, 'rgba(148, 163, 184, 0.08)', 1);
+    r.text(t('menu.shortcuts'), cx, hintY + 1, '#64748b', compact ? 8 : 9.5, 'center');
   }
 
   private drawMenuBackdrop(r: Renderer): void {
@@ -184,32 +191,34 @@ export class Screens {
     r.ctx.restore();
   }
 
-  private drawVictoryReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, stats?: ScreenStats): void {
+  private drawVictoryReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, stats: ScreenStats | undefined, compact: boolean): void {
     const cx = cardX + cardW / 2;
     const starCount = stats?.stars ?? 0;
-    const starY = cardY + 70;
+    const starY = cardY + (compact ? 58 : 70);
+    const starSize = compact ? 25 : 30;
     r.setShadow('rgba(251, 191, 36, 0.45)', 14, 0, 0);
     for (let i = 0; i < 3; i++) {
-      const starX = cx - 44 + i * 44;
+      const starX = cx - (compact ? 36 : 44) + i * (compact ? 36 : 44);
       const active = i < starCount;
-      r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#334155', 30, 'center', 'normal', 'top', 'header');
+      r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#334155', starSize, 'center', 'normal', 'top', 'header');
     }
     r.clearShadow();
-    r.text(this.victoryAdvice(starCount), cx, cardY + 112, '#94a3b8', 12, 'center', 'bold', 'top');
-    this.drawBadges(r, cx, cardY + 130, this.buildBadges(stats));
-    this.drawReportPanel(r, cardX + 24, cardY + 152, cardW - 48, 136, '#10b981', this.buildRows(score, stats));
+    r.text(this.victoryAdvice(starCount), cx, cardY + (compact ? 94 : 112), '#94a3b8', compact ? 10.5 : 12, 'center', 'bold', 'top');
+    this.drawBadges(r, cx, cardY + (compact ? 112 : 130), this.buildBadges(stats), compact);
+    this.drawReportPanel(r, cardX + 24, cardY + (compact ? 134 : 152), cardW - 48, compact ? 116 : 136, '#10b981', this.buildRows(score, stats));
   }
 
-  private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, seed: number, stats?: ScreenStats): void {
+  private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, seed: number, stats: ScreenStats | undefined, compact: boolean): void {
     const cx = cardX + cardW / 2;
-    if (stats?.wave !== undefined) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + 76, '#f87171', 14, 'center', 'bold', 'top', 'header');
-    r.text(t('summary.defeatAdvice'), cx, cardY + 100, '#94a3b8', 12, 'center', 'bold', 'top');
-    this.drawBadges(r, cx, cardY + 118, this.buildBadges(stats));
-    this.drawReportPanel(r, cardX + 24, cardY + 140, cardW - 48, 136, '#ef4444', this.buildRows(score, stats));
+    if (stats?.wave !== undefined) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + (compact ? 66 : 76), '#f87171', compact ? 12 : 14, 'center', 'bold', 'top', 'header');
+    r.text(t('summary.defeatAdvice'), cx, cardY + (compact ? 90 : 100), '#94a3b8', compact ? 10.5 : 12, 'center', 'bold', 'top');
+    this.drawBadges(r, cx, cardY + (compact ? 108 : 118), this.buildBadges(stats), compact);
+    this.drawReportPanel(r, cardX + 24, cardY + (compact ? 130 : 140), cardW - 48, compact ? 116 : 136, '#ef4444', this.buildRows(score, stats));
     if (seed !== 0) {
       const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
-      r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, cardY + 286, '#c084fc', 12, 'center', 'bold', 'top', 'header');
-      this.drawButton(r, cx - 90, cardY + 306, 180, 28, t('share.copy'), 'challenge', '#a855f7', '#7e22ce', 11);
+      const seedY = cardY + (compact ? 254 : 286);
+      r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, seedY, '#c084fc', compact ? 10.5 : 12, 'center', 'bold', 'top', 'header');
+      this.drawButton(r, cx - 90, seedY + 20, 180, compact ? 26 : 28, t('share.copy'), 'challenge', '#a855f7', '#7e22ce', compact ? 10 : 11);
     }
   }
 
@@ -223,18 +232,18 @@ export class Screens {
     return badges;
   }
 
-  private drawBadges(r: Renderer, cx: number, y: number, badges: SummaryBadge[]): void {
+  private drawBadges(r: Renderer, cx: number, y: number, badges: SummaryBadge[], compact = false): void {
     if (badges.length === 0) return;
-    const visible = badges.slice(0, 3);
-    const widths = visible.map(badge => Math.max(86, badge.label.length * 6 + 24));
+    const visible = badges.slice(0, compact ? 2 : 3);
+    const widths = visible.map(badge => Math.max(compact ? 78 : 86, badge.label.length * (compact ? 5.2 : 6) + 24));
     const gap = 8;
     const totalW = widths.reduce((sum, item) => sum + item, 0) + gap * (visible.length - 1);
     let x = cx - totalW / 2;
     for (let i = 0; i < visible.length; i++) {
       const badge = visible[i];
       const w = widths[i];
-      r.roundRect(x, y, w, 18, 9, 'rgba(15, 23, 42, 0.88)', true, badge.color, 1);
-      r.text(badge.label, x + w / 2, y + 9, badge.color, 9, 'center', 'bold', 'middle', 'header');
+      r.roundRect(x, y, w, compact ? 16 : 18, 9, 'rgba(15, 23, 42, 0.88)', true, badge.color, 1);
+      r.text(badge.label, x + w / 2, y + (compact ? 8 : 9), badge.color, compact ? 8 : 9, 'center', 'bold', 'middle', 'header');
       x += w + gap;
     }
   }
@@ -265,7 +274,7 @@ export class Screens {
     const gridX = x + 14;
     const gridY = y + 32;
     const tileW = (w - 28 - gap * (cols - 1)) / cols;
-    const tileH = 29;
+    const tileH = h < 125 ? 25 : 29;
     for (let i = 0; i < rows.length; i++) {
       const col = i % cols;
       const row = Math.floor(i / cols);
@@ -280,8 +289,8 @@ export class Screens {
       r.roundRect(rx, ry, tileW, tileH, 8, fill, true, 'rgba(148, 163, 184, 0.1)', 1);
       r.roundRect(rx, ry, 3, tileH, 2, item.color, true);
       r.text(item.icon, rx + 13, ry + tileH / 2, item.color, 11, 'center', 'bold', 'middle', 'header');
-      r.text(item.label, rx + 25, ry + 5, '#64748b', 8.5, 'left', 'bold', 'top');
-      r.text(item.value, rx + tileW - 8, ry + 16, '#f8fafc', 12, 'right', 'bold', 'top', 'header');
+      r.text(item.label, rx + 25, ry + 4, '#64748b', 8, 'left', 'bold', 'top');
+      r.text(item.value, rx + tileW - 8, ry + (tileH < 28 ? 13 : 16), '#f8fafc', tileH < 28 ? 10.5 : 12, 'right', 'bold', 'top', 'header');
     }
   }
 
