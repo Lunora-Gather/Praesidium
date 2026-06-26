@@ -1,5 +1,5 @@
-// Grid tile types and the map layout. Phase 1 ships one level; the data
-// shape is generic so more levels can be added without touching code.
+// Grid tile types and the base map layout. The LevelDef data shape is generic,
+// so new handcrafted or generated levels can be added without changing gameplay code.
 
 export const enum TileType {
   Buildable = 0,
