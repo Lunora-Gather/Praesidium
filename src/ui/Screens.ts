@@ -17,12 +17,22 @@ export interface ScreenStats {
   spellsCast?: number;
   damageDealt?: number;
   durationSec?: number;
+  isNewHighScore?: boolean;
+  isNewLevelScore?: boolean;
+  isStarUpgrade?: boolean;
+  isNewEndlessRecord?: boolean;
+  isNewDailyRecord?: boolean;
 }
 
 interface ReportRow {
   label: string;
   value: string;
   icon: string;
+  color: string;
+}
+
+interface SummaryBadge {
+  label: string;
   color: string;
 }
 
@@ -130,7 +140,8 @@ export class Screens {
     r.clearShadow();
 
     r.text(this.victoryAdvice(starCount), cx, cardY + 112, '#94a3b8', 12, 'center', 'bold', 'top');
-    this.drawReportPanel(r, cardX + 24, cardY + 140, cardW - 48, 148, '#10b981', this.buildRows(score, stats));
+    this.drawBadges(r, cx, cardY + 130, this.buildBadges(stats));
+    this.drawReportPanel(r, cardX + 24, cardY + 152, cardW - 48, 136, '#10b981', this.buildRows(score, stats));
   }
 
   private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, seed: number, stats?: ScreenStats): void {
@@ -139,12 +150,40 @@ export class Screens {
       r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + 76, '#f87171', 14, 'center', 'bold', 'top', 'header');
     }
     r.text(t('summary.defeatAdvice'), cx, cardY + 100, '#94a3b8', 12, 'center', 'bold', 'top');
-    this.drawReportPanel(r, cardX + 24, cardY + 128, cardW - 48, 148, '#ef4444', this.buildRows(score, stats));
+    this.drawBadges(r, cx, cardY + 118, this.buildBadges(stats));
+    this.drawReportPanel(r, cardX + 24, cardY + 140, cardW - 48, 136, '#ef4444', this.buildRows(score, stats));
 
     if (seed !== 0) {
       const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
       r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, cardY + 286, '#c084fc', 12, 'center', 'bold', 'top', 'header');
       this.drawButton(r, cx - 90, cardY + 306, 180, 28, t('share.copy'), 'challenge', '#a855f7', '#7e22ce', 11);
+    }
+  }
+
+  private buildBadges(stats?: ScreenStats): SummaryBadge[] {
+    const badges: SummaryBadge[] = [];
+    if (stats?.isNewHighScore) badges.push({ label: t('summary.newHighScore'), color: '#60a5fa' });
+    if (stats?.isNewLevelScore) badges.push({ label: t('summary.newLevelScore'), color: '#22c55e' });
+    if (stats?.isStarUpgrade) badges.push({ label: t('summary.starUpgrade'), color: '#fbbf24' });
+    if (stats?.isNewEndlessRecord) badges.push({ label: t('summary.endlessRecord'), color: '#a78bfa' });
+    if (stats?.isNewDailyRecord) badges.push({ label: t('summary.dailyRecord'), color: '#14b8a6' });
+    return badges;
+  }
+
+  private drawBadges(r: Renderer, cx: number, y: number, badges: SummaryBadge[]): void {
+    if (badges.length === 0) return;
+    const visible = badges.slice(0, 3);
+    const widths = visible.map(badge => Math.max(86, badge.label.length * 6 + 24));
+    const gap = 8;
+    const totalW = widths.reduce((sum, item) => sum + item, 0) + gap * (visible.length - 1);
+    let x = cx - totalW / 2;
+
+    for (let i = 0; i < visible.length; i++) {
+      const badge = visible[i];
+      const w = widths[i];
+      r.roundRect(x, y, w, 18, 9, 'rgba(15, 23, 42, 0.88)', true, badge.color, 1);
+      r.text(badge.label, x + w / 2, y + 9, badge.color, 9, 'center', 'bold', 'middle', 'header');
+      x += w + gap;
     }
   }
 
@@ -175,7 +214,7 @@ export class Screens {
     const gridX = x + 14;
     const gridY = y + 32;
     const tileW = (w - 28 - gap * (cols - 1)) / cols;
-    const tileH = 31;
+    const tileH = 29;
 
     for (let i = 0; i < rows.length; i++) {
       const col = i % cols;
@@ -192,8 +231,8 @@ export class Screens {
       r.roundRect(rx, ry, tileW, tileH, 8, fill, true, 'rgba(148, 163, 184, 0.1)', 1);
       r.roundRect(rx, ry, 3, tileH, 2, item.color, true);
       r.text(item.icon, rx + 13, ry + tileH / 2, item.color, 11, 'center', 'bold', 'middle', 'header');
-      r.text(item.label, rx + 25, ry + 6, '#64748b', 8.5, 'left', 'bold', 'top');
-      r.text(item.value, rx + tileW - 8, ry + 17, '#f8fafc', 12, 'right', 'bold', 'top', 'header');
+      r.text(item.label, rx + 25, ry + 5, '#64748b', 8.5, 'left', 'bold', 'top');
+      r.text(item.value, rx + tileW - 8, ry + 16, '#f8fafc', 12, 'right', 'bold', 'top', 'header');
     }
   }
 
