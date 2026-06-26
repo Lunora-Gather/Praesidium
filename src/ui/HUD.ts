@@ -28,7 +28,8 @@ export class HUD {
     r.rect(0, TOP_H - 1, r.width, 1, 'rgba(59,130,246,0.18)');
 
     const isSmall = r.width < 850;
-    const isTiny = r.width < 640;
+    const isTiny = r.width < 700;
+    const isUltraTiny = r.width < 560;
 
     const pill = (icon: string, val: string, color: string, x: number): number => {
       const icoW = isSmall ? 16 : 28;
@@ -47,9 +48,9 @@ export class HUD {
       : '#34d399';
     lx = pill(t('hud.lives'), `${s.lives}`, livesCol, lx);
     lx = pill(t('hud.wave'), `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399', lx);
-    pill(t('hud.score'), `${s.score}`, '#e2e8f0', lx);
+    if (!isUltraTiny) pill(t('hud.score'), `${s.score}`, '#e2e8f0', lx);
 
-    if (s.comboCount >= 3) {
+    if (s.comboCount >= 3 && !isTiny) {
       r.setShadow('rgba(239,68,68,0.5)', 8);
       r.text(`🔥 ${t('hud.combo')} ×${s.comboCount}`, r.width / 2, TOP_H / 2, '#f87171', 14, 'center', 'bold', 'middle', 'header');
       r.clearShadow();
@@ -74,7 +75,7 @@ export class HUD {
       r.clearShadow();
       r.text(label, bx + w / 2, btnY + btnH / 2, '#e2e8f0', 11, 'center', 'bold', 'middle');
       regions.buttons.push({ x: bx, y: btnY, w, h: btnH, action });
-      bx -= 5;
+      bx -= isTiny ? 4 : 5;
     };
 
     const waveInProg = s.waves.inProgress;
@@ -94,13 +95,13 @@ export class HUD {
     const autoLabel = autoSend
       ? (isSmall ? '⟳ A ✓' : `⟳ ${t('hud.auto')} ✓`)
       : (isSmall ? '⟳ A' : `⟳ ${t('hud.auto')}`);
-    topBtn(autoLabel, autoSend, '#10b981', 'autoSend', isSmall ? 48 : 76);
+    if (!isUltraTiny) topBtn(autoLabel, autoSend, '#10b981', 'autoSend', isSmall ? 48 : 76);
     topBtn(isSmall ? `${speed}×` : `⚡ ${speed}×`, speed > 1, '#8b5cf6', 'speed', isSmall ? 36 : 68);
     topBtn(isSmall ? '⏸' : `⏸ ${t('hud.pause')}`, false, '#475569', 'pause', isSmall ? 32 : 68);
-    topBtn(waveLabel, !waveInProg, '#3b82f6', 'send', isSmall ? 64 : 90);
+    topBtn(waveLabel, !waveInProg, '#3b82f6', 'send', isSmall ? (isTiny ? 56 : 64) : 90);
 
     if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
-      const bw = 240; const bwY = TOP_H - 2;
+      const bw = Math.min(240, r.width * 0.42); const bwY = TOP_H - 2;
       const bwX = (r.width - bw) / 2;
       r.roundRect(bwX, bwY, bw, 2, 1, 'rgba(255,255,255,0.06)', true);
       r.roundRect(bwX, bwY, bw * s.waves.betweenProgress, 2, 1, '#3b82f6', true);
@@ -116,10 +117,13 @@ export class HUD {
     r.rect(0, botY, r.width, BOT_H, botGrad);
     r.rect(0, botY, r.width, 1, 'rgba(59,130,246,0.12)');
 
-    const gap = 8;
-    const padding = 12;
+    const gap = r.width < 520 ? 6 : 8;
+    const padding = r.width < 520 ? 8 : 12;
     const availShop = r.width - padding * 2;
-    const cardW = Math.max(80, Math.min(120, (availShop - gap * (TOWER_LIST.length - 1)) / TOWER_LIST.length));
+    const rawCardW = (availShop - gap * (TOWER_LIST.length - 1)) / TOWER_LIST.length;
+    const minCardW = r.width < 520 ? 44 : 80;
+    const maxCardW = r.width < 520 ? 66 : 120;
+    const cardW = Math.max(minCardW, Math.min(maxCardW, rawCardW));
 
     let sx = padding;
     for (const def of TOWER_LIST) {
@@ -152,21 +156,24 @@ export class HUD {
       r.roundRect(sx, cardY, cardW, cardH, 8, bg, true, border, selected ? 1.5 : 1);
       r.clearShadow();
 
-      const dotX = sx + 12;
-      const dotY = cardY + cardH / 2 - 2;
+      const dotX = sx + (cardW < 60 ? cardW / 2 : 12);
+      const dotY = cardY + (cardW < 60 ? 16 : cardH / 2 - 2);
       r.setShadow(def.color, selected ? 10 : 4);
-      r.circle(new Vec2(dotX, dotY), 5, def.color);
+      r.circle(new Vec2(dotX, dotY), cardW < 60 ? 4 : 5, def.color);
       r.clearShadow();
 
-      const textX = sx + 22;
+      const textX = sx + (cardW < 60 ? cardW / 2 : 22);
       if (cardW >= 95) {
         r.text(displayName, textX, cardY + 9, affordable ? '#f1f5f9' : '#475569', 11, 'left', 'bold');
         r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? '#fbbf24' : '#374151', 10, 'left', 'bold', 'top', 'header');
         const idx = TOWER_LIST.findIndex(d => d.id === def.id) + 1;
         r.text(`[${idx}]`, sx + cardW - 16, cardY + 9, 'rgba(100,116,139,0.7)', 9, 'right', 'normal', 'top', 'header');
-      } else {
+      } else if (cardW >= 60) {
         r.text(displayName.slice(0, 4), textX, cardY + cardH / 2 - 6, affordable ? '#f1f5f9' : '#475569', 10, 'left', 'bold');
         r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? '#fbbf24' : '#374151', 9, 'left', 'bold', 'top', 'header');
+      } else {
+        r.text(displayName.slice(0, 1), textX, cardY + 26, affordable ? '#f1f5f9' : '#475569', 10, 'center', 'bold');
+        r.text(`${def.cost}`, textX, cardY + 40, affordable ? '#fbbf24' : '#374151', 8, 'center', 'bold', 'top', 'header');
       }
 
       regions.shop.push({ x: sx, y: cardY, w: cardW, h: cardH, towerId: def.id });
