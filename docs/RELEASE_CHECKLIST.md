@@ -18,6 +18,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [ ] GitHub Pages opens the latest build.
 - [ ] Hard refresh test confirms no stale cached build.
 - [ ] Mobile browser opens without layout-breaking errors.
+- [x] QA results template exists.
 
 ## 2. Gameplay balance
 
@@ -93,13 +94,15 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Release audit script exists and is included in verify.
 - [x] Media kit guide exists.
 - [x] Commercial playtest plan exists.
+- [x] Playtest results summary template exists.
 - [x] Bug and playtest issue templates exist.
+- [x] Issue template contact links exist.
 - [x] PWA manifest is release-ready.
 - [x] v0.1.0 release notes exist.
 
 ## Current estimated gap
 
-- Public free-game release: about 0.2% remaining.
-- Market-grade release: about 1.3% remaining.
+- Public free-game release: about 0.1% remaining.
+- Market-grade release: about 0.7% remaining.
 
-The biggest remaining blockers are final local verification, actual screenshots/GIFs, GitHub Pages deploy confirmation, final balance confirmation, and external playtest results.
+The biggest remaining blockers are actual execution/confirmation tasks: final local verification, GitHub Pages deploy confirmation, final balance confirmation, real screenshots/GIFs, and outside playtest results.
