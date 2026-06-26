@@ -22,6 +22,7 @@ import { Tutorial } from './utils/Tutorial';
 import { Vec2 } from './engine/math/Vec2';
 import { Starfield } from './ui/Starfield';
 import { t } from './utils/i18n';
+import { achievementDescription, achievementName, spellName, towerDescription, towerName } from './utils/displayText';
 import { TalentPanel } from './ui/TalentPanel';
 import { StatsScreen } from './ui/StatsScreen';
 import { CodexScreen } from './ui/CodexScreen';
@@ -62,12 +63,7 @@ const talentPanel = new TalentPanel();
 const statsScreen = new StatsScreen();
 const codexScreen = new CodexScreen();
 
-interface RectRegion {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
+interface RectRegion { x: number; y: number; w: number; h: number; }
 
 let paused = false;
 let showSettings = false;
@@ -83,12 +79,7 @@ let showStats = false;
 let showCodex = false;
 let autoSend = false;
 
-interface Toast {
-  title: string;
-  desc: string;
-  timer: number;
-  maxTime: number;
-}
+interface Toast { title: string; desc: string; timer: number; maxTime: number; }
 let activeToasts: Toast[] = [];
 
 const savedRun = loadRun();
@@ -108,13 +99,9 @@ if (savedRun && savedRun.v === 1) {
     t.strategy = td.strategy as 'first' | 'last' | 'strongest' | 'weakest' | 'closest';
     state.towers.push(t);
   }
-  for (let i = 0; i < savedRun.spellCooldowns.length && i < state.spells.length; i++) {
-    state.spells[i].cooldown = savedRun.spellCooldowns[i];
-  }
+  for (let i = 0; i < savedRun.spellCooldowns.length && i < state.spells.length; i++) state.spells[i].cooldown = savedRun.spellCooldowns[i];
   state.stats.restore(savedRun.stats);
-  while (state.waves.current < savedRun.waveCurrent && state.waves.state !== 'done') {
-    state.waves.forceNext();
-  }
+  while (state.waves.current < savedRun.waveCurrent && state.waves.state !== 'done') state.waves.forceNext();
   paused = false;
   logger.info('Restored mid-run save', { level: savedRun.levelIndex + 1, wave: savedRun.waveCurrent });
 }
@@ -126,12 +113,8 @@ const resumeAudio = (): void => audio.resume();
 window.addEventListener('pointerdown', resumeAudio, { once: true });
 window.addEventListener('keydown', resumeAudio, { once: true });
 window.addEventListener('resize', () => renderer.resize());
-window.addEventListener('blur', () => {
-  if (settings.get().pauseOnBlur && state.phase === 'playing') { paused = true; state.autoSave(); }
-});
-window.addEventListener('focus', () => {
-  if (settings.get().pauseOnBlur && paused && state.phase === 'playing') paused = false;
-});
+window.addEventListener('blur', () => { if (settings.get().pauseOnBlur && state.phase === 'playing') { paused = true; state.autoSave(); } });
+window.addEventListener('focus', () => { if (settings.get().pauseOnBlur && paused && state.phase === 'playing') paused = false; });
 window.addEventListener('beforeunload', () => { if (state.phase === 'playing') state.autoSave(); });
 
 state.bus.on('towerPlaced', () => audio.place());
@@ -140,7 +123,13 @@ state.bus.on('towerUpgraded', () => audio.place());
 state.bus.on('towerFire', ({ id }) => audio.shoot(id));
 state.movement.bus.on('enemyReachedGoal', () => { audio.lifeLost(); renderer.shake(6); });
 state.combat.bus.on('hit', (p) => { audio.hit(); state.particles.hit(new Vec2(p.x, p.y), '#fff'); state.particles.floatText(new Vec2(p.x, p.y - 10), `-${Math.round(p.damage)}`, '#ff8a65'); });
-state.combat.bus.on('kill', (p) => { audio.enemyDie(); state.particles.death(new Vec2(p.x, p.y), p.enemy.color); const reward = Math.round(p.enemy.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul); state.particles.floatText(new Vec2(p.x, p.y - 16), `+${reward}g`, '#ffd54f', 1.0); if (p.enemy.isBoss) renderer.shake(12); else renderer.shake(3); });
+state.combat.bus.on('kill', (p) => {
+  audio.enemyDie();
+  state.particles.death(new Vec2(p.x, p.y), p.enemy.color);
+  const reward = Math.round(p.enemy.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul);
+  state.particles.floatText(new Vec2(p.x, p.y - 16), `+${reward}g`, '#ffd54f', 1.0);
+  if (p.enemy.isBoss) renderer.shake(12); else renderer.shake(3);
+});
 state.combat.bus.on('splash', (p) => {
   state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4);
   state.particles.shockwave(new Vec2(p.x, p.y), p.radius, '#ff8a65', 0.4);
@@ -160,16 +149,18 @@ state.bus.on('spellCast', ({ id }) => {
 state.bus.on('waveChanged', () => state.autoSave());
 state.bus.on('achievementUnlocked', (ach) => {
   audio.achievement();
-  activeToasts.push({ title: ach.name, desc: ach.description, timer: 4.0, maxTime: 4.0 });
+  activeToasts.push({
+    title: achievementName(ach.id, ach.name),
+    desc: achievementDescription(ach.id, ach.description),
+    timer: 4.0,
+    maxTime: 4.0,
+  });
 });
 
 function camOffset(): { camX: number; camY: number } {
   const availW = renderer.width;
   const availH = renderer.height - TOP_H - BOT_H;
-  return {
-    camX: (availW - state.grid.widthPx) / 2,
-    camY: TOP_H + Math.max(0, (availH - state.grid.heightPx) / 2),
-  };
+  return { camX: (availW - state.grid.widthPx) / 2, camY: TOP_H + Math.max(0, (availH - state.grid.heightPx) / 2) };
 }
 
 function screenToWorld(sx: number, sy: number): { wx: number; wy: number } {
@@ -182,9 +173,7 @@ function hitRegion(region: RectRegion | null, x: number, y: number): boolean {
 }
 
 function hitSpell(x: number, y: number): string | null {
-  for (const region of spellRegions) {
-    if (x >= region.x && x <= region.x + region.w && y >= region.y && y <= region.y + region.h) return region.spellId;
-  }
+  for (const region of spellRegions) if (x >= region.x && x <= region.x + region.w && y >= region.y && y <= region.y + region.h) return region.spellId;
   return null;
 }
 
@@ -198,36 +187,21 @@ function handleHUDClick(x: number, y: number): void {
     return;
   }
   const btn = hud.hitButton(hudRegions, x, y);
-  if (btn === 'send') {
-    if (state.waves.forceNext()) audio.waveStart();
-  } else if (btn === 'pause') {
-    paused = !paused;
-  } else if (btn === 'speed') {
-    gameSpeed = gameSpeed >= 3 ? 1 : gameSpeed + 1;
-    loop.timeScale = gameSpeed;
-  } else if (btn === 'talent') {
-    showTalent = true;
-  } else if (btn === 'stats') {
-    showStats = true;
-  } else if (btn === 'codex') {
-    showCodex = true;
-  } else if (btn === 'autoSend') {
-    autoSend = !autoSend;
-    state.waves.autoSend = autoSend;
-  } else if (btn === 'menu') {
-    state.goMenu();
-  } else if (btn === 'settings') {
-    showSettings = true;
-  }
+  if (btn === 'send') { if (state.waves.forceNext()) audio.waveStart(); }
+  else if (btn === 'pause') paused = !paused;
+  else if (btn === 'speed') { gameSpeed = gameSpeed >= 3 ? 1 : gameSpeed + 1; loop.timeScale = gameSpeed; }
+  else if (btn === 'talent') showTalent = true;
+  else if (btn === 'stats') showStats = true;
+  else if (btn === 'codex') showCodex = true;
+  else if (btn === 'autoSend') { autoSend = !autoSend; state.waves.autoSend = autoSend; }
+  else if (btn === 'menu') state.goMenu();
+  else if (btn === 'settings') showSettings = true;
 }
 
 function handleWorldClick(x: number, y: number): void {
   const { wx, wy } = screenToWorld(x, y);
   const { tx, ty } = state.grid.pixelToTile(wx, wy);
-  if (tx < 0 || ty < 0 || tx >= state.grid.cols || ty >= state.grid.rows) {
-    state.selectedTower = null;
-    return;
-  }
+  if (tx < 0 || ty < 0 || tx >= state.grid.cols || ty >= state.grid.rows) { state.selectedTower = null; return; }
 
   if (state.selectedTower) {
     const panelAction = towerPanel.hit(x, y);
@@ -236,36 +210,17 @@ function handleWorldClick(x: number, y: number): void {
   }
 
   const existing = state.towers.find((tower) => tower.tx === tx && tower.ty === ty);
-  if (existing) {
-    state.selectedTower = existing;
-    placingMode = false;
-    state.selectedSpellId = null;
-    return;
-  }
-
-  if (placingMode && state.tryPlace(tx, ty)) {
-    // audio handled via bus
-  }
+  if (existing) { state.selectedTower = existing; placingMode = false; state.selectedSpellId = null; return; }
+  if (placingMode && state.tryPlace(tx, ty)) { /* audio handled via bus */ }
 }
 
 function handleMenuClick(action: MenuClickAction): void {
-  if (action === 'start') {
-    state.selectLevel(0);
-    paused = false;
-  } else if (action === 'restart') {
-    state.start();
-    paused = false;
-  } else if (action === 'next') {
-    state.advanceLevel();
-    paused = false;
-  } else if (action === 'levels') {
-    state.goLevelSelect();
-    paused = false;
-  } else if (action === 'resume') {
-    paused = false;
-  } else if (action === 'menu') {
-    state.goMenu();
-  }
+  if (action === 'start') { state.selectLevel(0); paused = false; }
+  else if (action === 'restart') { state.start(); paused = false; }
+  else if (action === 'next') { state.advanceLevel(); paused = false; }
+  else if (action === 'levels') { state.goLevelSelect(); paused = false; }
+  else if (action === 'resume') paused = false;
+  else if (action === 'menu') state.goMenu();
 }
 
 function buildRunSummary(extra: Partial<ScreenStats> = {}): ScreenStats {
@@ -292,11 +247,7 @@ function buildRunSummary(extra: Partial<ScreenStats> = {}): ScreenStats {
 const update = (dt: number): void => {
   frameCount++;
   lastFpsUpdate += dt;
-  if (lastFpsUpdate >= 0.5) {
-    state.fps = Math.round(frameCount / lastFpsUpdate);
-    frameCount = 0;
-    lastFpsUpdate = 0;
-  }
+  if (lastFpsUpdate >= 0.5) { state.fps = Math.round(frameCount / lastFpsUpdate); frameCount = 0; lastFpsUpdate = 0; }
   starfield.update(dt, renderer.width, renderer.height);
 
   for (const toast of activeToasts) toast.timer -= dt;
@@ -319,10 +270,8 @@ const update = (dt: number): void => {
   if (showCodex) {
     for (const c of input.clicks()) {
       const action = codexScreen.hit(c.x, c.y);
-      if (action) {
-        const res = codexScreen.apply(action);
-        if (res === 'close') showCodex = false;
-      } else showCodex = false;
+      if (action) { const res = codexScreen.apply(action); if (res === 'close') showCodex = false; }
+      else showCodex = false;
     }
     if (input.wasKeyPressed('Escape')) showCodex = false;
     input.endFrame();
@@ -370,32 +319,16 @@ const update = (dt: number): void => {
   if (state.phase === 'menu') {
     for (const c of input.clicks()) {
       const a = screens.hit(c.x, c.y);
-      if (a === 'start') {
-        state.endless = false;
-        state.endlessSeed = 0;
-        state.goLevelSelect();
-      } else if (a === 'endless') {
-        state.endless = true;
-        state.endlessSeed = 0;
-        state.selectLevel(0);
-        paused = false;
-      } else if (a === 'challenge') {
+      if (a === 'start') { state.endless = false; state.endlessSeed = 0; state.goLevelSelect(); }
+      else if (a === 'endless') { state.endless = true; state.endlessSeed = 0; state.selectLevel(0); paused = false; }
+      else if (a === 'challenge') {
         const raw = window.prompt(t('menu.challenge') + ' — hex seed (e.g. 1A2B3C4D):');
         if (raw != null) {
           const seed = parseInt(raw.trim(), 16) >>> 0;
-          if (!Number.isNaN(seed) && seed !== 0) {
-            state.endless = true;
-            state.endlessSeed = seed;
-            state.selectLevel(0);
-            paused = false;
-          }
+          if (!Number.isNaN(seed) && seed !== 0) { state.endless = true; state.endlessSeed = seed; state.selectLevel(0); paused = false; }
         }
-      } else if (a === 'daily') {
-        state.endless = true;
-        state.endlessSeed = dailySeed();
-        state.selectLevel(0);
-        paused = false;
-      } else if (a === 'settings') showSettings = true;
+      } else if (a === 'daily') { state.endless = true; state.endlessSeed = dailySeed(); state.selectLevel(0); paused = false; }
+      else if (a === 'settings') showSettings = true;
       else if (a === 'stats') showStats = true;
     }
     input.endFrame();
@@ -408,35 +341,14 @@ const update = (dt: number): void => {
     state.hoverTile = tx >= 0 && ty >= 0 && tx < state.grid.cols && ty < state.grid.rows ? { tx, ty } : null;
 
     for (const c of input.clicks()) {
-      if (showTalent) {
-        const tid = talentPanel.hit(c.x, c.y);
-        if (tid) state.talents.rankUp(tid);
-        else showTalent = false;
-        continue;
-      }
-
-      if (hitRegion(cancelPlacementRegion, c.x, c.y)) {
-        placingMode = false;
-        state.selectedTower = null;
-        state.selectedSpellId = null;
-        continue;
-      }
-
+      if (showTalent) { const tid = talentPanel.hit(c.x, c.y); if (tid) state.talents.rankUp(tid); else showTalent = false; continue; }
+      if (hitRegion(cancelPlacementRegion, c.x, c.y)) { placingMode = false; state.selectedTower = null; state.selectedSpellId = null; continue; }
       const clickedSpell = hitSpell(c.x, c.y);
-      if (clickedSpell) {
-        state.selectedSpellId = state.selectedSpellId === clickedSpell ? null : clickedSpell;
-        placingMode = false;
-        state.selectedTower = null;
-        continue;
-      }
-
+      if (clickedSpell) { state.selectedSpellId = state.selectedSpellId === clickedSpell ? null : clickedSpell; placingMode = false; state.selectedTower = null; continue; }
       if (c.y < TOP_H) { handleHUDClick(c.x, c.y); continue; }
       if (c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y);
-      else if (state.selectedSpellId) {
-        const { wx: castX, wy: castY } = screenToWorld(c.x, c.y);
-        state.castSpell(state.selectedSpellId, new Vec2(castX, castY));
-        state.selectedSpellId = null;
-      } else handleWorldClick(c.x, c.y);
+      else if (state.selectedSpellId) { const { wx: castX, wy: castY } = screenToWorld(c.x, c.y); state.castSpell(state.selectedSpellId, new Vec2(castX, castY)); state.selectedSpellId = null; }
+      else handleWorldClick(c.x, c.y);
     }
 
     if (input.wasKeyPressed('Space')) paused = !paused;
@@ -448,41 +360,23 @@ const update = (dt: number): void => {
     }
     if (input.wasKeyPressed('KeyS') && state.selectedTower) state.sellTower(state.selectedTower);
     if (input.wasKeyPressed('KeyU') && state.selectedTower) state.upgradeTower(state.selectedTower);
-    if (input.wasKeyPressed('KeyT')) {
-      if (showTalent) showTalent = false;
-      else if (state.selectedTower) state.selectedTower.cycleStrategy();
-    }
+    if (input.wasKeyPressed('KeyT')) { if (showTalent) showTalent = false; else if (state.selectedTower) state.selectedTower.cycleStrategy(); }
     for (let i = 0; i < TOWER_LIST.length; i++) {
-      if (input.wasKeyPressed(`Digit${i + 1}`)) {
-        state.selectedTowerId = TOWER_LIST[i].id;
-        placingMode = true;
-        state.selectedTower = null;
-        state.selectedSpellId = null;
-      }
+      if (input.wasKeyPressed(`Digit${i + 1}`)) { state.selectedTowerId = TOWER_LIST[i].id; placingMode = true; state.selectedTower = null; state.selectedSpellId = null; }
     }
     const spellKeys = ['KeyQ', 'KeyW', 'KeyE'];
     for (let i = 0; i < spellKeys.length && i < state.spells.length; i++) {
-      if (input.wasKeyPressed(spellKeys[i])) {
-        state.selectedSpellId = state.spells[i].def.id;
-        placingMode = false;
-        state.selectedTower = null;
-      }
+      if (input.wasKeyPressed(spellKeys[i])) { state.selectedSpellId = state.spells[i].def.id; placingMode = false; state.selectedTower = null; }
     }
 
-    if (!paused) {
-      state.update(dt);
-      tutorial.update(state);
-    }
+    if (!paused) { state.update(dt); tutorial.update(state); }
   } else {
     for (const c of input.clicks()) {
       const a = screens.hit(c.x, c.y);
       if (a === 'challenge') {
         const seedHex = state.endlessSeed.toString(16).toUpperCase().padStart(8, '0');
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(seedHex)
-            .then(() => alert(t('share.copied').replace('{seed}', seedHex)))
-            .catch(() => window.prompt(t('share.prompt'), seedHex));
-        } else window.prompt(t('share.prompt'), seedHex);
+        if (navigator.clipboard) navigator.clipboard.writeText(seedHex).then(() => alert(t('share.copied').replace('{seed}', seedHex))).catch(() => window.prompt(t('share.prompt'), seedHex));
+        else window.prompt(t('share.prompt'), seedHex);
       } else if (a) handleMenuClick(a);
     }
   }
@@ -530,7 +424,6 @@ const render = (_alpha: number): void => {
     renderer.camX = 0;
     renderer.camY = 0;
     renderer.zoom = 1;
-
     if (state.phase === 'levelSelect') levelSelect.draw(renderer);
     else screens.draw(renderer, 'menu');
   }
@@ -559,17 +452,11 @@ function drawSpells(r: Renderer): void {
     let bg: string | CanvasGradient;
     let border: string;
     if (selected) {
-      bg = r.linearGradient(x, y, x, y + slotH, [
-        { offset: 0, color: 'rgba(251, 191, 36, 0.32)' },
-        { offset: 1, color: 'rgba(146, 64, 14, 0.24)' }
-      ]);
+      bg = r.linearGradient(x, y, x, y + slotH, [{ offset: 0, color: 'rgba(251, 191, 36, 0.32)' }, { offset: 1, color: 'rgba(146, 64, 14, 0.24)' }]);
       border = '#fbbf24';
       r.setShadow('rgba(251, 191, 36, 0.5)', 12, 0, 0);
     } else if (ready) {
-      bg = r.linearGradient(x, y, x, y + slotH, [
-        { offset: 0, color: 'rgba(30, 41, 59, 0.9)' },
-        { offset: 1, color: 'rgba(15, 23, 42, 0.9)' }
-      ]);
+      bg = r.linearGradient(x, y, x, y + slotH, [{ offset: 0, color: 'rgba(30, 41, 59, 0.9)' }, { offset: 1, color: 'rgba(15, 23, 42, 0.9)' }]);
       border = '#fbbf24';
       r.setShadow('rgba(251, 191, 36, 0.35)', 8, 0, 0);
     } else {
@@ -579,7 +466,7 @@ function drawSpells(r: Renderer): void {
 
     r.roundRect(x, y, slotW, slotH, 8, bg, true, border, selected ? 1.8 : 1);
     r.clearShadow();
-    r.text(sp.def.name, x + slotW / 2, y + (isMobile ? 8 : 6), ready ? '#f8fafc' : '#475569', isMobile ? 12 : 11, 'center', 'bold');
+    r.text(spellName(sp.def.id, sp.def.name), x + slotW / 2, y + (isMobile ? 8 : 6), ready ? '#f8fafc' : '#475569', isMobile ? 12 : 11, 'center', 'bold');
     r.text(`${sp.def.cost}g`, x + slotW / 2, y + (isMobile ? 30 : 26), ready ? '#fbbf24' : '#475569', isMobile ? 11 : 10, 'center', 'bold', 'top', 'header');
     if (isMobile && ready) r.text(t('spell.ready'), x + slotW / 2, y + 45, '#94a3b8', 9, 'center', 'bold', 'top', 'header');
 
@@ -589,8 +476,7 @@ function drawSpells(r: Renderer): void {
     }
 
     spellRegions.push({ x, y, w: slotW, h: slotH, spellId: sp.def.id });
-    if (isMobile) y += slotH + gap;
-    else x += slotW + gap;
+    if (isMobile) y += slotH + gap; else x += slotW + gap;
   }
 }
 
@@ -606,8 +492,8 @@ function drawPlacementHint(r: Renderer): void {
   const y = r.height - BOT_H - h - 12;
 
   r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.9)', true, 'rgba(59, 130, 246, 0.25)', 1.2);
-  r.text(t('placement.selected').replace('{tower}', def.name), x + 14, y + 10, def.color, 12, 'left', 'bold', 'top', 'header');
-  r.text(def.description, x + 14, y + 29, '#cbd5e1', 11, 'left', 'normal');
+  r.text(t('placement.selected').replace('{tower}', towerName(def.id, def.name)), x + 14, y + 10, def.color, 12, 'left', 'bold', 'top', 'header');
+  r.text(towerDescription(def.id, def.description), x + 14, y + 29, '#cbd5e1', 11, 'left', 'normal');
   if (isMobile) r.text(t('placement.hint'), x + 14, y + 46, '#64748b', 10, 'left', 'normal');
 
   const btnW = isMobile ? 108 : 132;
