@@ -88,7 +88,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 ## Current estimated gap
 
-- Public free-game release: about 24% remaining.
-- Market-grade release: about 35% remaining.
+- Public free-game release: about 23% remaining.
+- Market-grade release: about 34% remaining.
 
 The biggest remaining blockers are balance confidence, mobile polish, visual identity, and release packaging.
