@@ -26,7 +26,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [ ] Brutal mode is intentionally punishing but not impossible.
 - [ ] No tower is obviously mandatory for every win.
 - [ ] No tower is completely unused across balance simulations.
-- [ ] Boss waves create pressure without feeling unfair.
+- [x] Boss waves have a warning cue.
 - [ ] Endless mode reaches a clear pressure curve before collapse.
 
 ## 3. First-time player experience
@@ -41,7 +41,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## 4. UI and mobile polish
 
 - [ ] Main menu looks like a release screen, not a debug menu.
-- [ ] Level select clearly shows progress, stars, scores, and next level.
+- [x] Level select clearly shows progress, stars, scores, and next level.
 - [ ] HUD is readable at common desktop sizes.
 - [ ] HUD is readable on mobile landscape.
 - [ ] Tower placement has low accidental-click risk.
@@ -50,11 +50,11 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 ## 5. Visual and audio polish
 
-- [ ] Each level has a recognizable mood or visual identity.
-- [ ] Boss waves have a warning cue.
+- [x] Each level has a recognizable mood or visual identity.
+- [x] Boss waves have a warning cue.
 - [ ] Spells have stronger impact feedback.
 - [ ] Kills and explosions are readable but not noisy.
-- [ ] Low-life state is visually obvious.
+- [x] Low-life state is visually obvious.
 - [ ] Audio can be muted and stays muted after reload.
 - [ ] Sound effects have no obvious clipping or harsh repetition.
 
@@ -88,7 +88,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 ## Current estimated gap
 
-- Public free-game release: about 23% remaining.
-- Market-grade release: about 34% remaining.
+- Public free-game release: about 17% remaining.
+- Market-grade release: about 28% remaining.
 
-The biggest remaining blockers are balance confidence, mobile polish, visual identity, and release packaging.
+The biggest remaining blockers are mobile polish, publishing package, first-time player guidance, and final balance confirmation.
