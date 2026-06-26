@@ -16,12 +16,14 @@ Expected sequence:
 2. Runtime selftest passes.
 3. Save/restore regression test passes.
 4. Balance simulation runs and reports no severe Normal-mode blocker.
-5. Production build completes.
+5. Release audit checks packaging, metadata, localization hooks, and critical feature wiring.
+6. Production build completes.
 
-Also run when touching balance data:
+Also run when touching balance or release packaging:
 
 ```bash
 npm run balance:sim
+npm run release:audit
 ```
 
 ## 2. Browser smoke test
@@ -61,6 +63,7 @@ Minimum public release check:
 - [ ] Portal card describes the current feature set.
 - [ ] Page title and meta description are current.
 - [ ] Social preview metadata is current.
+- [ ] `npm run release:audit` passes.
 
 ## 5. Release decision
 
@@ -70,6 +73,7 @@ Praesidium can be treated as a public free-game release candidate when:
 - GitHub Pages deploys the latest build;
 - the browser smoke test passes;
 - the mobile smoke test passes on at least one phone landscape size;
-- no Normal-mode blocker is reported by `npm run balance:sim`.
+- no Normal-mode blocker is reported by `npm run balance:sim`;
+- `npm run release:audit` reports no missing release packaging or metadata.
 
 For a broader market-grade release, add screenshots/GIFs, a stronger media package, final sound-effect review, and at least a small set of external playtest feedback.
