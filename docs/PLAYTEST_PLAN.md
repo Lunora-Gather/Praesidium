@@ -43,7 +43,7 @@ Ask each tester to play without help.
 
 ## What to record
 
-Use manual notes or screen recording.
+Use manual notes, screen recording, or the GitHub issue templates.
 
 | Metric | Target |
 | --- | --- |
@@ -111,6 +111,13 @@ Do not call the game market-grade until:
 - At least 60% of testers either clear Level 1 or understand why they lost.
 - At least 70% rate the presentation as polished enough for a public browser game.
 - Mobile landscape has no repeated S1 tap/layout issue.
+
+## GitHub issue templates
+
+Use the repository issue templates to preserve external feedback in a consistent format:
+
+- `.github/ISSUE_TEMPLATE/bug_report.md` for bugs, crashes, layout issues, audio issues, and balance blockers.
+- `.github/ISSUE_TEMPLATE/playtest_feedback.md` for structured tester sessions and commercial-readiness notes.
 
 ## Issue template for notes
 
