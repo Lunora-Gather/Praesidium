@@ -1,23 +1,24 @@
-// HUD: top stat bar + bottom tower shop. Completely redesigned for clarity and responsiveness.
+// HUD: top stat bar + bottom tower shop. Responsive and data-rich.
 
 import { Renderer } from '../engine/Renderer';
 import { GameState } from '../game/GameState';
 import { TOWER_LIST } from '../game/towers/TowerRegistry';
+import { getEnemyDef } from '../game/enemies/EnemyRegistry';
 import { Vec2 } from '../engine/math/Vec2';
+import { t } from '../utils/i18n';
 
 export interface HudRegions {
   shop: Array<{ x: number; y: number; w: number; h: number; towerId: string }>;
   buttons: Array<{ x: number; y: number; w: number; h: number; action: string }>;
 }
 
-export const TOP_H = 52;   // height of top stat bar
-export const BOT_H = 72;   // height of bottom shop bar
+export const TOP_H = 52;
+export const BOT_H = 72;
 
 export class HUD {
   draw(r: Renderer, s: GameState, speed = 1, autoSend = false): HudRegions {
     const regions: HudRegions = { shop: [], buttons: [] };
 
-    // ─── TOP BAR ─────────────────────────────────────────────────────────────
     const topGrad = r.linearGradient(0, 0, 0, TOP_H, [
       { offset: 0, color: 'rgba(6, 10, 15, 0.98)' },
       { offset: 1, color: 'rgba(10, 16, 28, 0.95)' },
@@ -28,7 +29,6 @@ export class HUD {
     const isSmall = r.width < 850;
     const isTiny = r.width < 640;
 
-    // Stat pill helper
     const pill = (icon: string, val: string, color: string, x: number): number => {
       const icoW = isSmall ? 16 : 28;
       const valW = Math.max(isSmall ? 22 : 36, val.length * (isSmall ? 7.5 : 10));
@@ -40,13 +40,13 @@ export class HUD {
     };
 
     let lx = 12;
-    lx = pill('GOLD',  `${s.gold}`,  '#fbbf24', lx);
+    lx = pill(t('hud.gold'), `${s.gold}`, '#fbbf24', lx);
     const livesCol = s.lives <= 5
       ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f87171')
-      : '#34d399'; // Emerald green when healthy
-    lx = pill('LIVES', `${s.lives}`, livesCol, lx);
-    lx = pill('WAVE',  `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399', lx);
-    pill('SCORE', `${s.score}`, '#e2e8f0', lx);
+      : '#34d399';
+    lx = pill(t('hud.lives'), `${s.lives}`, livesCol, lx);
+    lx = pill(t('hud.wave'), `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399', lx);
+    pill(t('hud.score'), `${s.score}`, '#e2e8f0', lx);
 
     if (s.comboCount >= 3) {
       r.setShadow('rgba(239,68,68,0.5)', 8);
@@ -58,7 +58,6 @@ export class HUD {
       r.text(`${speed}×`, r.width / 2 + (s.comboCount >= 3 ? 110 : 0), TOP_H / 2, '#fef08a', 14, 'center', 'bold', 'middle', 'header');
     }
 
-    // RIGHT BUTTONS in top bar (compact icon-style)
     const btnH = 30;
     const btnY = (TOP_H - btnH) / 2;
     let bx = r.width - 8;
@@ -86,19 +85,18 @@ export class HUD {
 
     if (!isTiny) {
       topBtn(isSmall ? '✦' : '✦ Talent', false, '#475569', 'talent', isSmall ? 32 : 72);
-      topBtn(isSmall ? '⚙' : '⚙ Set',     false, '#475569', 'settings', isSmall ? 32 : 60);
-      topBtn(isSmall ? '🏆' : '🏆 Stats',   false, '#475569', 'stats', isSmall ? 32 : 68);
+      topBtn(isSmall ? '⚙' : '⚙ Set', false, '#475569', 'settings', isSmall ? 32 : 60);
+      topBtn(isSmall ? '🏆' : '🏆 Stats', false, '#475569', 'stats', isSmall ? 32 : 68);
     }
-    topBtn(isSmall ? '☰' : '☰ Menu',      false, '#475569', 'menu', isSmall ? 32 : 68);
+    topBtn(isSmall ? '☰' : '☰ Menu', false, '#475569', 'menu', isSmall ? 32 : 68);
     const autoLabel = autoSend
       ? (isSmall ? '⟳ A ✓' : '⟳ Auto ✓')
       : (isSmall ? '⟳ A' : '⟳ Auto');
     topBtn(autoLabel, autoSend, '#10b981', 'autoSend', isSmall ? 48 : 76);
     topBtn(isSmall ? `${speed}×` : `⚡ ${speed}×`, speed > 1, '#8b5cf6', 'speed', isSmall ? 36 : 68);
-    topBtn(isSmall ? '⏸' : '⏸ Pause',     false, '#475569', 'pause', isSmall ? 32 : 68);
+    topBtn(isSmall ? '⏸' : '⏸ Pause', false, '#475569', 'pause', isSmall ? 32 : 68);
     topBtn(waveLabel, !waveInProg, '#3b82f6', 'send', isSmall ? 64 : 90);
 
-    // Wave countdown bar
     if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
       const bw = 240; const bwY = TOP_H - 2;
       const bwX = (r.width - bw) / 2;
@@ -106,7 +104,8 @@ export class HUD {
       r.roundRect(bwX, bwY, bw * s.waves.betweenProgress, 2, 1, '#3b82f6', true);
     }
 
-    // ─── BOTTOM SHOP ─────────────────────────────────────────────────────────
+    this.drawWavePreview(r, s, waveInProg, isSmall);
+
     const botY = r.height - BOT_H;
     const botGrad = r.linearGradient(0, botY, 0, r.height, [
       { offset: 0, color: 'rgba(6, 10, 15, 0.95)' },
@@ -115,7 +114,6 @@ export class HUD {
     r.rect(0, botY, r.width, BOT_H, botGrad);
     r.rect(0, botY, r.width, 1, 'rgba(59,130,246,0.12)');
 
-    // Adaptive tower card width to always fit on screen
     const gap = 8;
     const padding = 12;
     const availShop = r.width - padding * 2;
@@ -151,23 +149,19 @@ export class HUD {
       r.roundRect(sx, cardY, cardW, cardH, 8, bg, true, border, selected ? 1.5 : 1);
       r.clearShadow();
 
-      // Tower color dot
       const dotX = sx + 12;
       const dotY = cardY + cardH / 2 - 2;
       r.setShadow(def.color, selected ? 10 : 4);
       r.circle(new Vec2(dotX, dotY), 5, def.color);
       r.clearShadow();
 
-      // Tower name + cost
       const textX = sx + 22;
       if (cardW >= 95) {
         r.text(def.name, textX, cardY + 9, affordable ? '#f1f5f9' : '#475569', 11, 'left', 'bold');
         r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? '#fbbf24' : '#374151', 10, 'left', 'bold', 'top', 'header');
-        // Key shortcut hint
         const idx = TOWER_LIST.findIndex(d => d.id === def.id) + 1;
         r.text(`[${idx}]`, sx + cardW - 16, cardY + 9, 'rgba(100,116,139,0.7)', 9, 'right', 'normal', 'top', 'header');
       } else {
-        // Compact mode: just name abbreviated
         r.text(def.name.slice(0, 4), textX, cardY + cardH / 2 - 6, affordable ? '#f1f5f9' : '#475569', 10, 'left', 'bold');
         r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? '#fbbf24' : '#374151', 9, 'left', 'bold', 'top', 'header');
       }
@@ -176,10 +170,27 @@ export class HUD {
       sx += cardW + gap;
     }
 
-    // Spell slots — right of shop (if space allows)
-    // (handled separately in main.ts drawSpells — left unchanged)
-
     return regions;
+  }
+
+  private drawWavePreview(r: Renderer, s: GameState, waveInProg: boolean, isSmall: boolean): void {
+    if (waveInProg || isSmall || r.width < 1040 || s.comboCount >= 3) return;
+    const preview = s.waves.previewNext();
+    if (!preview || preview.enemies.length === 0) return;
+
+    const enemyText = preview.enemies
+      .slice(0, 4)
+      .map(group => `${getEnemyDef(group.id).name}×${group.count}`)
+      .join(' · ');
+    const more = preview.enemies.length > 4 ? ' · …' : '';
+    const label = `${t('hud.nextWave')} ${preview.waveNumber}: ${enemyText}${more}`;
+    const w = Math.min(420, Math.max(260, label.length * 6.2 + 28));
+    const h = 22;
+    const x = (r.width - w) / 2;
+    const y = TOP_H - h - 4;
+
+    r.roundRect(x, y, w, h, 11, 'rgba(15, 23, 42, 0.72)', true, 'rgba(59, 130, 246, 0.22)', 1);
+    r.text(label, r.width / 2, y + h / 2, '#bfdbfe', 10, 'center', 'bold', 'middle');
   }
 
   hitShop(regions: HudRegions, x: number, y: number): string | null {
@@ -197,5 +208,4 @@ export class HUD {
   }
 }
 
-/** Speed options for the speed-control button. */
 export const SPEED_OPTIONS = [1, 2, 3] as const;
