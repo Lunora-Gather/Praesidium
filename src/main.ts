@@ -7,7 +7,7 @@ import { Renderer } from './engine/Renderer';
 import { Audio } from './engine/Audio';
 import { GameState } from './game/GameState';
 import { HUD, HudRegions, TOP_H, BOT_H } from './ui/HUD';
-import { Screens, MenuClickAction } from './ui/Screens';
+import { Screens, MenuClickAction, ScreenStats } from './ui/Screens';
 import { WorldRenderer } from './ui/WorldRenderer';
 import { TOWER_LIST } from './game/towers/TowerRegistry';
 import { getTowerDef } from './game/towers/TowerRegistry';
@@ -273,6 +273,21 @@ function handleMenuClick(action: MenuClickAction): void {
   } else if (action === 'menu') {
     state.goMenu();
   }
+}
+
+function buildRunSummary(extra: Partial<ScreenStats> = {}): ScreenStats {
+  const run = state.stats.get();
+  return {
+    kills: run.kills,
+    gold: run.goldEarned,
+    lives: state.lives,
+    towersPlaced: run.towersPlaced,
+    upgrades: run.upgrades,
+    spellsCast: run.spellsCast,
+    damageDealt: run.damageDealt,
+    durationSec: run.durationSec,
+    ...extra,
+  };
 }
 
 const update = (dt: number): void => {
@@ -542,8 +557,8 @@ const render = (_alpha: number): void => {
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
-    if (state.phase === 'won') screens.draw(renderer, 'won', state.score, 0, { stars: state.lastStars, kills: state.stats.get().kills, gold: state.stats.get().goldEarned });
-    if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed, { wave: state.waves.current, kills: state.stats.get().kills });
+    if (state.phase === 'won') screens.draw(renderer, 'won', state.score, 0, buildRunSummary({ stars: state.lastStars }));
+    if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed, buildRunSummary({ wave: state.waves.current }));
     if (settings.get().showFps) renderer.text(`${state.fps} fps`, 8, 52, '#555', 11);
   } else {
     renderer.camX = 0;
