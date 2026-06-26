@@ -154,21 +154,13 @@ state.bus.on('phaseChanged', ({ to }) => {
 });
 state.bus.on('spellCast', ({ id }) => {
   audio.spellCast(id);
-  if (id === 'meteor') {
-    renderer.shake(16);
-  } else if (id === 'freeze') {
-    renderer.shake(8);
-  }
+  if (id === 'meteor') renderer.shake(16);
+  else if (id === 'freeze') renderer.shake(8);
 });
 state.bus.on('waveChanged', () => state.autoSave());
 state.bus.on('achievementUnlocked', (ach) => {
   audio.achievement();
-  activeToasts.push({
-    title: ach.name,
-    desc: ach.description,
-    timer: 4.0,
-    maxTime: 4.0
-  });
+  activeToasts.push({ title: ach.name, desc: ach.description, timer: 4.0, maxTime: 4.0 });
 });
 
 function camOffset(): { camX: number; camY: number } {
@@ -239,14 +231,8 @@ function handleWorldClick(x: number, y: number): void {
 
   if (state.selectedTower) {
     const panelAction = towerPanel.hit(x, y);
-    if (panelAction === 'upgrade') {
-      state.upgradeTower(state.selectedTower);
-      return;
-    }
-    if (panelAction === 'sell') {
-      state.sellTower(state.selectedTower);
-      return;
-    }
+    if (panelAction === 'upgrade') { state.upgradeTower(state.selectedTower); return; }
+    if (panelAction === 'sell') { state.sellTower(state.selectedTower); return; }
   }
 
   const existing = state.towers.find((tower) => tower.tx === tx && tower.ty === ty);
@@ -269,6 +255,12 @@ function handleMenuClick(action: MenuClickAction): void {
   } else if (action === 'restart') {
     state.start();
     paused = false;
+  } else if (action === 'next') {
+    state.advanceLevel();
+    paused = false;
+  } else if (action === 'levels') {
+    state.goLevelSelect();
+    paused = false;
   } else if (action === 'resume') {
     paused = false;
   } else if (action === 'menu') {
@@ -287,6 +279,7 @@ function buildRunSummary(extra: Partial<ScreenStats> = {}): ScreenStats {
     spellsCast: run.spellsCast,
     damageDealt: run.damageDealt,
     durationSec: run.durationSec,
+    hasNextLevel: state.levels.hasNext,
     isNewHighScore: state.lastRunNewHighScore,
     isNewLevelScore: state.lastRunNewLevelScore,
     isStarUpgrade: state.lastRunStarUpgrade,
@@ -306,9 +299,7 @@ const update = (dt: number): void => {
   }
   starfield.update(dt, renderer.width, renderer.height);
 
-  for (const toast of activeToasts) {
-    toast.timer -= dt;
-  }
+  for (const toast of activeToasts) toast.timer -= dt;
   activeToasts = activeToasts.filter(toast => toast.timer > 0);
 
   if (showSettings) {
@@ -331,9 +322,7 @@ const update = (dt: number): void => {
       if (action) {
         const res = codexScreen.apply(action);
         if (res === 'close') showCodex = false;
-      } else {
-        showCodex = false;
-      }
+      } else showCodex = false;
     }
     if (input.wasKeyPressed('Escape')) showCodex = false;
     input.endFrame();
@@ -344,17 +333,10 @@ const update = (dt: number): void => {
     for (const c of input.clicks()) {
       const action = statsScreen.hit(c.x, c.y);
       if (action) {
-        if (action === 'menu') {
-          state.goMenu();
-          showStats = false;
-        } else if (action === 'close') {
-          showStats = false;
-        } else {
-          statsScreen.apply(action);
-        }
-      } else {
-        showStats = false;
-      }
+        if (action === 'menu') { state.goMenu(); showStats = false; }
+        else if (action === 'close') showStats = false;
+        else statsScreen.apply(action);
+      } else showStats = false;
     }
     if (input.wasKeyPressed('Escape')) showStats = false;
     input.endFrame();
@@ -363,10 +345,7 @@ const update = (dt: number): void => {
 
   if (paused && state.phase === 'playing') {
     for (const c of input.clicks()) {
-      if (c.y < TOP_H) {
-        handleHUDClick(c.x, c.y);
-        continue;
-      }
+      if (c.y < TOP_H) { handleHUDClick(c.x, c.y); continue; }
       const a = screens.hit(c.x, c.y);
       if (a) handleMenuClick(a);
     }
@@ -416,11 +395,8 @@ const update = (dt: number): void => {
         state.endlessSeed = dailySeed();
         state.selectLevel(0);
         paused = false;
-      } else if (a === 'settings') {
-        showSettings = true;
-      } else if (a === 'stats') {
-        showStats = true;
-      }
+      } else if (a === 'settings') showSettings = true;
+      else if (a === 'stats') showStats = true;
     }
     input.endFrame();
     return;
@@ -454,10 +430,7 @@ const update = (dt: number): void => {
         continue;
       }
 
-      if (c.y < TOP_H) {
-        handleHUDClick(c.x, c.y);
-        continue;
-      }
+      if (c.y < TOP_H) { handleHUDClick(c.x, c.y); continue; }
       if (c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y);
       else if (state.selectedSpellId) {
         const { wx: castX, wy: castY } = screenToWorld(c.x, c.y);
@@ -507,18 +480,10 @@ const update = (dt: number): void => {
         const seedHex = state.endlessSeed.toString(16).toUpperCase().padStart(8, '0');
         if (navigator.clipboard) {
           navigator.clipboard.writeText(seedHex)
-            .then(() => {
-              alert(t('share.copied').replace('{seed}', seedHex));
-            })
-            .catch(() => {
-              window.prompt(t('share.prompt'), seedHex);
-            });
-        } else {
-          window.prompt(t('share.prompt'), seedHex);
-        }
-      } else if (a) {
-        handleMenuClick(a);
-      }
+            .then(() => alert(t('share.copied').replace('{seed}', seedHex)))
+            .catch(() => window.prompt(t('share.prompt'), seedHex));
+        } else window.prompt(t('share.prompt'), seedHex);
+      } else if (a) handleMenuClick(a);
     }
   }
 
@@ -543,9 +508,7 @@ const render = (_alpha: number): void => {
     state.particles.draw(renderer);
 
     let towerScreenPos: Vec2 | null = null;
-    if (state.selectedTower && state.phase === 'playing') {
-      towerScreenPos = renderer.toScreen(state.selectedTower.pos);
-    }
+    if (state.selectedTower && state.phase === 'playing') towerScreenPos = renderer.toScreen(state.selectedTower.pos);
 
     renderer.camX = 0;
     renderer.camY = 0;
@@ -554,11 +517,8 @@ const render = (_alpha: number): void => {
     drawSpells(renderer);
     drawPlacementHint(renderer);
 
-    if (towerScreenPos && state.selectedTower && state.phase === 'playing') {
-      towerPanel.draw(renderer, state.selectedTower, state.gold, towerScreenPos.x, towerScreenPos.y);
-    } else {
-      towerPanel.clear();
-    }
+    if (towerScreenPos && state.selectedTower && state.phase === 'playing') towerPanel.draw(renderer, state.selectedTower, state.gold, towerScreenPos.x, towerScreenPos.y);
+    else towerPanel.clear();
 
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
@@ -571,11 +531,8 @@ const render = (_alpha: number): void => {
     renderer.camY = 0;
     renderer.zoom = 1;
 
-    if (state.phase === 'levelSelect') {
-      levelSelect.draw(renderer);
-    } else {
-      screens.draw(renderer, 'menu');
-    }
+    if (state.phase === 'levelSelect') levelSelect.draw(renderer);
+    else screens.draw(renderer, 'menu');
   }
 
   renderer.camX = 0;
@@ -622,12 +579,9 @@ function drawSpells(r: Renderer): void {
 
     r.roundRect(x, y, slotW, slotH, 8, bg, true, border, selected ? 1.8 : 1);
     r.clearShadow();
-
     r.text(sp.def.name, x + slotW / 2, y + (isMobile ? 8 : 6), ready ? '#f8fafc' : '#475569', isMobile ? 12 : 11, 'center', 'bold');
     r.text(`${sp.def.cost}g`, x + slotW / 2, y + (isMobile ? 30 : 26), ready ? '#fbbf24' : '#475569', isMobile ? 11 : 10, 'center', 'bold', 'top', 'header');
-    if (isMobile && ready) {
-      r.text(t('spell.ready'), x + slotW / 2, y + 45, '#94a3b8', 9, 'center', 'bold', 'top', 'header');
-    }
+    if (isMobile && ready) r.text(t('spell.ready'), x + slotW / 2, y + 45, '#94a3b8', 9, 'center', 'bold', 'top', 'header');
 
     if (!sp.ready) {
       const cdH = Math.round(slotH * (sp.cooldown / sp.def.cooldown));
@@ -684,13 +638,8 @@ function drawToasts(r: Renderer): void {
     const toast = activeToasts[i];
     const targetY = bottomY - i * (toastH + 10) - toastH;
     let slideX = startX;
-    if (toast.maxTime - toast.timer < 0.4) {
-      const progress = (toast.maxTime - toast.timer) / 0.4;
-      slideX = startX - toastW * (1 - progress);
-    } else if (toast.timer < 0.4) {
-      const progress = toast.timer / 0.4;
-      slideX = startX - toastW * (1 - progress);
-    }
+    if (toast.maxTime - toast.timer < 0.4) slideX = startX - toastW * (1 - (toast.maxTime - toast.timer) / 0.4);
+    else if (toast.timer < 0.4) slideX = startX - toastW * (1 - toast.timer / 0.4);
 
     r.setShadow('rgba(251, 191, 36, 0.25)', 12, 0, 0);
     r.roundRect(slideX, targetY, toastW, toastH, 8, 'rgba(15, 23, 42, 0.95)', true, '#fbbf24', 1.5);
