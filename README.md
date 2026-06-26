@@ -126,7 +126,7 @@ src/
 │   └── TalentPanel.ts      # 天赋升级面板
 ├── config/                 # 平衡、难度和玩家设置
 ├── utils/                  # 本地存档、统计、排行榜、随机数、日志与国际化
-└── scripts/                # 自测脚本与存档回归检查
+└── scripts/                # 自测脚本、存档回归和平衡模拟
 ```
 
 ---
@@ -140,7 +140,7 @@ src/
 | 渲染 | HTML5 Canvas 2D |
 | 音频 | Web Audio API |
 | 存储 | LocalStorage |
-| 测试/验证 | TypeScript typecheck + runtime selftests |
+| 测试/验证 | TypeScript typecheck + runtime selftests + balance simulation |
 | 部署 | GitHub Actions + GitHub Pages |
 
 ---
@@ -182,7 +182,8 @@ npm run verify
 1. TypeScript 类型检查；
 2. 核心玩法自测；
 3. 中途存档 / 恢复回归检查；
-4. 生产构建。
+4. 自动平衡模拟；
+5. 生产构建。
 
 也可以单独运行：
 
@@ -190,18 +191,36 @@ npm run verify
 npm run typecheck
 npm run selftest
 npm run test:save
+npm run balance:sim
 npm run build
 ```
+
+### Balance Simulation / 平衡模拟
+
+`npm run balance:sim` 会使用脚本玩家自动运行：
+
+- 6 个战役关卡；
+- Normal / Hard / Brutal 三种难度；
+- balanced / antiFast / antiBoss 三种建造策略。
+
+它会输出每个关卡和难度下的最佳结果，包括胜负、星级、生命、波次、分数、击杀、建塔、升级和塔使用分布。这个脚本主要用于发现：
+
+- Normal 模式是否存在明显卡关；
+- Hard / Brutal 是否出现难度断崖；
+- 某些炮塔是否长期没人使用；
+- 最近的数值改动是否导致关卡突然不可通。
+
+该模拟不是正式玩家测试的替代品，但它是市场级发布前的回归报警器。
 
 ---
 
 ## 当前优化重点
 
-- 补强移动端塔防交互，例如放置取消、塔详情底部抽屉和更清晰的技能按钮；
-- 增加波次预告、敌人说明和塔克制提示，让策略选择更明确；
-- 引入自动平衡模拟脚本，长期跟踪不同难度和关卡的通关率；
-- 完成 UI 文案国际化，减少界面中英文混杂；
-- 增加封面图、截图和更完整的 GitHub Pages 分享卡。
+- 增加关卡主题化、Boss warning 和更强的技能 / 击杀反馈；
+- 继续强化移动端塔防交互，例如塔详情底部抽屉和小屏布局；
+- 使用自动平衡模拟脚本跟踪不同难度和关卡的通关率；
+- 补充封面图、截图和更完整的 GitHub Pages 分享卡；
+- 做发布前 checklist，包括部署状态、缓存刷新、License 和隐私说明。
 
 ---
 
