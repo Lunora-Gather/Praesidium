@@ -10,6 +10,7 @@ import { LEVELS } from '../src/game/grid/LevelManager';
 import { Vec2 } from '../src/engine/math/Vec2';
 import { Pathfinding } from '../src/game/grid/Pathfinding';
 import { GameState } from '../src/game/GameState';
+import { SaveSystem } from '../src/utils/SaveSystem';
 import { setLocale, t as tr } from '../src/utils/i18n';
 import { achievementName, enemyName, spellName, towerName, traitName } from '../src/utils/displayText';
 import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
@@ -93,6 +94,25 @@ check('localized spell helper zh', spellName('meteor', 'Meteor') === '陨石');
 check('localized achievement helper zh', achievementName('first_blood', 'First Blood') === '第一滴血');
 check('localized trait helper zh', traitName('Resists Ice') === '抗冰霜');
 setLocale('en');
+
+// --- Save/campaign helpers ---
+const save = new SaveSystem();
+save.reset();
+check('default first level unlocked', save.isLevelUnlocked(1) === true);
+check('default second level locked', save.isLevelUnlocked(2) === false);
+save.recordLevelReached(3);
+check('recordLevelReached unlocks through level', save.getUnlockedLevelCount() === 3);
+check('unlocked helper reflects progress', save.isLevelUnlocked(3) === true && save.isLevelUnlocked(4) === false);
+save.recordStars(1, 2);
+save.recordStars(2, 3);
+save.recordLevelScore(1, 1234);
+check('getStars returns best stars', save.getStars(1) === 2 && save.getStars(2) === 3);
+check('getLevelScore returns best score', save.getLevelScore(1) === 1234);
+check('campaign total stars', save.getTotalStars() === 5);
+check('campaign max stars', save.getMaxStars() === LEVELS.length * 3);
+check('campaign ratio', Math.abs(save.getCampaignCompletionRatio() - 5 / (LEVELS.length * 3)) < 1e-9);
+save.recordLevelReached(999);
+check('recordLevelReached clamps to max level', save.getUnlockedLevelCount() === LEVELS.length);
 
 // --- Integration: full game loop simulation ---
 const gs = new GameState();
