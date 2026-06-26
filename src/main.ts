@@ -644,7 +644,7 @@ function drawToasts(r: Renderer): void {
     r.setShadow('rgba(251, 191, 36, 0.25)', 12, 0, 0);
     r.roundRect(slideX, targetY, toastW, toastH, 8, 'rgba(15, 23, 42, 0.95)', true, '#fbbf24', 1.5);
     r.clearShadow();
-    r.text('🏆 ACHIEVEMENT UNLOCKED!', slideX + 12, targetY + 8, '#fbbf24', 9, 'left', 'bold', 'top', 'header');
+    r.text(t('achievement.unlocked'), slideX + 12, targetY + 8, '#fbbf24', 9, 'left', 'bold', 'top', 'header');
     r.text(toast.title, slideX + 12, targetY + 22, '#ffffff', 12, 'left', 'bold');
     r.text(toast.desc, slideX + 12, targetY + 36, '#94a3b8', 9, 'left');
   }
