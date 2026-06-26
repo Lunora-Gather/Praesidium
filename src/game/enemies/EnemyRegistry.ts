@@ -1,6 +1,6 @@
 // Data-driven enemy registry. Adding an enemy should primarily mean adding one
-// EnemyDef entry here; movement, damage, rewards, and resistances are handled by
-// shared systems.
+// EnemyDef entry here; movement, damage, rewards, resistances, and UI intel are
+// handled by shared systems.
 
 import { BALANCE } from '../../config/balance';
 import { DamageType, ResistanceMap } from '../DamageType';
@@ -13,6 +13,9 @@ export interface EnemyDef {
   speed: number; // px/s
   reward: number;
   radius: number;
+  description: string;
+  traits: string[];
+  recommendedTowerIds: string[];
   damageType?: DamageType; // for enemies that deal damage to towers (future)
   resist?: ResistanceMap; // damage multipliers per type
   isBoss?: boolean;
@@ -27,6 +30,9 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: BALANCE.enemyBaseSpeed,
     reward: BALANCE.enemyBaseReward,
     radius: 12,
+    description: 'Baseline infantry with no special resistance. Efficient towers and early upgrades handle them well.',
+    traits: ['Standard', 'No resistance'],
+    recommendedTowerIds: ['turret', 'mortar'],
   },
   scout: {
     id: 'scout',
@@ -36,6 +42,9 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: BALANCE.enemyBaseSpeed * 1.7,
     reward: BALANCE.enemyBaseReward * 0.8,
     radius: 9,
+    description: 'Fast light unit. It punishes slow targeting and benefits from crowd control or rapid fire.',
+    traits: ['Fast', 'Low HP'],
+    recommendedTowerIds: ['frost', 'tesla', 'turret'],
   },
   brute: {
     id: 'brute',
@@ -45,7 +54,10 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: BALANCE.enemyBaseSpeed * 0.7,
     reward: BALANCE.enemyBaseReward * 1.8,
     radius: 16,
-    resist: { [DamageType.Ice]: 0.5 }, // resists ice
+    description: 'Slow armored unit with high HP. Avoid relying only on ice damage; use sustained physical or heavy burst.',
+    traits: ['Armored', 'High HP', 'Resists Ice'],
+    recommendedTowerIds: ['sniper', 'turret', 'cannon'],
+    resist: { [DamageType.Ice]: 0.5 },
   },
   zealot: {
     id: 'zealot',
@@ -55,7 +67,10 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: BALANCE.enemyBaseSpeed * 1.2,
     reward: BALANCE.enemyBaseReward * 1.2,
     radius: 11,
-    resist: { [DamageType.Fire]: 0.3 }, // heavily resists fire
+    description: 'Aggressive mid-speed unit with strong fire resistance. Physical and lightning towers are safer counters.',
+    traits: ['Aggressive', 'Resists Fire'],
+    recommendedTowerIds: ['tesla', 'sniper', 'turret'],
+    resist: { [DamageType.Fire]: 0.3 },
   },
   boss: {
     id: 'boss',
@@ -65,6 +80,9 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: BALANCE.enemyBaseSpeed * 0.5,
     reward: BALANCE.enemyBaseReward * 5,
     radius: 22,
+    description: 'Boss-class enemy with extreme HP and broad elemental resistance. Stack high single-target damage and support with control.',
+    traits: ['Boss', 'Massive HP', 'Broad resistance'],
+    recommendedTowerIds: ['sniper', 'turret', 'frost'],
     isBoss: true,
     resist: {
       [DamageType.Fire]: 0.4,
@@ -80,7 +98,10 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: BALANCE.enemyBaseSpeed * 1.4,
     reward: BALANCE.enemyBaseReward * 1.5,
     radius: 10,
-    resist: { [DamageType.Physical]: 0.5 }, // ethereal — resists physical
+    description: 'Ethereal unit that resists physical damage. Elemental towers and lightning are more reliable.',
+    traits: ['Ethereal', 'Resists Physical'],
+    recommendedTowerIds: ['tesla', 'mortar', 'frost'],
+    resist: { [DamageType.Physical]: 0.5 },
   },
   titan: {
     id: 'titan',
@@ -90,6 +111,9 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: BALANCE.enemyBaseSpeed * 0.4,
     reward: BALANCE.enemyBaseReward * 3,
     radius: 20,
+    description: 'Very durable siege unit. It resists several elemental types, so physical damage and focused targeting are important.',
+    traits: ['Siege', 'Very high HP', 'Elemental resistance'],
+    recommendedTowerIds: ['sniper', 'turret', 'cannon'],
     resist: {
       [DamageType.Fire]: 0.6,
       [DamageType.Ice]: 0.6,
