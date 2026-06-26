@@ -11,21 +11,26 @@ export interface TutorialStep {
   check: (s: GameState) => boolean; // true => step completed
 }
 
-function step(id: string, key: string, check: (s: GameState) => boolean): TutorialStep {
+function text(key: string, fallback: string): string {
+  const value = t(key);
+  return value === key ? fallback : value;
+}
+
+function step(id: string, key: string, fallback: string, check: (s: GameState) => boolean): TutorialStep {
   return {
     id,
-    get text() { return t(key); },
+    get text() { return text(key, fallback); },
     check,
   };
 }
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
-  step('place', 'tutorial.place', (s) => s.towers.length > 0),
-  step('wave', 'tutorial.wave', (s) => s.waves.current >= 1),
-  step('upgrade', 'tutorial.upgrade', (s) => s.towers.some((tower) => tower.level > 1) || s.stats.get().upgrades > 0),
-  step('spell', 'tutorial.spell', (s) => s.stats.get().spellsCast > 0 || s.spells.some((sp) => !sp.ready)),
-  step('intel', 'tutorial.intel', (s) => s.waves.current >= 2 || s.enemies.some((enemy) => enemy.isBoss)),
-  step('talent', 'tutorial.talent', (s) => s.lastStars > 0 || s.talents.talentPoints > 0),
+  step('place', 'tutorial.place', 'Click a buildable tile to place a tower.', (s) => s.towers.length > 0),
+  step('wave', 'tutorial.wave', 'Click Send Wave to summon enemies.', (s) => s.waves.current >= 1),
+  step('upgrade', 'tutorial.upgrade', 'Click a placed tower to upgrade or sell it.', (s) => s.towers.some((tower) => tower.level > 1) || s.stats.get().upgrades > 0),
+  step('spell', 'tutorial.spell', 'Try spells: Q Meteor, W Freeze, E Repair.', (s) => s.stats.get().spellsCast > 0 || s.spells.some((sp) => !sp.ready)),
+  step('intel', 'tutorial.intel', 'Use Intel to preview threats, resistances, and recommended counters.', (s) => s.waves.current >= 2 || s.enemies.some((enemy) => enemy.isBoss)),
+  step('talent', 'tutorial.talent', 'Spend talent points after victories to strengthen future runs.', (s) => s.lastStars > 0 || s.talents.talentPoints > 0),
 ];
 
 export class Tutorial {
