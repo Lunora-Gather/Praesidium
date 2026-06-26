@@ -8,7 +8,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 | --- | --- | --- |
 | Portfolio release | Good enough to showcase publicly as a polished project | Very close |
 | Public free game | Good enough for GitHub Pages / itch.io style public play | Release candidate, pending final verification |
-| Market-grade release | Good enough for broader promotion and sustained updates | Needs captured media, final QA, and playtest feedback |
+| Market-grade release | Good enough for broader promotion and sustained updates | Needs captured media, final QA, and external playtest results |
 
 ## 1. Build and deployment
 
@@ -52,8 +52,8 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 - [x] Each level has a recognizable mood or visual identity.
 - [x] Boss waves have a warning cue.
-- [ ] Spells have stronger impact feedback.
-- [ ] Kills and explosions are readable but not noisy.
+- [x] Spells have stronger impact feedback.
+- [x] Kills and explosions are readable but not noisy.
 - [x] Low-life state is visually obvious.
 - [ ] Audio can be muted and stays muted after reload.
 - [ ] Sound effects have no obvious clipping or harsh repetition.
@@ -89,10 +89,11 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Final release QA checklist exists.
 - [x] Release audit script exists and is included in verify.
 - [x] Media kit guide exists.
+- [x] Commercial playtest plan exists.
 
 ## Current estimated gap
 
 - Public free-game release: about 1.2% remaining.
-- Market-grade release: about 10.5% remaining.
+- Market-grade release: about 6.5% remaining.
 
-The biggest remaining blockers are final local verification, actual screenshots/GIFs, GitHub Pages deploy confirmation, and final balance confirmation.
+The biggest remaining blockers are final local verification, actual screenshots/GIFs, GitHub Pages deploy confirmation, final balance confirmation, and external playtest results.
