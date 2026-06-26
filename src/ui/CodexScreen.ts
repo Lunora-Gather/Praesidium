@@ -1,6 +1,7 @@
 // Codex / Intel overlay: readable strategy reference for towers and enemies.
 
 import { Renderer } from '../engine/Renderer';
+import { Vec2 } from '../engine/math/Vec2';
 import { TOWER_LIST, getTowerDef } from '../game/towers/TowerRegistry';
 import { ENEMY_DEFS } from '../game/enemies/EnemyRegistry';
 import { DamageType } from '../game/DamageType';
@@ -81,7 +82,7 @@ export class CodexScreen {
 
       r.roundRect(tx, ty, cardW, rowH, 12, 'rgba(2, 6, 23, 0.46)', true, 'rgba(148, 163, 184, 0.12)', 1);
       r.setShadow(tower.color, 8, 0, 0);
-      r.circle({ x: tx + 16, y: ty + 20 }, 6, tower.color);
+      r.circle(new Vec2(tx + 16, ty + 20), 6, tower.color);
       r.clearShadow();
       r.text(tower.name, tx + 30, ty + 10, '#f8fafc', 13, 'left', 'bold', 'top', 'header');
       r.text(`${this.damageTypeName(tower.damageType)} · ${tower.cost}g · R${Math.round(tower.range)}`, tx + cardW - 12, ty + 11, '#94a3b8', 10, 'right', 'bold', 'top', 'header');
@@ -102,7 +103,7 @@ export class CodexScreen {
 
       r.roundRect(x, ey, w, rowH, 12, 'rgba(2, 6, 23, 0.46)', true, 'rgba(148, 163, 184, 0.12)', 1);
       r.setShadow(enemy.color, 8, 0, 0);
-      r.circle({ x: x + 17, y: ey + 20 }, enemy.isBoss ? 8 : 6, enemy.color);
+      r.circle(new Vec2(x + 17, ey + 20), enemy.isBoss ? 8 : 6, enemy.color);
       r.clearShadow();
 
       r.text(enemy.name, x + 34, ey + 10, '#f8fafc', 13, 'left', 'bold', 'top', 'header');
@@ -131,6 +132,7 @@ export class CodexScreen {
       case DamageType.Fire: return t('damage.fire');
       case DamageType.Ice: return t('damage.ice');
       case DamageType.Lightning: return t('damage.lightning');
+      default: return t('codex.none');
     }
   }
 
