@@ -4,6 +4,7 @@ import { Renderer } from '../engine/Renderer';
 import { LevelManager } from '../game/grid/LevelManager';
 import { SaveSystem } from '../utils/SaveSystem';
 import { Difficulty, DIFFICULTY_LIST } from '../config/Difficulty';
+import { t } from '../utils/i18n';
 
 type ClickAction = { kind: 'level'; index: number } | { kind: 'back' } | { kind: 'diff'; diff: Difficulty };
 
@@ -19,7 +20,6 @@ export class LevelSelect {
   draw(r: Renderer): void {
     this.regions = [];
     
-    // Smooth dark background gradient
     const bgGrad = r.linearGradient(0, 0, 0, r.height, [
       { offset: 0, color: '#090d16' },
       { offset: 1, color: '#02060c' }
@@ -28,14 +28,12 @@ export class LevelSelect {
     
     const cx = r.width / 2;
     
-    // Header gradient title
     const titleGrad = r.linearGradient(cx - 100, 48, cx + 100, 48, [
       { offset: 0, color: '#60a5fa' },
       { offset: 1, color: '#3b82f6' }
     ]);
-    r.text('SELECT LEVEL', cx, 40, titleGrad, 28, 'center', 'bold', 'top', 'header');
+    r.text(t('level.select'), cx, 40, titleGrad, 28, 'center', 'bold', 'top', 'header');
 
-    // Difficulty picker row
     const diffBtnW = 92;
     const diffGap = 10;
     const diffTotalW = DIFFICULTY_LIST.length * diffBtnW + (DIFFICULTY_LIST.length - 1) * diffGap;
@@ -71,12 +69,11 @@ export class LevelSelect {
       dx += diffBtnW + diffGap;
     }
 
-    // Grid Level Cards
     const cardW = 190;
     const cardH = 110;
     const gap = 16;
     const total = this.levels.total;
-    const cols = Math.min(3, total); // wraps on smaller width
+    const cols = Math.min(3, total);
     const rows = Math.ceil(total / cols);
     const totalW = cols * cardW + (cols - 1) * gap;
     const startX = cx - totalW / 2;
@@ -106,12 +103,10 @@ export class LevelSelect {
 
       r.roundRect(x, y, cardW, cardH, 12, cardBg, true, cardBorder, 1);
       
-      // Card content
-      r.text(`LEVEL ${i + 1}`, x + cardW / 2, y + 14, unlocked ? '#94a3b8' : '#475569', 10, 'center', 'bold', 'top', 'header');
+      r.text(`${t('level.level')} ${i + 1}`, x + cardW / 2, y + 14, unlocked ? '#94a3b8' : '#475569', 10, 'center', 'bold', 'top', 'header');
       r.text(levelName, x + cardW / 2, y + 32, unlocked ? '#ffffff' : '#475569', 15, 'center', 'bold');
       
       if (unlocked) {
-        // Glowing stars
         const stars = this.save.getStars(i + 1);
         const starY = y + 54;
         r.setShadow('rgba(251, 191, 36, 0.3)', 8, 0, 0);
@@ -122,14 +117,13 @@ export class LevelSelect {
         }
         r.clearShadow();
         
-        r.text('CLICK TO PLAY', x + cardW / 2, y + 84, '#60a5fa', 10, 'center', 'bold');
+        r.text(t('level.clickToPlay'), x + cardW / 2, y + 84, '#60a5fa', 10, 'center', 'bold');
         this.regions.push({ x, y, w: cardW, h: cardH, action: { kind: 'level', index: i } });
       } else {
-        r.text('LOCKED', x + cardW / 2, y + 64, '#475569', 12, 'center', 'bold');
+        r.text(t('level.locked'), x + cardW / 2, y + 64, '#475569', 12, 'center', 'bold');
       }
     }
 
-    // Back to Menu Button
     const btnY = startY + rows * (cardH + gap) + 15;
     const bw = 180;
     const bh = 36;
@@ -140,7 +134,7 @@ export class LevelSelect {
       { offset: 1, color: '#1e293b' }
     ]);
     r.roundRect(bx, btnY, bw, bh, 8, backBtnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text('Menu', cx, btnY + bh / 2, '#ffffff', 13, 'center', 'bold', 'middle');
+    r.text(t('common.menu'), cx, btnY + bh / 2, '#ffffff', 13, 'center', 'bold', 'middle');
     this.regions.push({ x: bx, y: btnY, w: bw, h: bh, action: { kind: 'back' } });
   }
 
