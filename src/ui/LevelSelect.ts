@@ -4,7 +4,7 @@ import { Renderer } from '../engine/Renderer';
 import { LevelManager } from '../game/grid/LevelManager';
 import { SaveSystem } from '../utils/SaveSystem';
 import { Difficulty, DIFFICULTY_LIST } from '../config/Difficulty';
-import { t } from '../utils/i18n';
+import { getLocale, t } from '../utils/i18n';
 
 export type LevelSelectAction = { kind: 'level'; index: number } | { kind: 'back' } | { kind: 'diff'; diff: Difficulty };
 
@@ -104,13 +104,13 @@ export class LevelSelect {
       if (sel) r.setShadow(`${color}66`, 9, 0, 0);
       r.roundRect(dx, y, diffBtnW, diffH, 14, btnBg, true, btnBorder, 1.2);
       r.clearShadow();
-      r.text(d.name, dx + diffBtnW / 2, y + diffH / 2, '#ffffff', isSmall ? 10 : 11, 'center', 'bold', 'middle', 'header');
+      r.text(this.difficultyName(d.id), dx + diffBtnW / 2, y + diffH / 2, '#ffffff', isSmall ? 10 : 11, 'center', 'bold', 'middle', 'header');
       this.regions.push({ x: dx, y, w: diffBtnW, h: diffH, action: { kind: 'diff', diff: d.id } });
       dx += diffBtnW + diffGap;
     }
 
     const current = DIFFICULTY_LIST.find(item => item.id === this.selectedDiff);
-    if (current && !isSmall) r.text(current.description, cx, y + diffH + 12, '#64748b', 11, 'center', 'bold', 'top');
+    if (current && !isSmall) r.text(this.difficultyDescription(current.id), cx, y + diffH + 12, '#64748b', 11, 'center', 'bold', 'top');
   }
 
   private drawLevelCard(r: Renderer, x: number, y: number, w: number, h: number, index: number, isRecommended: boolean, isSmall: boolean): void {
@@ -176,6 +176,24 @@ export class LevelSelect {
     r.roundRect(bx, y, bw, bh, 9, backBtnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
     r.text(t('common.menu'), cx, y + bh / 2, '#ffffff', 13, 'center', 'bold', 'middle');
     this.regions.push({ x: bx, y, w: bw, h: bh, action: { kind: 'back' } });
+  }
+
+  private difficultyName(id: Difficulty): string {
+    if (getLocale() !== 'zh') return id === 'normal' ? 'Normal' : id === 'hard' ? 'Hard' : 'Brutal';
+    if (id === 'normal') return '普通';
+    if (id === 'hard') return '困难';
+    return '残酷';
+  }
+
+  private difficultyDescription(id: Difficulty): string {
+    if (getLocale() !== 'zh') {
+      if (id === 'normal') return 'Balanced experience.';
+      if (id === 'hard') return '+50% enemy HP, +20% count.';
+      return '+120% HP, +40% count, -10% reward.';
+    }
+    if (id === 'normal') return '均衡体验。';
+    if (id === 'hard') return '敌人生命 +50%，数量 +20%。';
+    return '生命 +120%，数量 +40%，奖励 -10%。';
   }
 
   private difficultyColor(id: Difficulty): string {
