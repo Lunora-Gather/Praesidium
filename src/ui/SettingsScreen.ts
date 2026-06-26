@@ -15,7 +15,6 @@ export class SettingsScreen {
   draw(r: Renderer): void {
     this.regions = [];
     
-    // Dim background with overlay gradient
     const bgGrad = r.linearGradient(0, 0, 0, r.height, [
       { offset: 0, color: 'rgba(10, 14, 20, 0.8)' },
       { offset: 1, color: 'rgba(17, 24, 39, 0.9)' }
@@ -25,26 +24,23 @@ export class SettingsScreen {
     const cx = r.width / 2;
     const cy = r.height / 2;
     
-    // Modal card container
     const cardW = Math.min(r.width - 32, 380);
     const cardH = 380;
     const cardX = cx - cardW / 2;
     const cardY = cy - cardH / 2;
     
     r.setShadow('rgba(59, 130, 246, 0.15)', 24, 0, 4);
-    // Draw card
     r.roundRect(cardX, cardY, cardW, cardH, 16, 'rgba(15, 23, 42, 0.9)', true, 'rgba(255, 255, 255, 0.08)', 1.5);
     r.clearShadow();
     
-    // Gradient header
     const titleGrad = r.linearGradient(cx - 80, cardY + 24, cx + 80, cardY + 24, [
       { offset: 0, color: '#60a5fa' },
       { offset: 1, color: '#3b82f6' }
     ]);
-    r.text('SETTINGS', cx, cardY + 20, titleGrad, 24, 'center', 'bold', 'top', 'header');
+    r.text(t('settings.title'), cx, cardY + 20, titleGrad, 24, 'center', 'bold', 'top', 'header');
     
     const s = this.store.get();
-    const langLabel = getLocale() === 'en' ? 'Language: English' : '语言：中文';
+    const langLabel = getLocale() === 'en' ? t('settings.language.en') : t('settings.language.zh');
     const rows: Array<{ label: string; value: boolean; action: ClickAction }> = [
       { label: t('settings.sound'), value: !s.muted, action: 'toggleMute' },
       { label: t('settings.fps'), value: s.showFps, action: 'toggleFps' },
@@ -59,22 +55,15 @@ export class SettingsScreen {
     let y = cardY + 68;
     
     for (const row of rows) {
-      // Row separator line
       r.line(new Vec2(startX, y + rowH), new Vec2(startX + rowW, y + rowH), 'rgba(255, 255, 255, 0.05)', 1);
-      
-      // Label text
       r.text(row.label, startX + 4, y + rowH / 2, '#e2e8f0', 14, 'left', 'bold', 'middle');
       
-      // Modern slide toggle switch
       const toggleW = 38;
       const toggleH = 20;
       const toggleX = startX + rowW - toggleW - 4;
       const toggleY = y + 13;
       
-      // Toggle track background
       r.roundRect(toggleX, toggleY, toggleW, toggleH, 10, row.value ? '#10b981' : '#334155', true);
-      
-      // Toggle handle circular slider
       r.circle(
         new Vec2(row.value ? toggleX + toggleW - 10 : toggleX + 10, toggleY + 10),
         7,
@@ -85,7 +74,6 @@ export class SettingsScreen {
       y += rowH;
     }
     
-    // Back button at the bottom of the settings card
     const btnW = cardW - 64;
     const btnH = 36;
     const btnX = cx - btnW / 2;
@@ -96,7 +84,7 @@ export class SettingsScreen {
       { offset: 1, color: '#1e293b' }
     ]);
     r.roundRect(btnX, btnY, btnW, btnH, 8, btnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text('Back', cx, btnY + btnH / 2, '#ffffff', 13, 'center', 'bold', 'middle');
+    r.text(t('common.back'), cx, btnY + btnH / 2, '#ffffff', 13, 'center', 'bold', 'middle');
     
     this.regions.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: 'back' });
   }
