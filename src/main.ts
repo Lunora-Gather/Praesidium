@@ -111,6 +111,7 @@ if (savedRun && savedRun.v === 1) {
   for (let i = 0; i < savedRun.spellCooldowns.length && i < state.spells.length; i++) {
     state.spells[i].cooldown = savedRun.spellCooldowns[i];
   }
+  state.stats.restore(savedRun.stats);
   while (state.waves.current < savedRun.waveCurrent && state.waves.state !== 'done') {
     state.waves.forceNext();
   }
