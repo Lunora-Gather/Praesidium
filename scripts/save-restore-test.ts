@@ -22,15 +22,12 @@ function check(name: string, cond: boolean, detail = ''): void {
 
 console.log('\n=== Mid-Run Save/Restore Round-Trip ===');
 
-// Clean slate
 clearRun();
 check('no save initially', loadRun() === null);
 
-// Create a game, play a bit, save
 const gs = new GameState();
 gs.setDifficulty('hard');
 gs.selectLevel(2);
-// Place some towers
 for (let ty = 2; ty < 10; ty++) {
   for (let tx = 2; tx < 14; tx++) {
     if (gs.grid.isBuildable(tx, ty) && !gs.towers.some(t => t.tx === tx && t.ty === ty)) {
@@ -41,9 +38,8 @@ for (let ty = 2; ty < 10; ty++) {
 }
 gs.waves.forceNext();
 const dt = 1 / 60;
-for (let i = 0; i < 300; i++) gs.update(dt); // play 5 seconds
+for (let i = 0; i < 300; i++) gs.update(dt);
 
-// Save snapshot
 const snap = gs.snapshot();
 saveRun(snap);
 check('save written', snap.v === 1);
@@ -51,8 +47,10 @@ check('save has towers', snap.towers.length > 0, `towers=${snap.towers.length}`)
 check('save has gold', snap.gold > 0, `gold=${snap.gold}`);
 check('save has wave', snap.waveCurrent >= 1, `wave=${snap.waveCurrent}`);
 check('save has difficulty', snap.difficulty === 'hard');
+check('save has stat snapshot', !!snap.stats);
+check('save stat towers placed', snap.stats.towersPlaced >= snap.towers.length, `placed=${snap.stats.towersPlaced} towers=${snap.towers.length}`);
+check('save stat duration progresses', snap.stats.durationSec > 0, `duration=${snap.stats.durationSec}`);
 
-// Load it back
 const loaded = loadRun();
 check('load returns data', loaded !== null);
 if (loaded) {
@@ -66,7 +64,24 @@ if (loaded) {
   check('tower count matches', loaded.towers.length === snap.towers.length);
   check('endless flag matches', loaded.endless === snap.endless);
   check('endless seed matches', loaded.endlessSeed === snap.endlessSeed);
-  // Verify tower data integrity
+  check('stat kills match', loaded.stats.kills === snap.stats.kills);
+  check('stat towers match', loaded.stats.towersPlaced === snap.stats.towersPlaced);
+  check('stat upgrades match', loaded.stats.upgrades === snap.stats.upgrades);
+  check('stat spells match', loaded.stats.spellsCast === snap.stats.spellsCast);
+  check('stat gold matches', loaded.stats.goldEarned === snap.stats.goldEarned);
+  check('stat damage matches', loaded.stats.damageDealt === snap.stats.damageDealt);
+  check('stat duration matches', loaded.stats.durationSec === snap.stats.durationSec);
+
+  const restored = new GameState();
+  restored.setDifficulty(loaded.difficulty as 'normal' | 'hard' | 'brutal');
+  restored.selectLevel(loaded.levelIndex);
+  restored.gold = loaded.gold;
+  restored.lives = loaded.lives;
+  restored.score = loaded.score;
+  restored.stats.restore(loaded.stats);
+  check('restored stats kills match loaded', restored.stats.get().kills === loaded.stats.kills);
+  check('restored stats duration match loaded', restored.stats.get().durationSec === loaded.stats.durationSec);
+
   if (loaded.towers.length > 0) {
     const t0 = loaded.towers[0];
     check('tower has id', t0.id.length > 0, `id=${t0.id}`);
@@ -75,7 +90,6 @@ if (loaded) {
   }
 }
 
-// Test endless save
 clearRun();
 const gs2 = new GameState();
 gs2.endless = true;
@@ -88,8 +102,8 @@ saveRun(snap2);
 const loaded2 = loadRun();
 check('endless save round-trip', loaded2 !== null && loaded2.endless === true);
 check('endless seed preserved', loaded2?.endlessSeed === 0xCAFEBABE);
+check('endless stats preserved', loaded2 !== null && loaded2.stats.durationSec === snap2.stats.durationSec);
 
-// Clean up
 clearRun();
 check('clear removes save', loadRun() === null);
 
