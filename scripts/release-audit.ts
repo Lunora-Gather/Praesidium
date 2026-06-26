@@ -48,11 +48,14 @@ const requiredFiles = [
   'docs/FINAL_RELEASE_QA.md',
   'docs/MEDIA_KIT.md',
   'docs/PLAYTEST_PLAN.md',
+  'docs/PLAYTEST_RESULTS_SUMMARY.md',
   'docs/MARKET_READY_PLAN.md',
+  'docs/QA_RESULTS_TEMPLATE.md',
   'docs/RELEASE_NOTES_v0.1.0.md',
   'docs/DEPLOYMENT_STATUS.md',
   '.github/ISSUE_TEMPLATE/bug_report.md',
   '.github/ISSUE_TEMPLATE/playtest_feedback.md',
+  '.github/ISSUE_TEMPLATE/config.yml',
   '.github/workflows/deploy.yml',
   'manifest.json',
   'index.html',
@@ -96,9 +99,11 @@ check('privacy explains localStorage', contains('docs/PRIVACY.md', 'localStorage
 check('changelog has Unreleased section', contains('CHANGELOG.md', '## Unreleased'));
 check('final QA defines release candidate criteria', contains('docs/FINAL_RELEASE_QA.md', 'public free-game release candidate'));
 check('mobile QA covers tower drawer', contains('docs/MOBILE_QA.md', 'Tower drawer'));
+check('QA results template records release decision', contains('docs/QA_RESULTS_TEMPLATE.md', 'Release decision'));
 check('media kit defines screenshot list', contains('docs/MEDIA_KIT.md', 'Screenshot capture list'));
 check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'Commercial release gate'));
 check('playtest plan references issue templates', contains('docs/PLAYTEST_PLAN.md', '.github/ISSUE_TEMPLATE/playtest_feedback.md'));
+check('playtest summary defines market-ready decision', contains('docs/PLAYTEST_RESULTS_SUMMARY.md', 'Market-ready decision'));
 check('market ready plan defines market gate', contains('docs/MARKET_READY_PLAN.md', 'Market-ready gate'));
 check('release notes define v0.1.0', contains('docs/RELEASE_NOTES_v0.1.0.md', 'v0.1.0'));
 check('release notes mention verification', contains('docs/RELEASE_NOTES_v0.1.0.md', 'npm run verify'));
@@ -106,6 +111,7 @@ check('deployment status explains empty combined status', contains('docs/DEPLOYM
 check('deployment status names pages URL', contains('docs/DEPLOYMENT_STATUS.md', 'https://lunora-gather.github.io/Praesidium/'));
 check('bug template has severity labels', contains('.github/ISSUE_TEMPLATE/bug_report.md', 'S0 Blocker'));
 check('playtest template records first wave timing', contains('.github/ISSUE_TEMPLATE/playtest_feedback.md', 'Time to first wave sent'));
+check('issue template config links live game', contains('.github/ISSUE_TEMPLATE/config.yml', 'https://lunora-gather.github.io/Praesidium/'));
 
 // Manifest
 const manifest = read('manifest.json');
