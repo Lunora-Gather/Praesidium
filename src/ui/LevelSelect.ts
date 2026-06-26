@@ -5,6 +5,7 @@ import { LevelManager } from '../game/grid/LevelManager';
 import { SaveSystem } from '../utils/SaveSystem';
 import { Difficulty, DIFFICULTY_LIST } from '../config/Difficulty';
 import { getLocale, t } from '../utils/i18n';
+import { getLevelTheme } from './LevelThemes';
 
 export type LevelSelectAction = { kind: 'level'; index: number } | { kind: 'back' } | { kind: 'diff'; diff: Difficulty };
 
@@ -115,36 +116,41 @@ export class LevelSelect {
 
   private drawLevelCard(r: Renderer, x: number, y: number, w: number, h: number, index: number, isRecommended: boolean, isSmall: boolean): void {
     const levelNumber = index + 1;
+    const theme = getLevelTheme(levelNumber);
     const unlocked = this.save.isLevelUnlocked(levelNumber);
     const stars = this.save.getStars(levelNumber);
     const score = this.save.getLevelScore(levelNumber);
     const levelName = this.levels.levelAt(index).name;
     const completed = stars > 0;
 
-    const accent = completed ? '#10b981' : isRecommended ? '#60a5fa' : unlocked ? '#3b82f6' : '#475569';
+    const accent = completed ? '#10b981' : isRecommended ? theme.accent : unlocked ? theme.accent : '#475569';
     const cardBg = unlocked
       ? r.linearGradient(x, y, x, y + h, [
-        { offset: 0, color: isRecommended ? 'rgba(30, 64, 175, 0.32)' : 'rgba(30, 41, 59, 0.82)' },
-        { offset: 1, color: 'rgba(15, 23, 42, 0.86)' }
+        { offset: 0, color: isRecommended ? `${theme.pathGlow}44` : `${theme.buildable}dd` },
+        { offset: 0.55, color: `${theme.background}ee` },
+        { offset: 1, color: 'rgba(15, 23, 42, 0.92)' }
       ])
       : 'rgba(15, 23, 42, 0.42)';
-    const border = isRecommended ? '#60a5fa' : completed ? '#10b981' : unlocked ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)';
+    const border = isRecommended ? theme.accent : completed ? '#10b981' : unlocked ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)';
 
-    if (isRecommended && unlocked) r.setShadow('rgba(96, 165, 250, 0.35)', 14, 0, 0);
+    if (isRecommended && unlocked) r.setShadow(`${theme.accent}66`, 14, 0, 0);
     r.roundRect(x, y, w, h, 14, cardBg, true, border, isRecommended ? 1.6 : 1);
     r.clearShadow();
     r.roundRect(x, y, 4, h, 2, accent, true);
 
+    this.drawMiniRoute(r, x + 12, y + h - (isSmall ? 34 : 38), w - 24, isSmall ? 22 : 26, theme.accent, unlocked ? 0.42 : 0.16);
+
     if (isRecommended && unlocked) {
       const badgeW = isSmall ? 58 : 72;
-      r.roundRect(x + w - badgeW - 10, y + 10, badgeW, 20, 10, 'rgba(59, 130, 246, 0.22)', true, '#60a5fa', 1);
-      r.text(t('summary.nextLevel'), x + w - badgeW / 2 - 10, y + 20, '#bfdbfe', isSmall ? 8 : 9, 'center', 'bold', 'middle', 'header');
+      r.roundRect(x + w - badgeW - 10, y + 10, badgeW, 20, 10, `${theme.pathGlow}33`, true, theme.accent, 1);
+      r.text(t('summary.nextLevel'), x + w - badgeW / 2 - 10, y + 20, '#f8fafc', isSmall ? 8 : 9, 'center', 'bold', 'middle', 'header');
     }
 
     r.text(`${t('level.level')} ${levelNumber}`, x + 16, y + 12, unlocked ? '#94a3b8' : '#475569', isSmall ? 9 : 10, 'left', 'bold', 'top', 'header');
     r.text(levelName, x + 16, y + 32, unlocked ? '#f8fafc' : '#64748b', isSmall ? 13 : 15, 'left', 'bold', 'top', 'header');
+    if (!isSmall) r.text(theme.name, x + 16, y + 52, unlocked ? theme.accent : '#475569', 9, 'left', 'bold', 'top', 'header');
 
-    const starY = y + (isSmall ? 57 : 61);
+    const starY = y + (isSmall ? 57 : 70);
     r.setShadow('rgba(251, 191, 36, 0.24)', 6, 0, 0);
     for (let s = 0; s < 3; s++) {
       const starX = x + 17 + s * (isSmall ? 20 : 24);
@@ -154,15 +160,34 @@ export class LevelSelect {
     r.clearShadow();
 
     const scoreLabel = score > 0 ? `${t('hud.score')} ${score.toLocaleString()}` : `${t('hud.score')} —`;
-    r.text(scoreLabel, x + 16, y + (isSmall ? 86 : 93), unlocked ? '#cbd5e1' : '#475569', isSmall ? 10 : 11, 'left', 'bold', 'top', 'header');
+    r.text(scoreLabel, x + 16, y + (isSmall ? 86 : 101), unlocked ? '#cbd5e1' : '#475569', isSmall ? 10 : 11, 'left', 'bold', 'top', 'header');
 
     if (unlocked) {
       const actionText = completed ? t('menu.playAgain') : t('level.clickToPlay');
-      r.text(actionText, x + w - 14, y + h - 22, '#60a5fa', isSmall ? 9 : 10, 'right', 'bold', 'top', 'header');
+      r.text(actionText, x + w - 14, y + h - 22, theme.accent, isSmall ? 9 : 10, 'right', 'bold', 'top', 'header');
       this.regions.push({ x, y, w, h, action: { kind: 'level', index } });
     } else {
       r.text(t('level.locked'), x + w - 14, y + h - 22, '#64748b', isSmall ? 9 : 10, 'right', 'bold', 'top', 'header');
     }
+  }
+
+  private drawMiniRoute(r: Renderer, x: number, y: number, w: number, h: number, color: string, alpha: number): void {
+    r.ctx.save();
+    r.ctx.globalAlpha = alpha;
+    r.ctx.strokeStyle = color;
+    r.ctx.lineWidth = 2;
+    r.ctx.lineCap = 'round';
+    r.ctx.beginPath();
+    r.ctx.moveTo(x, y + h * 0.65);
+    r.ctx.bezierCurveTo(x + w * 0.25, y + h * 0.1, x + w * 0.45, y + h * 0.95, x + w * 0.68, y + h * 0.35);
+    r.ctx.bezierCurveTo(x + w * 0.82, y, x + w * 0.92, y + h * 0.3, x + w, y + h * 0.18);
+    r.ctx.stroke();
+    r.ctx.globalAlpha = Math.min(1, alpha + 0.12);
+    r.ctx.fillStyle = color;
+    r.ctx.beginPath();
+    r.ctx.arc(x + w, y + h * 0.18, 3, 0, Math.PI * 2);
+    r.ctx.fill();
+    r.ctx.restore();
   }
 
   private drawBackButton(r: Renderer, cx: number, y: number): void {
