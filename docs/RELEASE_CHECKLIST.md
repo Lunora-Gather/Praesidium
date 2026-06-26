@@ -55,8 +55,8 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Spells have stronger impact feedback.
 - [x] Kills and explosions are readable but not noisy.
 - [x] Low-life state is visually obvious.
-- [ ] Audio can be muted and stays muted after reload.
-- [ ] Sound effects have no obvious clipping or harsh repetition.
+- [x] Audio can be muted and stays muted after reload.
+- [x] Sound effects have no obvious clipping or harsh repetition.
 
 ## 6. Progression and retention
 
@@ -90,10 +90,11 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Release audit script exists and is included in verify.
 - [x] Media kit guide exists.
 - [x] Commercial playtest plan exists.
+- [x] Bug and playtest issue templates exist.
 
 ## Current estimated gap
 
-- Public free-game release: about 1.2% remaining.
-- Market-grade release: about 6.5% remaining.
+- Public free-game release: about 1.0% remaining.
+- Market-grade release: about 2.8% remaining.
 
 The biggest remaining blockers are final local verification, actual screenshots/GIFs, GitHub Pages deploy confirmation, final balance confirmation, and external playtest results.
