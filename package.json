@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "selftest": "npx -y tsx scripts/selftest.ts",
     "test:save": "npx -y tsx scripts/save-restore-test.ts",
-    "verify": "npm run typecheck && npm run selftest && npm run test:save && npm run build"
+    "balance:sim": "npx -y tsx scripts/balance-sim.ts",
+    "verify": "npm run typecheck && npm run selftest && npm run test:save && npm run balance:sim && npm run build"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",
