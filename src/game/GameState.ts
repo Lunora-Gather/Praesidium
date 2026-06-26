@@ -65,9 +65,7 @@ export class GameState {
   readonly spells = PLAYER_SPELLS.map((s) => new PlayerSpell(s.def));
   readonly analytics = new Analytics();
   difficulty: Difficulty = 'normal';
-  /** Endless mode: waves never end, run only ends on death. */
   endless = false;
-  /** Seed of the current endless run (0 in scripted mode); shareable to reproduce. */
   endlessSeed = 0;
 
   get diffMul(): DifficultyDef { return DIFFICULTIES[this.difficulty]; }
@@ -76,7 +74,7 @@ export class GameState {
   selectedTowerId: string | null = 'turret';
   hoverTile: { tx: number; ty: number } | null = null;
   selectedTower: Tower | null = null;
-  selectedSpellId: string | null = null; // when set, next click casts this spell
+  selectedSpellId: string | null = null;
   score = 0;
   fps = 0;
   lastStars = 0;
@@ -85,10 +83,9 @@ export class GameState {
   lastRunStarUpgrade = false;
   lastRunNewEndlessRecord = false;
   lastRunNewDailyRecord = false;
-  /** Combo streak: kills within 2s window. Resets on timeout. */
   comboCount = 0;
   comboTimer = 0;
-  static readonly COMBO_WINDOW = 2; // seconds to keep combo alive
+  static readonly COMBO_WINDOW = 2;
 
   constructor() {
     this.grid = new Grid(this.levels.current);
@@ -143,12 +140,9 @@ export class GameState {
     this.waves.reset();
     this.waves.endless = this.endless;
     if (this.endless) {
-      // only pick a random seed if none was pre-set (challenge mode sets it before start())
-      if (this.endlessSeed === 0) {
-        this.endlessSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
-      }
+      if (this.endlessSeed === 0) this.endlessSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
       this.waves.endlessSeed = this.endlessSeed;
-      this.waves.reset(); // re-seed the endless RNG with the seed
+      this.waves.reset();
       this.waves.setDifficulty(diff.hpMul, diff.countMul);
     } else {
       this.endlessSeed = 0;
@@ -176,9 +170,7 @@ export class GameState {
   advanceLevel(): void {
     this.save.recordLevelReached(this.levels.levelNumber + 1);
     if (!this.levels.hasNext) {
-      logger.info('All levels cleared');
-      this.endAnalyticsSession();
-      this.setPhase('won');
+      this.goLevelSelect();
       return;
     }
     this.levels.advance();
@@ -249,7 +241,6 @@ export class GameState {
     this.stats.tick(dt);
     this.analytics.tick(dt);
 
-    // combo decay
     if (this.comboCount > 0) {
       this.comboTimer -= dt;
       if (this.comboTimer <= 0) this.comboCount = 0;
@@ -257,14 +248,11 @@ export class GameState {
 
     this.waves.update(dt, this.grid, this.enemies);
     if (this.waves.current !== this.lastKnownWave) {
-      if (this.lastKnownWave > 0) {
-        this.achievements.recordWave();
-      }
+      if (this.lastKnownWave > 0) this.achievements.recordWave();
       this.lastKnownWave = this.waves.current;
       this.bus.emit('waveChanged', { current: this.waves.current, total: this.waves.totalWaves });
     }
 
-    // compute tower synergy neighbors (towers within 2 tiles of each other)
     for (const t of this.towers) {
       let neighbors = 0;
       for (const o of this.towers) {
@@ -285,9 +273,7 @@ export class GameState {
 
     for (const p of this.projectiles) {
       p.update(dt);
-      if (Math.random() < 30 * dt) {
-        this.particles.burst(p.pos, 1, p.color, 30, 0.25, p.splash ? 2 : 1.2);
-      }
+      if (Math.random() < 30 * dt) this.particles.burst(p.pos, 1, p.color, 30, 0.25, p.splash ? 2 : 1.2);
     }
     this.combat.resolve(this.projectiles, this.enemies, this);
     this.compact(this.projectiles);
@@ -297,14 +283,12 @@ export class GameState {
     for (const sp of this.spells) sp.update(dt);
 
     if (this.lives <= 0) {
-      // award talent points even on defeat (endless: waves survived = progress)
       if (this.endless && this.waves.current > 0) {
-        const stars = Math.min(3, Math.floor(this.waves.current / 4)); // 1 star per 4 waves, max 3
+        const stars = Math.min(3, Math.floor(this.waves.current / 4));
         this.talents.awardPoints(stars);
         this.achievements.recordStars(stars);
         this.analytics.recordEndlessRun(this.waves.current);
 
-        // Save endless or daily high scores
         if (this.endlessSeed === dailySeed()) {
           const today = new Date().toISOString().slice(0, 10);
           this.lastRunNewDailyRecord = this.save.recordDailyRun(this.score, this.waves.current, today);
@@ -318,9 +302,8 @@ export class GameState {
       this.setPhase('lost');
       return;
     }
+
     if (this.waves.state === 'done' && this.enemies.length === 0) {
-      // endless never reaches 'done' (WaveManager keeps generating); this branch
-      // is the scripted-campaign victory path only.
       this.lastStars = computeStars(this.lives);
       this.talents.awardPoints(this.lastStars);
       this.achievements.recordStars(this.lastStars);
@@ -329,6 +312,7 @@ export class GameState {
       this.bus.emit('levelWon', { level: this.levels.levelNumber, stars: this.lastStars });
       const newly = this.achievements.newlyUnlocked();
       if (newly.length > 0) logger.info('Achievements unlocked', newly.map((a) => a.id));
+      this.save.recordLevelReached(this.levels.levelNumber + 1);
       this.lastRunStarUpgrade = this.save.recordStars(this.levels.levelNumber, this.lastStars);
       this.lastRunNewLevelScore = this.save.recordLevelScore(this.levels.levelNumber, this.score);
       this.lastRunNewHighScore = this.save.recordScore(this.score);
@@ -338,8 +322,11 @@ export class GameState {
         isNewHigh: this.lastRunNewHighScore,
         isNewLevelScore: this.lastRunNewLevelScore,
         isStarUpgrade: this.lastRunStarUpgrade,
+        hasNext: this.levels.hasNext,
       });
-      this.advanceLevel();
+      this.endAnalyticsSession();
+      this.setPhase('won');
+      return;
     }
     this.checkAchievements();
   }
@@ -347,9 +334,7 @@ export class GameState {
   checkAchievements(): void {
     const newly = this.achievements.newlyUnlocked();
     if (newly.length > 0) {
-      for (const ach of newly) {
-        this.bus.emit('achievementUnlocked', ach);
-      }
+      for (const ach of newly) this.bus.emit('achievementUnlocked', ach);
     }
   }
 
@@ -364,7 +349,6 @@ export class GameState {
     arr.length = w;
   }
 
-  /** Serialize current run for mid-run save (called on wave boundaries). */
   snapshot(): RunSnapshot {
     return {
       v: 1,
@@ -396,12 +380,10 @@ export class GameState {
     };
   }
 
-  /** Auto-save on wave boundary. */
   autoSave(): void {
     if (this.phase === 'playing') saveRun(this.snapshot());
   }
 
-  /** Clear mid-run save (on game end or manual reset). */
   clearSave(): void {
     clearRun();
   }
