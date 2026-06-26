@@ -47,6 +47,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Tower placement has low accidental-click risk.
 - [x] Spell buttons are large enough on touchscreens.
 - [x] End screens fit on small screens.
+- [x] Portrait mobile users get a landscape orientation hint.
 
 ## 5. Visual and audio polish
 
@@ -91,10 +92,12 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Media kit guide exists.
 - [x] Commercial playtest plan exists.
 - [x] Bug and playtest issue templates exist.
+- [x] PWA manifest is release-ready.
+- [x] v0.1.0 release notes exist.
 
 ## Current estimated gap
 
-- Public free-game release: about 1.0% remaining.
-- Market-grade release: about 2.8% remaining.
+- Public free-game release: about 0.4% remaining.
+- Market-grade release: about 1.7% remaining.
 
 The biggest remaining blockers are final local verification, actual screenshots/GIFs, GitHub Pages deploy confirmation, final balance confirmation, and external playtest results.
