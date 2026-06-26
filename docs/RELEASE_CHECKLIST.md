@@ -8,7 +8,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 | --- | --- | --- |
 | Portfolio release | Good enough to showcase publicly as a polished project | Very close |
 | Public free game | Good enough for GitHub Pages / itch.io style public play | Release candidate, pending final verification |
-| Market-grade release | Good enough for broader promotion and sustained updates | Needs media package, final QA, and playtest feedback |
+| Market-grade release | Good enough for broader promotion and sustained updates | Needs captured media, final QA, and playtest feedback |
 
 ## 1. Build and deployment
 
@@ -88,10 +88,11 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Mobile QA checklist exists.
 - [x] Final release QA checklist exists.
 - [x] Release audit script exists and is included in verify.
+- [x] Media kit guide exists.
 
 ## Current estimated gap
 
-- Public free-game release: about 1.5% remaining.
-- Market-grade release: about 12% remaining.
+- Public free-game release: about 1.2% remaining.
+- Market-grade release: about 10.5% remaining.
 
-The biggest remaining blockers are final local verification, screenshots/GIFs, GitHub Pages deploy confirmation, and final balance confirmation.
+The biggest remaining blockers are final local verification, actual screenshots/GIFs, GitHub Pages deploy confirmation, and final balance confirmation.
