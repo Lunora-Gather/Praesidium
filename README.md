@@ -11,7 +11,7 @@
 [![Web Audio](https://img.shields.io/badge/Web%20Audio-Procedural-10B981?style=flat-square)](#技术栈)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-222222?style=flat-square&logo=github&logoColor=white)](https://lunora-gather.github.io/Praesidium/)
 
-[在线游玩](https://lunora-gather.github.io/Praesidium/) · [核心玩法](#核心玩法) · [本地运行](#本地运行) · [质量验证](#质量验证)
+[在线游玩](https://lunora-gather.github.io/Praesidium/) · [核心玩法](#核心玩法) · [本地运行](#本地运行) · [质量验证](#质量验证) · [发布信息](#发布信息)
 
 </div>
 
@@ -44,9 +44,9 @@ https://lunora-gather.github.io/Praesidium/
 
 | 模块 | 内容 |
 | --- | --- |
-| **战役关卡** | 6 个不同路径布局的关卡，逐步提高防守压力。 |
+| **战役关卡** | 6 个不同路径布局和独立视觉主题的关卡，逐步提高防守压力。 |
 | **炮塔系统** | 6 种炮塔：Turret、Sniper、Mortar、Frost、Tesla、Cannon。 |
-| **敌人系统** | 多类型敌人拥有不同速度、生命、奖励和抗性。 |
+| **敌人系统** | 多类型敌人拥有不同速度、生命、奖励和抗性，Boss 波有独立警告反馈。 |
 | **升级与出售** | 炮塔支持多级升级，也可以出售回收部分金币。 |
 | **目标策略** | 炮塔可切换 first、last、strongest、weakest、closest 等目标策略。 |
 | **协同加成** | 相邻炮塔提供伤害和攻速加成，鼓励布局取舍。 |
@@ -214,13 +214,23 @@ npm run build
 
 ---
 
+## 发布信息
+
+| 文件 | 用途 |
+| --- | --- |
+| `LICENSE` | MIT 开源许可。 |
+| `CHANGELOG.md` | 记录主要新增、修改和修复。 |
+| `docs/PRIVACY.md` | 说明游戏只使用浏览器本地存储，不自带远程追踪。 |
+| `docs/RELEASE_CHECKLIST.md` | 发布前检查表和当前市场化差距。 |
+
+---
+
 ## 当前优化重点
 
-- 增加关卡主题化、Boss warning 和更强的技能 / 击杀反馈；
 - 继续强化移动端塔防交互，例如塔详情底部抽屉和小屏布局；
-- 使用自动平衡模拟脚本跟踪不同难度和关卡的通关率；
-- 补充封面图、截图和更完整的 GitHub Pages 分享卡；
-- 做发布前 checklist，包括部署状态、缓存刷新、License 和隐私说明。
+- 补充 README 截图/GIF、封面图和更完整的 GitHub Pages 分享卡；
+- 最终运行 `npm run verify` 与 `npm run balance:sim`，确认没有正常模式卡关；
+- 做上线前设备检查：桌面、小屏横屏、移动浏览器、缓存刷新。
 
 ---
 
