@@ -27,8 +27,6 @@ import { StatsScreen } from './ui/StatsScreen';
 import { loadRun } from './utils/RunSave';
 import { dailySeed } from './utils/DailyChallenge';
 
-// Global error boundary — prevents one unhandled error from crashing the entire game.
-// Logs the error and shows a subtle red indicator instead of a blank screen.
 window.addEventListener('error', (e) => {
   console.error('[Praesidium] Unhandled error:', e.error ?? e.message);
   const el = document.getElementById('err');
@@ -62,9 +60,18 @@ const starfield = new Starfield(140);
 const talentPanel = new TalentPanel();
 const statsScreen = new StatsScreen();
 
+interface RectRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 let paused = false;
 let showSettings = false;
 let hudRegions: HudRegions = { shop: [], buttons: [] };
+let spellRegions: Array<RectRegion & { spellId: string }> = [];
+let cancelPlacementRegion: RectRegion | null = null;
 let lastFpsUpdate = 0;
 let frameCount = 0;
 let placingMode = true;
@@ -81,7 +88,6 @@ interface Toast {
 }
 let activeToasts: Toast[] = [];
 
-// restore mid-run save if present (player closed tab mid-game)
 const savedRun = loadRun();
 if (savedRun && savedRun.v === 1) {
   state.setDifficulty(savedRun.difficulty as 'normal' | 'hard' | 'brutal');
@@ -109,11 +115,9 @@ if (savedRun && savedRun.v === 1) {
   logger.info('Restored mid-run save', { level: savedRun.levelIndex + 1, wave: savedRun.waveCurrent });
 }
 
-// sync audio and music mute with stored settings
 audio.setMuted(settings.get().muted);
 music.setMuted(settings.get().muted);
 
-// resume audio on first interaction (browser autoplay policy)
 const resumeAudio = (): void => audio.resume();
 window.addEventListener('pointerdown', resumeAudio, { once: true });
 window.addEventListener('keydown', resumeAudio, { once: true });
@@ -121,16 +125,11 @@ window.addEventListener('resize', () => renderer.resize());
 window.addEventListener('blur', () => {
   if (settings.get().pauseOnBlur && state.phase === 'playing') { paused = true; state.autoSave(); }
 });
-// auto-resume on focus so a returning player isn't stuck on the pause screen
-// (tower defense is long-form; players tab out constantly — forcing a manual
-// Resume click each time is a major流失点)
 window.addEventListener('focus', () => {
   if (settings.get().pauseOnBlur && paused && state.phase === 'playing') paused = false;
 });
-// save on tab close/refresh so progress isn't lost
 window.addEventListener('beforeunload', () => { if (state.phase === 'playing') state.autoSave(); });
 
-// event bus -> audio + particles + music
 state.bus.on('towerPlaced', () => audio.place());
 state.bus.on('towerSold', () => audio.place());
 state.bus.on('towerUpgraded', () => audio.place());
@@ -157,7 +156,6 @@ state.bus.on('spellCast', ({ id }) => {
     renderer.shake(8);
   }
 });
-// mid-run save on every wave boundary
 state.bus.on('waveChanged', () => state.autoSave());
 state.bus.on('achievementUnlocked', (ach) => {
   audio.achievement();
@@ -183,12 +181,24 @@ function screenToWorld(sx: number, sy: number): { wx: number; wy: number } {
   return { wx: sx - camX, wy: sy - camY };
 }
 
+function hitRegion(region: RectRegion | null, x: number, y: number): boolean {
+  return !!region && x >= region.x && x <= region.x + region.w && y >= region.y && y <= region.y + region.h;
+}
+
+function hitSpell(x: number, y: number): string | null {
+  for (const region of spellRegions) {
+    if (x >= region.x && x <= region.x + region.w && y >= region.y && y <= region.y + region.h) return region.spellId;
+  }
+  return null;
+}
+
 function handleHUDClick(x: number, y: number): void {
   const shopPick = hud.hitShop(hudRegions, x, y);
   if (shopPick) {
     state.selectedTowerId = shopPick;
     placingMode = true;
     state.selectedTower = null;
+    state.selectedSpellId = null;
     return;
   }
   const btn = hud.hitButton(hudRegions, x, y);
@@ -221,7 +231,6 @@ function handleWorldClick(x: number, y: number): void {
     return;
   }
 
-  // if a tower panel is open, check its buttons first
   if (state.selectedTower) {
     const panelAction = towerPanel.hit(x, y);
     if (panelAction === 'upgrade') {
@@ -234,15 +243,14 @@ function handleWorldClick(x: number, y: number): void {
     }
   }
 
-  // click on an existing tower -> select it (upgrade/sell panel)
-  const existing = state.towers.find((t) => t.tx === tx && t.ty === ty);
+  const existing = state.towers.find((tower) => tower.tx === tx && tower.ty === ty);
   if (existing) {
     state.selectedTower = existing;
     placingMode = false;
+    state.selectedSpellId = null;
     return;
   }
 
-  // otherwise try to place
   if (placingMode && state.tryPlace(tx, ty)) {
     // audio handled via bus
   }
@@ -263,7 +271,6 @@ function handleMenuClick(action: MenuClickAction): void {
 }
 
 const update = (dt: number): void => {
-  // FPS counter
   frameCount++;
   lastFpsUpdate += dt;
   if (lastFpsUpdate >= 0.5) {
@@ -271,16 +278,13 @@ const update = (dt: number): void => {
     frameCount = 0;
     lastFpsUpdate = 0;
   }
-  // starfield runs on every overlay screen (menu/levelSelect/won/lost)
   starfield.update(dt, renderer.width, renderer.height);
 
-  // update achievement toasts
-  for (const t of activeToasts) {
-    t.timer -= dt;
+  for (const toast of activeToasts) {
+    toast.timer -= dt;
   }
-  activeToasts = activeToasts.filter(t => t.timer > 0);
+  activeToasts = activeToasts.filter(toast => toast.timer > 0);
 
-  // settings overlay takes priority
   if (showSettings) {
     for (const c of input.clicks()) {
       const a = settingsScreen.hit(c.x, c.y);
@@ -295,7 +299,6 @@ const update = (dt: number): void => {
     return;
   }
 
-  // stats overlay takes priority
   if (showStats) {
     for (const c of input.clicks()) {
       const action = statsScreen.hit(c.x, c.y);
@@ -309,7 +312,7 @@ const update = (dt: number): void => {
           statsScreen.apply(action);
         }
       } else {
-        showStats = false; // click outside close
+        showStats = false;
       }
     }
     if (input.wasKeyPressed('Escape')) showStats = false;
@@ -317,7 +320,6 @@ const update = (dt: number): void => {
     return;
   }
 
-  // pause overlay takes priority if playing and paused
   if (paused && state.phase === 'playing') {
     for (const c of input.clicks()) {
       if (c.y < TOP_H) {
@@ -325,9 +327,7 @@ const update = (dt: number): void => {
         continue;
       }
       const a = screens.hit(c.x, c.y);
-      if (a) {
-        handleMenuClick(a);
-      }
+      if (a) handleMenuClick(a);
     }
     if (input.wasKeyPressed('Space')) paused = false;
     if (input.wasKeyPressed('Escape')) paused = false;
@@ -356,11 +356,10 @@ const update = (dt: number): void => {
         state.goLevelSelect();
       } else if (a === 'endless') {
         state.endless = true;
-        state.endlessSeed = 0; // start() will pick a random seed
+        state.endlessSeed = 0;
         state.selectLevel(0);
         paused = false;
       } else if (a === 'challenge') {
-        // prompt for a shared endless seed (hex), then replay that exact run
         const raw = window.prompt(t('menu.challenge') + ' — hex seed (e.g. 1A2B3C4D):');
         if (raw != null) {
           const seed = parseInt(raw.trim(), 16) >>> 0;
@@ -372,7 +371,6 @@ const update = (dt: number): void => {
           }
         }
       } else if (a === 'daily') {
-        // daily challenge: same seed for everyone today, compete for highest wave
         state.endless = true;
         state.endlessSeed = dailySeed();
         state.selectLevel(0);
@@ -388,18 +386,30 @@ const update = (dt: number): void => {
   }
 
   if (state.phase === 'playing') {
-    // hover tile
     const { wx, wy } = screenToWorld(input.pointerX, input.pointerY);
     const { tx, ty } = state.grid.pixelToTile(wx, wy);
-    state.hoverTile =
-      tx >= 0 && ty >= 0 && tx < state.grid.cols && ty < state.grid.rows ? { tx, ty } : null;
+    state.hoverTile = tx >= 0 && ty >= 0 && tx < state.grid.cols && ty < state.grid.rows ? { tx, ty } : null;
 
     for (const c of input.clicks()) {
-      // talent panel takes priority when open
       if (showTalent) {
         const tid = talentPanel.hit(c.x, c.y);
         if (tid) state.talents.rankUp(tid);
-        else showTalent = false; // click outside closes
+        else showTalent = false;
+        continue;
+      }
+
+      if (hitRegion(cancelPlacementRegion, c.x, c.y)) {
+        placingMode = false;
+        state.selectedTower = null;
+        state.selectedSpellId = null;
+        continue;
+      }
+
+      const clickedSpell = hitSpell(c.x, c.y);
+      if (clickedSpell) {
+        state.selectedSpellId = state.selectedSpellId === clickedSpell ? null : clickedSpell;
+        placingMode = false;
+        state.selectedTower = null;
         continue;
       }
 
@@ -409,8 +419,8 @@ const update = (dt: number): void => {
       }
       if (c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y);
       else if (state.selectedSpellId) {
-        const { wx, wy } = screenToWorld(c.x, c.y);
-        state.castSpell(state.selectedSpellId, new Vec2(wx, wy));
+        const { wx: castX, wy: castY } = screenToWorld(c.x, c.y);
+        state.castSpell(state.selectedSpellId, new Vec2(castX, castY));
         state.selectedSpellId = null;
       } else handleWorldClick(c.x, c.y);
     }
@@ -419,6 +429,7 @@ const update = (dt: number): void => {
     if (input.wasKeyPressed('Escape')) {
       if (state.selectedSpellId) state.selectedSpellId = null;
       else if (state.selectedTower) state.selectedTower = null;
+      else if (placingMode) placingMode = false;
       else state.goMenu();
     }
     if (input.wasKeyPressed('KeyS') && state.selectedTower) state.sellTower(state.selectedTower);
@@ -432,12 +443,16 @@ const update = (dt: number): void => {
         state.selectedTowerId = TOWER_LIST[i].id;
         placingMode = true;
         state.selectedTower = null;
+        state.selectedSpellId = null;
       }
     }
-    // spell hotkeys Q/W/E
     const spellKeys = ['KeyQ', 'KeyW', 'KeyE'];
     for (let i = 0; i < spellKeys.length && i < state.spells.length; i++) {
-      if (input.wasKeyPressed(spellKeys[i])) state.selectedSpellId = state.spells[i].def.id;
+      if (input.wasKeyPressed(spellKeys[i])) {
+        state.selectedSpellId = state.spells[i].def.id;
+        placingMode = false;
+        state.selectedTower = null;
+      }
     }
 
     if (!paused) {
@@ -445,7 +460,6 @@ const update = (dt: number): void => {
       tutorial.update(state);
     }
   } else {
-    // won/lost
     for (const c of input.clicks()) {
       const a = screens.hit(c.x, c.y);
       if (a === 'challenge') {
@@ -474,7 +488,6 @@ const render = (_alpha: number): void => {
   renderer.clear();
   renderer.updateShake();
 
-  // Reset camera for background starfield (screen-space)
   renderer.camX = 0;
   renderer.camY = 0;
   if (state.phase === 'menu' || state.phase === 'levelSelect') starfield.draw(renderer);
@@ -482,32 +495,30 @@ const render = (_alpha: number): void => {
   const { camX, camY } = camOffset();
 
   if (state.phase === 'playing' || state.phase === 'won' || state.phase === 'lost') {
-    // Translate camera for world-space entities
     renderer.camX = camX;
     renderer.camY = camY;
     renderer.zoom = 1;
     worldRenderer.draw(renderer, state, settings.get());
     state.particles.draw(renderer);
 
-    // Compute screen position of selected tower before resetting camera
     let towerScreenPos: Vec2 | null = null;
     if (state.selectedTower && state.phase === 'playing') {
       towerScreenPos = renderer.toScreen(state.selectedTower.pos);
     }
 
-    // Reset camera for screen-space HUD and overlays
     renderer.camX = 0;
     renderer.camY = 0;
 
     hudRegions = hud.draw(renderer, state, gameSpeed, autoSend);
     drawSpells(renderer);
-    
+    drawPlacementHint(renderer);
+
     if (towerScreenPos && state.selectedTower && state.phase === 'playing') {
       towerPanel.draw(renderer, state.selectedTower, state.gold, towerScreenPos.x, towerScreenPos.y);
     } else {
       towerPanel.clear();
     }
-    
+
     if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
     if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
@@ -515,7 +526,6 @@ const render = (_alpha: number): void => {
     if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed, { wave: state.waves.current, kills: state.stats.get().kills });
     if (settings.get().showFps) renderer.text(`${state.fps} fps`, 8, 52, '#555', 11);
   } else {
-    // Reset camera for pure menus and level select overlays
     renderer.camX = 0;
     renderer.camY = 0;
     renderer.zoom = 1;
@@ -527,52 +537,90 @@ const render = (_alpha: number): void => {
     }
   }
 
-  // Stats & Settings screens are always screen space
   renderer.camX = 0;
   renderer.camY = 0;
   if (showStats) statsScreen.draw(renderer, state.analytics.get(), state.save);
   if (showSettings) settingsScreen.draw(renderer);
 
-  // Render active toasts
   drawToasts(renderer);
 };
 
 function drawSpells(r: Renderer): void {
-  // spell bar left of HUD buttons, bottom-right
-  const slotW = 56;
-  const gap = 6;
-  const y = r.height - BOT_H + 8;
-  let x = r.width - 16 - (slotW + gap) * state.spells.length;
+  spellRegions = [];
+  const isMobile = r.width < 760;
+  const slotW = isMobile ? 68 : 56;
+  const slotH = isMobile ? 60 : 48;
+  const gap = isMobile ? 8 : 6;
+  let x = isMobile ? r.width - slotW - 10 : r.width - 16 - (slotW + gap) * state.spells.length;
+  let y = isMobile ? TOP_H + 76 : r.height - BOT_H + 8;
+
   for (const sp of state.spells) {
+    const selected = state.selectedSpellId === sp.def.id;
     const ready = sp.ready && state.gold >= sp.def.cost;
-    
     let bg: string | CanvasGradient;
     let border: string;
-    if (ready) {
-      bg = r.linearGradient(x, y, x, y + 48, [
+    if (selected) {
+      bg = r.linearGradient(x, y, x, y + slotH, [
+        { offset: 0, color: 'rgba(251, 191, 36, 0.32)' },
+        { offset: 1, color: 'rgba(146, 64, 14, 0.24)' }
+      ]);
+      border = '#fbbf24';
+      r.setShadow('rgba(251, 191, 36, 0.5)', 12, 0, 0);
+    } else if (ready) {
+      bg = r.linearGradient(x, y, x, y + slotH, [
         { offset: 0, color: 'rgba(30, 41, 59, 0.9)' },
         { offset: 1, color: 'rgba(15, 23, 42, 0.9)' }
       ]);
-      border = '#fbbf24'; // glowing gold border
+      border = '#fbbf24';
       r.setShadow('rgba(251, 191, 36, 0.35)', 8, 0, 0);
     } else {
       bg = 'rgba(15, 23, 42, 0.4)';
       border = 'rgba(255, 255, 255, 0.03)';
     }
-    
-    r.roundRect(x, y, slotW, 48, 6, bg, true, border, 1);
+
+    r.roundRect(x, y, slotW, slotH, 8, bg, true, border, selected ? 1.8 : 1);
     r.clearShadow();
-    
-    r.text(sp.def.name, x + slotW / 2, y + 6, ready ? '#f8fafc' : '#475569', 11, 'center', 'bold');
-    r.text(`${sp.def.cost}g`, x + slotW / 2, y + 26, ready ? '#fbbf24' : '#475569', 10, 'center', 'bold', 'top', 'header');
-    
-    if (!sp.ready) {
-      const cdH = Math.round(48 * (sp.cooldown / sp.def.cooldown));
-      // Cooldown semi-transparent overlay
-      r.roundRect(x, y + 48 - cdH, slotW, cdH, 0, 'rgba(0, 0, 0, 0.65)', true);
+
+    r.text(sp.def.name, x + slotW / 2, y + (isMobile ? 8 : 6), ready ? '#f8fafc' : '#475569', isMobile ? 12 : 11, 'center', 'bold');
+    r.text(`${sp.def.cost}g`, x + slotW / 2, y + (isMobile ? 30 : 26), ready ? '#fbbf24' : '#475569', isMobile ? 11 : 10, 'center', 'bold', 'top', 'header');
+    if (isMobile && ready) {
+      r.text(t('spell.ready'), x + slotW / 2, y + 45, '#94a3b8', 9, 'center', 'bold', 'top', 'header');
     }
-    x += slotW + gap;
+
+    if (!sp.ready) {
+      const cdH = Math.round(slotH * (sp.cooldown / sp.def.cooldown));
+      r.roundRect(x, y + slotH - cdH, slotW, cdH, 0, 'rgba(0, 0, 0, 0.65)', true);
+    }
+
+    spellRegions.push({ x, y, w: slotW, h: slotH, spellId: sp.def.id });
+    if (isMobile) y += slotH + gap;
+    else x += slotW + gap;
   }
+}
+
+function drawPlacementHint(r: Renderer): void {
+  cancelPlacementRegion = null;
+  if (state.phase !== 'playing' || !placingMode || !state.selectedTowerId || state.selectedTower || state.selectedSpellId) return;
+
+  const def = getTowerDef(state.selectedTowerId);
+  const isMobile = r.width < 760;
+  const w = isMobile ? Math.min(r.width - 24, 390) : 360;
+  const h = isMobile ? 72 : 62;
+  const x = isMobile ? 12 : 16;
+  const y = r.height - BOT_H - h - 12;
+
+  r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.9)', true, 'rgba(59, 130, 246, 0.25)', 1.2);
+  r.text(t('placement.selected').replace('{tower}', def.name), x + 14, y + 10, def.color, 12, 'left', 'bold', 'top', 'header');
+  r.text(def.description, x + 14, y + 29, '#cbd5e1', 11, 'left', 'normal');
+  if (isMobile) r.text(t('placement.hint'), x + 14, y + 46, '#64748b', 10, 'left', 'normal');
+
+  const btnW = isMobile ? 108 : 132;
+  const btnH = 28;
+  const btnX = x + w - btnW - 12;
+  const btnY = y + h - btnH - 10;
+  r.roundRect(btnX, btnY, btnW, btnH, 8, 'rgba(239, 68, 68, 0.16)', true, 'rgba(248, 113, 113, 0.35)', 1);
+  r.text(t('placement.cancel'), btnX + btnW / 2, btnY + btnH / 2, '#fecaca', 11, 'center', 'bold', 'middle');
+  cancelPlacementRegion = { x: btnX, y: btnY, w: btnW, h: btnH };
 }
 
 function drawTutorial(r: Renderer, text: string): void {
@@ -588,34 +636,26 @@ function drawToasts(r: Renderer): void {
   const toastW = 280;
   const toastH = 50;
   const startX = 16;
-  const bottomY = r.height - BOT_H - 16; // anchor above bottom shop
+  const bottomY = r.height - BOT_H - 16;
 
   for (let i = 0; i < activeToasts.length; i++) {
-    const t = activeToasts[i];
+    const toast = activeToasts[i];
     const targetY = bottomY - i * (toastH + 10) - toastH;
-
-    // Slide in/out animation logic
     let slideX = startX;
-    if (t.maxTime - t.timer < 0.4) {
-      // Slide in from left
-      const progress = (t.maxTime - t.timer) / 0.4; // 0 -> 1
+    if (toast.maxTime - toast.timer < 0.4) {
+      const progress = (toast.maxTime - toast.timer) / 0.4;
       slideX = startX - toastW * (1 - progress);
-    } else if (t.timer < 0.4) {
-      // Slide out to left
-      const progress = t.timer / 0.4; // 1 -> 0
+    } else if (toast.timer < 0.4) {
+      const progress = toast.timer / 0.4;
       slideX = startX - toastW * (1 - progress);
     }
 
-    // Draw Toast Card
     r.setShadow('rgba(251, 191, 36, 0.25)', 12, 0, 0);
-    // Glass container with glowing gold border
     r.roundRect(slideX, targetY, toastW, toastH, 8, 'rgba(15, 23, 42, 0.95)', true, '#fbbf24', 1.5);
     r.clearShadow();
-
-    // Text drawing: Orbitron title, Inter description
     r.text('🏆 ACHIEVEMENT UNLOCKED!', slideX + 12, targetY + 8, '#fbbf24', 9, 'left', 'bold', 'top', 'header');
-    r.text(t.title, slideX + 12, targetY + 22, '#ffffff', 12, 'left', 'bold');
-    r.text(t.desc, slideX + 12, targetY + 36, '#94a3b8', 9, 'left');
+    r.text(toast.title, slideX + 12, targetY + 22, '#ffffff', 12, 'left', 'bold');
+    r.text(toast.desc, slideX + 12, targetY + 36, '#94a3b8', 9, 'left');
   }
 }
 
