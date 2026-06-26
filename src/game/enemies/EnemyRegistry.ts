@@ -1,5 +1,6 @@
-// Data-driven enemy registry. Phase 3 adds Boss + damage resistances.
-// Adding an enemy = one object literal; no combat code changes.
+// Data-driven enemy registry. Adding an enemy should primarily mean adding one
+// EnemyDef entry here; movement, damage, rewards, and resistances are handled by
+// shared systems.
 
 import { BALANCE } from '../../config/balance';
 import { DamageType, ResistanceMap } from '../DamageType';
@@ -71,7 +72,6 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
       [DamageType.Lightning]: 0.7,
     },
   },
-  // Phase 5 enemies — expands tactical depth
   phantom: {
     id: 'phantom',
     name: 'Phantom',
