@@ -44,12 +44,21 @@ export class SaveSystem {
     const loaded = load<Partial<SaveData>>(KEY, {});
     this.data = { ...DEFAULTS, ...loaded };
     if (this.data.version !== CURRENT_VERSION) this.migrate();
+    this.clampProgression();
   }
 
   private migrate(): void {
     // forward-only migrations would go here
     this.data.version = CURRENT_VERSION;
     this.persist();
+  }
+
+  private clampProgression(): void {
+    const clamped = Math.max(1, Math.min(MAX_LEVEL, this.data.maxLevelReached));
+    if (clamped !== this.data.maxLevelReached) {
+      this.data.maxLevelReached = clamped;
+      this.persist();
+    }
   }
 
   get(): Readonly<SaveData> {
@@ -104,6 +113,32 @@ export class SaveSystem {
       return true;
     }
     return false;
+  }
+
+  getLevelScore(levelNumber: number): number {
+    return this.data.levelHighScores[levelNumber] ?? 0;
+  }
+
+  isLevelUnlocked(levelNumber: number): boolean {
+    return levelNumber >= 1 && levelNumber <= this.data.maxLevelReached;
+  }
+
+  getUnlockedLevelCount(): number {
+    return Math.max(1, Math.min(MAX_LEVEL, this.data.maxLevelReached));
+  }
+
+  getTotalStars(): number {
+    let total = 0;
+    for (let i = 1; i <= MAX_LEVEL; i++) total += this.getStars(i);
+    return total;
+  }
+
+  getMaxStars(): number {
+    return MAX_LEVEL * 3;
+  }
+
+  getCampaignCompletionRatio(): number {
+    return this.getMaxStars() === 0 ? 0 : this.getTotalStars() / this.getMaxStars();
   }
 
   recordEndlessRun(score: number, wave: number): boolean {
