@@ -125,10 +125,12 @@ state.movement.bus.on('enemyReachedGoal', () => { audio.lifeLost(); renderer.sha
 state.combat.bus.on('hit', (p) => { audio.hit(); state.particles.hit(new Vec2(p.x, p.y), '#fff'); state.particles.floatText(new Vec2(p.x, p.y - 10), `-${Math.round(p.damage)}`, '#ff8a65'); });
 state.combat.bus.on('kill', (p) => {
   audio.enemyDie();
-  state.particles.death(new Vec2(p.x, p.y), p.enemy.color);
+  const pos = new Vec2(p.x, p.y);
+  if (p.enemy.isBoss) state.particles.bossDeath(pos, p.enemy.color);
+  else state.particles.death(pos, p.enemy.color);
   const reward = Math.round(p.enemy.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul);
   state.particles.floatText(new Vec2(p.x, p.y - 16), `+${reward}g`, '#ffd54f', 1.0);
-  if (p.enemy.isBoss) renderer.shake(12); else renderer.shake(3);
+  if (p.enemy.isBoss) renderer.shake(18); else renderer.shake(3);
 });
 state.combat.bus.on('splash', (p) => {
   state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4);
@@ -141,10 +143,19 @@ state.bus.on('phaseChanged', ({ to }) => {
   if (to === 'playing') { music.start(); music.setMuted(settings.get().muted); }
   if (to === 'menu' || to === 'levelSelect') music.stop();
 });
-state.bus.on('spellCast', ({ id }) => {
+state.bus.on('spellCast', ({ id, x, y }) => {
   audio.spellCast(id);
-  if (id === 'meteor') renderer.shake(16);
-  else if (id === 'freeze') renderer.shake(8);
+  const target = new Vec2(x, y);
+  if (id === 'meteor') {
+    state.particles.meteorImpact(target, 110);
+    renderer.shake(18);
+  } else if (id === 'freeze') {
+    state.particles.freezePulse(target, Math.max(state.grid.widthPx, state.grid.heightPx) * 0.78);
+    renderer.shake(9);
+  } else if (id === 'repair') {
+    state.particles.repairPulse(target);
+    renderer.shake(5);
+  }
 });
 state.bus.on('waveChanged', () => state.autoSave());
 state.bus.on('achievementUnlocked', (ach) => {
