@@ -107,7 +107,7 @@ export class CodexScreen {
       r.clearShadow();
 
       r.text(enemy.name, x + 34, ey + 10, '#f8fafc', 13, 'left', 'bold', 'top', 'header');
-      r.text(enemy.traits.slice(0, 3).join(' · '), x + w - 12, ey + 11, '#94a3b8', 10, 'right', 'bold', 'top');
+      r.text(enemy.traits.slice(0, 3).map(trait => this.traitName(trait)).join(' · '), x + w - 12, ey + 11, '#94a3b8', 10, 'right', 'bold', 'top');
       r.text(enemy.description, x + 14, ey + 33, '#cbd5e1', 10, 'left', 'normal');
 
       const resist = this.resistanceSummary(enemy.resist);
@@ -134,6 +134,29 @@ export class CodexScreen {
       case DamageType.Lightning: return t('damage.lightning');
       default: return t('codex.none');
     }
+  }
+
+  private traitName(trait: string): string {
+    const map: Record<string, string> = {
+      'Standard': 'trait.standard',
+      'No resistance': 'trait.noResistance',
+      'Fast': 'trait.fast',
+      'Low HP': 'trait.lowHp',
+      'Armored': 'trait.armored',
+      'High HP': 'trait.highHp',
+      'Resists Ice': 'trait.resistsIce',
+      'Aggressive': 'trait.aggressive',
+      'Resists Fire': 'trait.resistsFire',
+      'Boss': 'trait.boss',
+      'Massive HP': 'trait.massiveHp',
+      'Broad resistance': 'trait.broadResistance',
+      'Ethereal': 'trait.ethereal',
+      'Resists Physical': 'trait.resistsPhysical',
+      'Siege': 'trait.siege',
+      'Very high HP': 'trait.veryHighHp',
+      'Elemental resistance': 'trait.elementalResistance',
+    };
+    return t(map[trait] ?? trait);
   }
 
   hit(x: number, y: number): CodexAction | null {
