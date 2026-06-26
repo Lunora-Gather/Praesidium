@@ -10,6 +10,7 @@ import { LEVELS } from '../src/game/grid/LevelManager';
 import { Vec2 } from '../src/engine/math/Vec2';
 import { Pathfinding } from '../src/game/grid/Pathfinding';
 import { GameState } from '../src/game/GameState';
+import { setLocale, t as tr } from '../src/utils/i18n';
 import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 
 let pass = 0;
@@ -67,6 +68,23 @@ const summaryShape: ScreenStats = {
 };
 check('screen summary supports hasNextLevel', summaryShape.hasNextLevel === true);
 check('screen summary supports record badges', !!summaryShape.isNewHighScore && !!summaryShape.isNewLevelScore && !!summaryShape.isStarUpgrade);
+
+// --- Localization sanity ---
+const i18nKeys = [
+  'tower.damage',
+  'tower.upgrade',
+  'tower.sell',
+  'talent.gold.name',
+  'talent.damage.desc',
+  'achievement.unlocked',
+  'trait.resistsIce',
+  'hud.auto',
+];
+setLocale('en');
+for (const key of i18nKeys) check(`i18n en ${key}`, tr(key) !== key);
+setLocale('zh');
+for (const key of i18nKeys) check(`i18n zh ${key}`, tr(key) !== key);
+setLocale('en');
 
 // --- Integration: full game loop simulation ---
 const gs = new GameState();
