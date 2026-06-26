@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Play Praesidium
+    url: https://lunora-gather.github.io/Praesidium/
+    about: Open the latest public GitHub Pages build before reporting feedback.
+  - name: Release QA guide
+    url: https://github.com/Lunora-Gather/Praesidium/blob/main/docs/FINAL_RELEASE_QA.md
+    about: Use this before making a release-candidate decision.
+  - name: Commercial playtest plan
+    url: https://github.com/Lunora-Gather/Praesidium/blob/main/docs/PLAYTEST_PLAN.md
+    about: Structured guide for outside tester sessions.
