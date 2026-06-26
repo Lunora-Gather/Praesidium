@@ -76,21 +76,10 @@ export class Screens {
     r.text(t(titleKey), cx, cardY + 22, titleGrad, 36, 'center', 'bold', 'top', 'header');
     r.clearShadow();
 
-    if (kind === 'menu') {
-      r.text(t('app.tagline'), cx, cardY + 70, '#94a3b8', 13, 'center');
-    }
-
-    if (kind === 'paused') {
-      r.text(t('hud.paused_title'), cx, cardY + 75, '#94a3b8', 13, 'center');
-    }
-
-    if (kind === 'won') {
-      this.drawVictoryReport(r, cardX, cardY, cardW, score, stats);
-    }
-
-    if (kind === 'lost') {
-      this.drawDefeatReport(r, cardX, cardY, cardW, score, seed, stats);
-    }
+    if (kind === 'menu') r.text(t('app.tagline'), cx, cardY + 70, '#94a3b8', 13, 'center');
+    if (kind === 'paused') r.text(t('hud.paused_title'), cx, cardY + 75, '#94a3b8', 13, 'center');
+    if (kind === 'won') this.drawVictoryReport(r, cardX, cardY, cardW, score, stats);
+    if (kind === 'lost') this.drawDefeatReport(r, cardX, cardY, cardW, score, seed, stats);
 
     const btnW = cardW - 48;
     const btnH = 38;
@@ -134,40 +123,34 @@ export class Screens {
     r.clearShadow();
 
     r.text(this.victoryAdvice(starCount), cx, cardY + 112, '#94a3b8', 12, 'center', 'bold', 'top');
-    this.drawReportPanel(r, cardX + 24, cardY + 140, cardW - 48, 142, '#10b981', [
-      [t('hud.score'), score.toLocaleString()],
-      [t('summary.duration'), this.formatTime(stats?.durationSec ?? 0)],
-      [t('win.kills'), `${stats?.kills ?? 0}`],
-      [t('win.gold'), `${stats?.gold ?? 0}g`],
-      [t('summary.towers'), `${stats?.towersPlaced ?? 0}`],
-      [t('summary.upgrades'), `${stats?.upgrades ?? 0}`],
-      [t('summary.spells'), `${stats?.spellsCast ?? 0}`],
-      [t('summary.damage'), `${Math.round(stats?.damageDealt ?? 0)}`],
-    ]);
+    this.drawReportPanel(r, cardX + 24, cardY + 140, cardW - 48, 142, '#10b981', this.buildRows(score, stats));
   }
 
   private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, seed: number, stats?: ScreenStats): void {
     const cx = cardX + cardW / 2;
-    const survived = t('lose.survived').replace('{wave}', String(stats?.wave ?? 0));
-    r.text(survived, cx, cardY + 76, '#f87171', 14, 'center', 'bold', 'top', 'header');
+    if (stats?.wave !== undefined) {
+      r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + 76, '#f87171', 14, 'center', 'bold', 'top', 'header');
+    }
     r.text(t('summary.defeatAdvice'), cx, cardY + 100, '#94a3b8', 12, 'center', 'bold', 'top');
-
-    this.drawReportPanel(r, cardX + 24, cardY + 128, cardW - 48, 126, '#ef4444', [
-      [t('hud.score'), score.toLocaleString()],
-      [t('summary.duration'), this.formatTime(stats?.durationSec ?? 0)],
-      [t('win.kills'), `${stats?.kills ?? 0}`],
-      [t('win.gold'), `${stats?.gold ?? 0}g`],
-      [t('summary.towers'), `${stats?.towersPlaced ?? 0}`],
-      [t('summary.upgrades'), `${stats?.upgrades ?? 0}`],
-      [t('summary.spells'), `${stats?.spellsCast ?? 0}`],
-      [t('summary.damage'), `${Math.round(stats?.damageDealt ?? 0)}`],
-    ]);
+    this.drawReportPanel(r, cardX + 24, cardY + 128, cardW - 48, 126, '#ef4444', this.buildRows(score, stats));
 
     if (seed !== 0) {
       const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
       r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, cardY + 266, '#c084fc', 12, 'center', 'bold', 'top', 'header');
       this.drawButton(r, cx - 90, cardY + 286, 180, 28, t('share.copy'), 'challenge', '#a855f7', '#7e22ce', 11);
     }
+  }
+
+  private buildRows(score: number, stats?: ScreenStats): Array<[string, string]> {
+    const rows: Array<[string, string]> = [[t('hud.score'), score.toLocaleString()]];
+    if (stats?.durationSec !== undefined) rows.push([t('summary.duration'), this.formatTime(stats.durationSec)]);
+    if (stats?.kills !== undefined) rows.push([t('win.kills'), `${stats.kills}`]);
+    if (stats?.gold !== undefined) rows.push([t('win.gold'), `${stats.gold}g`]);
+    if (stats?.towersPlaced !== undefined) rows.push([t('summary.towers'), `${stats.towersPlaced}`]);
+    if (stats?.upgrades !== undefined) rows.push([t('summary.upgrades'), `${stats.upgrades}`]);
+    if (stats?.spellsCast !== undefined) rows.push([t('summary.spells'), `${stats.spellsCast}`]);
+    if (stats?.damageDealt !== undefined) rows.push([t('summary.damage'), `${Math.round(stats.damageDealt)}`]);
+    return rows;
   }
 
   private drawReportPanel(r: Renderer, x: number, y: number, w: number, h: number, accent: string, rows: Array<[string, string]>): void {
