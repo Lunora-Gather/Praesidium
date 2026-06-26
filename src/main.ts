@@ -24,6 +24,7 @@ import { Starfield } from './ui/Starfield';
 import { t } from './utils/i18n';
 import { TalentPanel } from './ui/TalentPanel';
 import { StatsScreen } from './ui/StatsScreen';
+import { CodexScreen } from './ui/CodexScreen';
 import { loadRun } from './utils/RunSave';
 import { dailySeed } from './utils/DailyChallenge';
 
@@ -59,6 +60,7 @@ const tutorial = new Tutorial();
 const starfield = new Starfield(140);
 const talentPanel = new TalentPanel();
 const statsScreen = new StatsScreen();
+const codexScreen = new CodexScreen();
 
 interface RectRegion {
   x: number;
@@ -78,6 +80,7 @@ let placingMode = true;
 let gameSpeed = 1;
 let showTalent = false;
 let showStats = false;
+let showCodex = false;
 let autoSend = false;
 
 interface Toast {
@@ -213,6 +216,8 @@ function handleHUDClick(x: number, y: number): void {
     showTalent = true;
   } else if (btn === 'stats') {
     showStats = true;
+  } else if (btn === 'codex') {
+    showCodex = true;
   } else if (btn === 'autoSend') {
     autoSend = !autoSend;
     state.waves.autoSend = autoSend;
@@ -295,6 +300,21 @@ const update = (dt: number): void => {
         music.setMuted(settings.get().muted);
       }
     }
+    input.endFrame();
+    return;
+  }
+
+  if (showCodex) {
+    for (const c of input.clicks()) {
+      const action = codexScreen.hit(c.x, c.y);
+      if (action) {
+        const res = codexScreen.apply(action);
+        if (res === 'close') showCodex = false;
+      } else {
+        showCodex = false;
+      }
+    }
+    if (input.wasKeyPressed('Escape')) showCodex = false;
     input.endFrame();
     return;
   }
@@ -540,6 +560,7 @@ const render = (_alpha: number): void => {
   renderer.camX = 0;
   renderer.camY = 0;
   if (showStats) statsScreen.draw(renderer, state.analytics.get(), state.save);
+  if (showCodex) codexScreen.draw(renderer);
   if (showSettings) settingsScreen.draw(renderer);
 
   drawToasts(renderer);
