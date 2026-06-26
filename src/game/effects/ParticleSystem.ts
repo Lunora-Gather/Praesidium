@@ -54,6 +54,50 @@ export class ParticleSystem {
     }
   }
 
+  /** Directional burst, useful for impacts and spell cones. */
+  directionalBurst(origin: Vec2, count: number, color: string, angle: number, spread = Math.PI / 3, speed = 160, life = 0.45, size = 3): void {
+    for (let i = 0; i < count; i++) {
+      const a = angle + (Math.random() - 0.5) * spread;
+      const s = speed * (0.45 + Math.random() * 0.75);
+      this.particles.push({
+        pos: Vec2.from(origin),
+        vel: Vec2.fromAngle(a, s),
+        life,
+        maxLife: life,
+        color,
+        size,
+        dead: false,
+      });
+    }
+  }
+
+  /** A high-impact meteor hit with sparks, smoke, and two shockwaves. */
+  meteorImpact(pos: Vec2, radius: number): void {
+    this.burst(pos, 34, '#ff7043', 260, 0.75, 5);
+    this.burst(pos, 20, '#ffd166', 170, 0.45, 3);
+    this.burst(pos, 16, '#7f1d1d', 95, 1.0, 6);
+    this.shockwave(pos, radius, '#ff7043', 0.45);
+    this.shockwave(pos, radius * 0.58, '#ffd166', 0.28);
+    this.floatText(pos.add(new Vec2(0, -36)), 'METEOR', '#ffedd5', 0.8);
+  }
+
+  /** A global freeze pulse. Several rings make the map feel cold/locked down. */
+  freezePulse(center: Vec2, radius: number): void {
+    this.burst(center, 26, '#67e8f9', 140, 0.8, 3);
+    this.burst(center, 18, '#dffafe', 90, 0.55, 2);
+    this.shockwave(center, radius, '#67e8f9', 0.65);
+    this.shockwave(center, radius * 0.62, '#a5f3fc', 0.5);
+    this.floatText(center.add(new Vec2(0, -40)), 'FREEZE', '#cffafe', 0.8);
+  }
+
+  /** Positive healing/repair effect near the goal or target point. */
+  repairPulse(center: Vec2): void {
+    this.burst(center, 24, '#86efac', 120, 0.8, 3);
+    this.burst(center, 14, '#fef08a', 80, 0.65, 2);
+    this.shockwave(center, 92, '#86efac', 0.6);
+    this.floatText(center.add(new Vec2(0, -34)), '+LIVES', '#bbf7d0', 0.9);
+  }
+
   /** Hit spark — small directional flash. */
   hit(pos: Vec2, color: string): void {
     this.burst(pos, 5, color, 80, 0.25, 2);
@@ -62,6 +106,14 @@ export class ParticleSystem {
   /** Death explosion — bigger, longer. */
   death(pos: Vec2, color: string): void {
     this.burst(pos, 12, color, 160, 0.7, 4);
+  }
+
+  /** Emphasized elite/boss death effect. */
+  bossDeath(pos: Vec2, color: string): void {
+    this.burst(pos, 34, color, 240, 0.95, 5);
+    this.burst(pos, 20, '#fecaca', 160, 0.7, 3);
+    this.shockwave(pos, 130, '#f87171', 0.75);
+    this.floatText(pos.add(new Vec2(0, -44)), 'BOSS DOWN', '#fecaca', 1.1);
   }
 
   /** Floating text — damage numbers, gold rewards, etc. */
