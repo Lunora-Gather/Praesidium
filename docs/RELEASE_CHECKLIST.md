@@ -87,10 +87,11 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Changelog or release notes exist.
 - [x] Mobile QA checklist exists.
 - [x] Final release QA checklist exists.
+- [x] Release audit script exists and is included in verify.
 
 ## Current estimated gap
 
-- Public free-game release: about 3% remaining.
-- Market-grade release: about 14% remaining.
+- Public free-game release: about 1.5% remaining.
+- Market-grade release: about 12% remaining.
 
-The biggest remaining blockers are final verification, screenshots/GIFs, GitHub Pages deploy confirmation, and final balance confirmation.
+The biggest remaining blockers are final local verification, screenshots/GIFs, GitHub Pages deploy confirmation, and final balance confirmation.
