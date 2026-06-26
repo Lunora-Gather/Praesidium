@@ -6,9 +6,9 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 | Level | Target | Status |
 | --- | --- | --- |
-| Portfolio release | Good enough to showcase publicly as a polished project | Close |
+| Portfolio release | Good enough to showcase publicly as a polished project | Very close |
 | Public free game | Good enough for GitHub Pages / itch.io style public play | Close, pending final verification |
-| Market-grade release | Good enough for broader promotion and sustained updates | Needs mobile polish and packaging media |
+| Market-grade release | Good enough for broader promotion and sustained updates | Needs media package and final QA |
 
 ## 1. Build and deployment
 
@@ -44,9 +44,9 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Level select clearly shows progress, stars, scores, and next level.
 - [ ] HUD is readable at common desktop sizes.
 - [ ] HUD is readable on mobile landscape.
-- [ ] Tower placement has low accidental-click risk.
-- [ ] Spell buttons are large enough on touchscreens.
-- [ ] End screens fit on small screens.
+- [x] Tower placement has low accidental-click risk.
+- [x] Spell buttons are large enough on touchscreens.
+- [x] End screens fit on small screens.
 
 ## 5. Visual and audio polish
 
@@ -85,10 +85,11 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] License file exists and matches README.
 - [x] Privacy note explains localStorage-only persistence.
 - [x] Changelog or release notes exist.
+- [x] Mobile QA checklist exists.
 
 ## Current estimated gap
 
-- Public free-game release: about 10% remaining.
-- Market-grade release: about 21% remaining.
+- Public free-game release: about 6% remaining.
+- Market-grade release: about 17% remaining.
 
-The biggest remaining blockers are mobile polish, final verification, screenshots/GIFs, portal card update, and final balance confirmation.
+The biggest remaining blockers are HUD density on tiny screens, final verification, screenshots/GIFs, portal card update, and final balance confirmation.
