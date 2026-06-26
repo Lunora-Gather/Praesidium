@@ -49,6 +49,8 @@ const requiredFiles = [
   'docs/MEDIA_KIT.md',
   'docs/PLAYTEST_PLAN.md',
   'docs/MARKET_READY_PLAN.md',
+  '.github/ISSUE_TEMPLATE/bug_report.md',
+  '.github/ISSUE_TEMPLATE/playtest_feedback.md',
   'manifest.json',
   'index.html',
 ];
@@ -86,7 +88,10 @@ check('final QA defines release candidate criteria', contains('docs/FINAL_RELEAS
 check('mobile QA covers tower drawer', contains('docs/MOBILE_QA.md', 'Tower drawer'));
 check('media kit defines screenshot list', contains('docs/MEDIA_KIT.md', 'Screenshot capture list'));
 check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'Commercial release gate'));
+check('playtest plan references issue templates', contains('docs/PLAYTEST_PLAN.md', '.github/ISSUE_TEMPLATE/playtest_feedback.md'));
 check('market ready plan defines market gate', contains('docs/MARKET_READY_PLAN.md', 'Market-ready gate'));
+check('bug template has severity labels', contains('.github/ISSUE_TEMPLATE/bug_report.md', 'S0 Blocker'));
+check('playtest template records first wave timing', contains('.github/ISSUE_TEMPLATE/playtest_feedback.md', 'Time to first wave sent'));
 
 // Manifest
 const manifest = read('manifest.json');
@@ -126,6 +131,9 @@ check('HUD has tiny screen branch', contains('src/ui/HUD.ts', 'isUltraTiny'));
 check('tower panel has mobile drawer', contains('src/ui/TowerPanel.ts', 'drawMobileDrawer'));
 check('screens have compact layout', contains('src/ui/Screens.ts', 'compact'));
 check('tutorial has Intel step', contains('src/utils/Tutorial.ts', 'tutorial.intel'));
+check('settings persist mute', contains('src/config/Settings.ts', 'muted') && contains('src/config/Settings.ts', 'save(KEY, this.current)'));
+check('audio has compressor', contains('src/engine/Audio.ts', 'DynamicsCompressorNode'));
+check('audio has SFX throttling', contains('src/engine/Audio.ts', 'canPlay'));
 check('particle system has meteor impact', contains('src/game/effects/ParticleSystem.ts', 'meteorImpact'));
 check('particle system has freeze pulse', contains('src/game/effects/ParticleSystem.ts', 'freezePulse'));
 check('particle system has boss death effect', contains('src/game/effects/ParticleSystem.ts', 'bossDeath'));
