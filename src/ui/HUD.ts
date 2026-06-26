@@ -50,7 +50,7 @@ export class HUD {
 
     if (s.comboCount >= 3) {
       r.setShadow('rgba(239,68,68,0.5)', 8);
-      r.text(`🔥 COMBO ×${s.comboCount}`, r.width / 2, TOP_H / 2, '#f87171', 14, 'center', 'bold', 'middle', 'header');
+      r.text(`🔥 ${t('hud.combo')} ×${s.comboCount}`, r.width / 2, TOP_H / 2, '#f87171', 14, 'center', 'bold', 'middle', 'header');
       r.clearShadow();
     }
 
@@ -78,24 +78,24 @@ export class HUD {
 
     const waveInProg = s.waves.inProgress;
     const waveLabel = waveInProg
-      ? (isSmall ? '▶ R...' : '▶ Running…')
+      ? (isSmall ? '▶ …' : `▶ ${t('hud.running')}…`)
       : s.waves.current >= s.waves.totalWaves && !s.endless
-        ? (isSmall ? '✓ Last' : '✓ Last Wave')
-        : (isSmall ? `⚡ W${s.waves.current + 1}` : `⚡ Wave ${s.waves.current + 1}`);
+        ? (isSmall ? `✓ ${t('hud.last')}` : `✓ ${t('hud.lastWave')}`)
+        : (isSmall ? `⚡ W${s.waves.current + 1}` : `⚡ ${t('hud.wave')} ${s.waves.current + 1}`);
 
     if (!isTiny) {
-      topBtn(isSmall ? 'ⓘ' : 'ⓘ Intel', false, '#475569', 'codex', isSmall ? 32 : 68);
-      topBtn(isSmall ? '✦' : '✦ Talent', false, '#475569', 'talent', isSmall ? 32 : 72);
-      topBtn(isSmall ? '⚙' : '⚙ Set', false, '#475569', 'settings', isSmall ? 32 : 60);
-      topBtn(isSmall ? '🏆' : '🏆 Stats', false, '#475569', 'stats', isSmall ? 32 : 68);
+      topBtn(isSmall ? 'ⓘ' : `ⓘ ${t('hud.intel')}`, false, '#475569', 'codex', isSmall ? 32 : 68);
+      topBtn(isSmall ? '✦' : `✦ ${t('hud.talent')}`, false, '#475569', 'talent', isSmall ? 32 : 72);
+      topBtn(isSmall ? '⚙' : `⚙ ${t('hud.set')}`, false, '#475569', 'settings', isSmall ? 32 : 60);
+      topBtn(isSmall ? '🏆' : `🏆 ${t('hud.stats')}`, false, '#475569', 'stats', isSmall ? 32 : 68);
     }
-    topBtn(isSmall ? '☰' : '☰ Menu', false, '#475569', 'menu', isSmall ? 32 : 68);
+    topBtn(isSmall ? '☰' : `☰ ${t('hud.menu')}`, false, '#475569', 'menu', isSmall ? 32 : 68);
     const autoLabel = autoSend
-      ? (isSmall ? '⟳ A ✓' : '⟳ Auto ✓')
-      : (isSmall ? '⟳ A' : '⟳ Auto');
+      ? (isSmall ? '⟳ A ✓' : `⟳ ${t('hud.auto')} ✓`)
+      : (isSmall ? '⟳ A' : `⟳ ${t('hud.auto')}`);
     topBtn(autoLabel, autoSend, '#10b981', 'autoSend', isSmall ? 48 : 76);
     topBtn(isSmall ? `${speed}×` : `⚡ ${speed}×`, speed > 1, '#8b5cf6', 'speed', isSmall ? 36 : 68);
-    topBtn(isSmall ? '⏸' : '⏸ Pause', false, '#475569', 'pause', isSmall ? 32 : 68);
+    topBtn(isSmall ? '⏸' : `⏸ ${t('hud.pause')}`, false, '#475569', 'pause', isSmall ? 32 : 68);
     topBtn(waveLabel, !waveInProg, '#3b82f6', 'send', isSmall ? 64 : 90);
 
     if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
@@ -207,7 +207,7 @@ export class HUD {
       .map(group => {
         const def = getEnemyDef(group.id);
         const trait = def.traits.find(item => item.includes('Resists') || item.includes('Boss') || item.includes('Fast') || item.includes('Siege')) ?? def.traits[0];
-        return `${def.name}(${trait})`;
+        return `${def.name}(${this.traitName(trait)})`;
       })
       .join(' · ');
   }
@@ -236,6 +236,29 @@ export class HUD {
     const bossWeight = def.isBoss ? 10 : 0;
     const resistWeight = def.resist ? Object.values(def.resist).length * 2 : 0;
     return count + hpWeight + speedWeight + bossWeight + resistWeight;
+  }
+
+  private traitName(trait: string): string {
+    const map: Record<string, string> = {
+      'Standard': 'trait.standard',
+      'No resistance': 'trait.noResistance',
+      'Fast': 'trait.fast',
+      'Low HP': 'trait.lowHp',
+      'Armored': 'trait.armored',
+      'High HP': 'trait.highHp',
+      'Resists Ice': 'trait.resistsIce',
+      'Aggressive': 'trait.aggressive',
+      'Resists Fire': 'trait.resistsFire',
+      'Boss': 'trait.boss',
+      'Massive HP': 'trait.massiveHp',
+      'Broad resistance': 'trait.broadResistance',
+      'Ethereal': 'trait.ethereal',
+      'Resists Physical': 'trait.resistsPhysical',
+      'Siege': 'trait.siege',
+      'Very high HP': 'trait.veryHighHp',
+      'Elemental resistance': 'trait.elementalResistance',
+    };
+    return t(map[trait] ?? trait);
   }
 
   hitShop(regions: HudRegions, x: number, y: number): string | null {
