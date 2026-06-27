@@ -3,6 +3,7 @@
 
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
+import { buildDefeatAdviceFromSummary } from '../utils/RunAdvice';
 import { DailyMissionPanel } from './DailyMissionPanel';
 import { drawGlassPanel, layoutFor, UI } from './Layout';
 
@@ -11,6 +12,7 @@ export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'daily' | 'res
 export interface ScreenStats {
   stars?: number;
   wave?: number;
+  advice?: string;
   kills?: number;
   gold?: number;
   lives?: number;
@@ -219,7 +221,8 @@ export class Screens {
   private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, seed: number, stats: ScreenStats | undefined, compact: boolean): void {
     const cx = cardX + cardW / 2;
     if (stats?.wave !== undefined) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + (compact ? 66 : 76), '#f87171', compact ? 12 : 14, 'center', 'bold', 'top', 'header');
-    r.text(t('summary.defeatAdvice'), cx, cardY + (compact ? 90 : 100), UI.color.textMuted, compact ? 10.5 : 12, 'center', 'bold', 'top');
+    const advice = stats?.advice ?? buildDefeatAdviceFromSummary(stats ?? {});
+    r.text(advice, cx, cardY + (compact ? 90 : 100), UI.color.textMuted, compact ? 10.5 : 12, 'center', 'bold', 'top');
     this.drawBadges(r, cx, cardY + (compact ? 108 : 118), this.buildBadges(stats), compact);
     this.drawReportPanel(r, cardX + 24, cardY + (compact ? 130 : 140), cardW - 48, compact ? 116 : 136, UI.color.red, this.buildRows(score, stats));
     if (seed !== 0) {
