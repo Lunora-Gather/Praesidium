@@ -135,7 +135,19 @@ export class GameState {
     this.lastKnownWave = 0;
     this.grid = new Grid(this.levels.current);
     const diff = DIFFICULTIES[this.difficulty];
+
+    if (this.endless) {
+      if (this.endlessSeed === 0) {
+        this.weeklyModeActive = false;
+        this.endlessSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
+      } else {
+        this.weeklyModeActive = true;
+      }
+    } else {
+      this.weeklyModeActive = false;
+    }
     this.configureWeeklyRules();
+
     this.gold = Math.max(0, Math.round((BALANCE.startGold + diff.goldStartBonus) * this.activeWeeklyRules.startGoldMul));
     this.lives = BALANCE.startLives + Math.round(this.talents.multiplier('lives'));
     this.score = 0;
@@ -152,7 +164,6 @@ export class GameState {
     this.waves.reset();
     this.waves.endless = this.endless;
     if (this.endless) {
-      if (this.endlessSeed === 0) this.endlessSeed = Math.floor(Math.random() * 0xffffffff) >>> 0;
       this.waves.endlessSeed = this.endlessSeed;
       this.waves.reset();
       this.waves.setDifficulty(diff.hpMul, diff.countMul);
