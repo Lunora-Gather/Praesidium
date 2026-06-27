@@ -4,7 +4,7 @@ This file tracks upgrades that improve Praesidium beyond basic release readiness
 
 ## Current focus
 
-The current phase is about player retention, replay motivation, and measurable feedback.
+The current phase is about player retention, replay motivation, measurable feedback, and content depth.
 
 ## Completed systems
 
@@ -21,6 +21,7 @@ The current phase is about player retention, replay motivation, and measurable f
 - Added selftests so the daily mission system is covered by `npm run verify`.
 - Added a main-menu daily objectives panel so the retention loop is visible before starting a run.
 - Added daily mission progress feedback on wide end screens after win or loss.
+- Added weekly mode metadata for longer-term replay goals.
 
 ### Product diagnostics
 
@@ -29,17 +30,26 @@ The current phase is about player retention, replay motivation, and measurable f
 - Added selftests for product health risk generation.
 - Added a visible Health tab inside the Stats screen with retention score, balance score, and risk list.
 
+### Failure recovery
+
+- Added context-aware defeat advice from run summaries.
+- Defeat screens can now show a concrete next-run suggestion instead of only generic recovery text.
+
+### Content depth
+
+- Added `docs/CONTENT_EXPANSION_PLAN.md` with boss patterns, campaign expansion sequence, weekly mode integration targets, and acceptance criteria.
+
 ## Next integration targets
 
-1. Connect RunAdvice to the defeat screen with specific retry advice.
-2. Add a weekly challenge rule set after daily missions are visible.
-3. Expand boss mechanics and campaign content depth.
-4. Add screenshots or GIFs after the next stable deploy.
-5. Run outside playtests and tune from the Health tab risks.
+1. Make weekly mode visible in the main menu after the daily mission panel is stable.
+2. Expand boss mechanics and campaign content depth.
+3. Add screenshots or GIFs after the next stable deploy.
+4. Run outside playtests and tune from the Health tab risks.
+5. Add balance simulation coverage for any new levels or boss patterns.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 80%.
+- Strong product target: about 82%.
 
 The remaining gap is mostly gameplay depth, stronger boss mechanics, more campaign content, public-facing media, and outside playtest iteration.
