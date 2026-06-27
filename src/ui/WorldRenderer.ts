@@ -11,6 +11,7 @@ import { Vec2 } from '../engine/math/Vec2';
 import { getTowerDef } from '../game/towers/TowerRegistry';
 import type { Settings } from '../config/Settings';
 import { DamageType } from '../game/DamageType';
+import { classifyBossEncounter } from '../utils/BossEncounter';
 import { TOP_H, BOT_H } from './HUD';
 import { getLevelTheme, LevelTheme } from './LevelThemes';
 
@@ -264,16 +265,20 @@ export class WorldRenderer {
   private drawBossWarning(r: Renderer, s: GameState): void {
     const boss = s.enemies.find(e => e.isBoss && !e.dead);
     if (!boss) return;
+    const encounter = classifyBossEncounter(s.enemies.filter(e => !e.dead).map(e => ({ id: e.id, count: 1 })));
     const oldCamX = r.camX;
     const oldCamY = r.camY;
     const oldZoom = r.zoom;
     r.camX = 0; r.camY = 0; r.zoom = 1;
     const alpha = 0.12 + Math.sin(Date.now() / 150) * 0.05;
+    const color = encounter.id === 'none' ? '#ef4444' : encounter.color;
     r.ctx.save();
     r.ctx.globalAlpha = alpha;
-    r.rect(0, TOP_H, r.width, 42, '#ef4444', true);
+    r.rect(0, TOP_H, r.width, 52, color, true);
     r.ctx.restore();
-    r.text('⚠ BOSS WAVE', r.width / 2, TOP_H + 18, '#fecaca', 18, 'center', 'bold', 'middle', 'header');
+    r.roundRect(r.width / 2 - 170, TOP_H + 9, 340, 34, 12, 'rgba(15, 23, 42, 0.72)', true, `${color}aa`, 1);
+    r.text(`⚠ ${encounter.label || 'BOSS WAVE'}`, r.width / 2, TOP_H + 18, color, 15, 'center', 'bold', 'middle', 'header');
+    r.text(encounter.advice || 'Stack single-target damage and control', r.width / 2, TOP_H + 34, '#fecaca', 9, 'center', 'bold', 'middle');
     r.camX = oldCamX; r.camY = oldCamY; r.zoom = oldZoom;
   }
 
