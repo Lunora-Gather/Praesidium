@@ -23,6 +23,8 @@ The current phase is about player retention, replay motivation, measurable feedb
 - Added daily mission progress feedback on wide end screens after win or loss.
 - Added weekly mode metadata for longer-term replay goals.
 - Main-menu daily objectives now also surface the active weekly mode on larger screens.
+- Weekly mode now has seeded-run rule modifiers and an in-run badge.
+- Added Weekly Mode QA coverage for entry points, rule visibility, and viewport checks.
 
 ### Product diagnostics
 
@@ -45,18 +47,21 @@ The current phase is about player retention, replay motivation, measurable feedb
 - HUD next-wave preview now labels boss pressure as FAST ESCORT, ARMORED ESCORT, or PHANTOM SIEGE with encounter-specific advice.
 - Active boss warning banners now use the same boss encounter labels and advice while the fight is happening.
 - Added selftest coverage for the boss encounter classifier.
+- Expanded the campaign from 6 levels to 8 levels with Relay Array and Blackout Ridge.
+- Added dedicated visual themes for the expanded campaign levels.
+- Added selftest, release-audit, and Campaign Expansion QA coverage for the expanded campaign.
 
 ## Next integration targets
 
-1. Make weekly mode affect optional challenge rules after the menu panel is visually confirmed.
-2. Expand campaign content depth with additional levels.
+1. Add level 9 as a stronger boss-preparation map.
+2. Add level 10 as a final campaign gate with a distinct boss identity.
 3. Add screenshots or GIFs after the next stable deploy.
 4. Run outside playtests and tune from the Health tab risks.
-5. Add balance simulation coverage for any new level expansion.
+5. Add balance simulation review notes after the next content batch.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 87.5%.
+- Strong product target: about 92%.
 
-The remaining gap is mostly weekly-mode rule effects, more campaign content, public-facing media, and outside playtest iteration.
+The remaining gap is mostly campaign expansion to 10 to 12 levels, public-facing media, and outside playtest iteration.
