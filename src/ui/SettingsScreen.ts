@@ -4,6 +4,7 @@ import { Renderer } from '../engine/Renderer';
 import { SettingsStore, Settings } from '../config/Settings';
 import { Vec2 } from '../engine/math/Vec2';
 import { getLocale, setLocale, t } from '../utils/i18n';
+import { drawGlassPanel, layoutFor, UI } from './Layout';
 
 type ClickAction = 'back' | 'toggleMute' | 'toggleFps' | 'toggleRange' | 'togglePauseOnBlur' | 'cycleLang';
 
@@ -14,31 +15,30 @@ export class SettingsScreen {
 
   draw(r: Renderer): void {
     this.regions = [];
-    
+    const layout = layoutFor(r);
+
     const bgGrad = r.linearGradient(0, 0, 0, r.height, [
       { offset: 0, color: 'rgba(10, 14, 20, 0.8)' },
       { offset: 1, color: 'rgba(17, 24, 39, 0.9)' }
     ]);
     r.rect(0, 0, r.width, r.height, bgGrad);
-    
+
     const cx = r.width / 2;
     const cy = r.height / 2;
-    
-    const cardW = Math.min(r.width - 32, 380);
-    const cardH = 380;
+    const compact = layout.isCompact;
+    const cardW = Math.min(layout.panelW, 420);
+    const cardH = Math.min(compact ? 340 : 380, r.height - layout.safe * 2);
     const cardX = cx - cardW / 2;
     const cardY = cy - cardH / 2;
-    
-    r.setShadow('rgba(59, 130, 246, 0.15)', 24, 0, 4);
-    r.roundRect(cardX, cardY, cardW, cardH, 16, 'rgba(15, 23, 42, 0.9)', true, 'rgba(255, 255, 255, 0.08)', 1.5);
-    r.clearShadow();
-    
+
+    drawGlassPanel(r, cardX, cardY, cardW, cardH, layout.radius, UI.color.blue, 0.9);
+
     const titleGrad = r.linearGradient(cx - 80, cardY + 24, cx + 80, cardY + 24, [
       { offset: 0, color: '#60a5fa' },
       { offset: 1, color: '#3b82f6' }
     ]);
-    r.text(t('settings.title'), cx, cardY + 20, titleGrad, 24, 'center', 'bold', 'top', 'header');
-    
+    r.text(t('settings.title'), cx, cardY + (compact ? 16 : 20), titleGrad, compact ? 22 : 24, 'center', 'bold', 'top', 'header');
+
     const s = this.store.get();
     const langLabel = getLocale() === 'en' ? t('settings.language.en') : t('settings.language.zh');
     const rows: Array<{ label: string; value: boolean; action: ClickAction }> = [
@@ -48,44 +48,45 @@ export class SettingsScreen {
       { label: t('settings.blur'), value: s.pauseOnBlur, action: 'togglePauseOnBlur' },
       { label: langLabel, value: getLocale() === 'zh', action: 'cycleLang' },
     ];
-    
-    const rowH = 46;
-    const rowW = cardW - 48;
+
+    const rowH = compact ? 40 : 46;
+    const rowW = cardW - layout.safe * 2 - 12;
     const startX = cx - rowW / 2;
-    let y = cardY + 68;
-    
+    let y = cardY + (compact ? 58 : 68);
+
     for (const row of rows) {
-      r.line(new Vec2(startX, y + rowH), new Vec2(startX + rowW, y + rowH), 'rgba(255, 255, 255, 0.05)', 1);
-      r.text(row.label, startX + 4, y + rowH / 2, '#e2e8f0', 14, 'left', 'bold', 'middle');
-      
-      const toggleW = 38;
-      const toggleH = 20;
-      const toggleX = startX + rowW - toggleW - 4;
-      const toggleY = y + 13;
-      
-      r.roundRect(toggleX, toggleY, toggleW, toggleH, 10, row.value ? '#10b981' : '#334155', true);
+      r.roundRect(startX, y + 3, rowW, rowH - 6, 10, 'rgba(2, 6, 23, 0.22)', true, 'rgba(148, 163, 184, 0.06)', 1);
+      r.line(new Vec2(startX + 12, y + rowH), new Vec2(startX + rowW - 12, y + rowH), 'rgba(255, 255, 255, 0.04)', 1);
+      r.text(row.label, startX + 14, y + rowH / 2, UI.color.text, compact ? 12.5 : 14, 'left', 'bold', 'middle');
+
+      const toggleW = 40;
+      const toggleH = 22;
+      const toggleX = startX + rowW - toggleW - 12;
+      const toggleY = y + (rowH - toggleH) / 2;
+
+      r.roundRect(toggleX, toggleY, toggleW, toggleH, 11, row.value ? UI.color.green : '#334155', true);
       r.circle(
-        new Vec2(row.value ? toggleX + toggleW - 10 : toggleX + 10, toggleY + 10),
+        new Vec2(row.value ? toggleX + toggleW - 11 : toggleX + 11, toggleY + 11),
         7,
         '#ffffff'
       );
-      
+
       this.regions.push({ x: startX, y, w: rowW, h: rowH, action: row.action });
       y += rowH;
     }
-    
+
     const btnW = cardW - 64;
-    const btnH = 36;
+    const btnH = layout.buttonH - 2;
     const btnX = cx - btnW / 2;
-    const btnY = cardY + cardH - btnH - 20;
-    
+    const btnY = cardY + cardH - btnH - (compact ? 14 : 20);
+
     const btnGrad = r.linearGradient(btnX, btnY, btnX, btnY + btnH, [
       { offset: 0, color: '#475569' },
       { offset: 1, color: '#1e293b' }
     ]);
-    r.roundRect(btnX, btnY, btnW, btnH, 8, btnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
+    r.roundRect(btnX, btnY, btnW, btnH, 9, btnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
     r.text(t('common.back'), cx, btnY + btnH / 2, '#ffffff', 13, 'center', 'bold', 'middle');
-    
+
     this.regions.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: 'back' });
   }
 
