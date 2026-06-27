@@ -1,7 +1,7 @@
 // Minimal service worker: cache-first for assets, network-first for HTML.
 // Enables offline play after first visit — critical for mobile retention.
 
-const CACHE = 'praesidium-v1';
+const CACHE = 'praesidium-v1.0.0';
 const PRECACHE = ['./'];
 
 self.addEventListener('install', (e) => {
@@ -15,11 +15,14 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return;
   // cache-first for static assets (JS/CSS/SVG/manifest)
   if (url.pathname.match(/\.(js|css|svg|json|woff2)$/)) {
     e.respondWith(
       caches.match(e.request).then((cached) => cached || fetch(e.request).then((r) => {
+        if (!r || r.status !== 200) return r;
         const clone = r.clone();
         caches.open(CACHE).then((c) => c.put(e.request, clone));
         return r;
