@@ -20,16 +20,35 @@ export interface WavePreview {
   enemies: Array<{ id: string; count: number }>;
 }
 
+function bossEncounter(waveNumber: number): Array<{ id: string; count: number }> {
+  const cycle = Math.floor(waveNumber / 6) % 3;
+  if (cycle === 0) return [
+    { id: 'boss', count: 1 },
+    { id: 'scout', count: 4 },
+  ];
+  if (cycle === 1) return [
+    { id: 'boss', count: 1 },
+    { id: 'brute', count: 2 },
+    { id: 'zealot', count: 3 },
+  ];
+  return [
+    { id: 'boss', count: 1 },
+    { id: 'phantom', count: 3 },
+    { id: 'titan', count: 1 },
+  ];
+}
+
 function buildWaves(count: number): WaveDef[] {
   const waves: WaveDef[] = [];
   for (let i = 0; i < count; i++) {
+    const waveNumber = i + 1;
     const gruntCount = 4 + i * 2;
     const scoutCount = i >= 2 ? Math.floor(i * 0.7) : 0;
     const bruteCount = i >= 4 ? Math.floor((i - 3) * 0.6) : 0;
     const zealotCount = i >= 5 ? Math.floor((i - 4) * 0.5) : 0;
     const phantomCount = i >= 7 ? Math.floor((i - 6) * 0.4) : 0;
     const titanCount = i >= 9 ? Math.floor((i - 8) * 0.3) : 0;
-    const bossCount = (i + 1) % 6 === 0 ? 1 : 0;
+    const bossGroups = waveNumber % 6 === 0 ? bossEncounter(waveNumber) : [];
     waves.push({
       enemies: [
         { id: 'grunt', count: gruntCount },
@@ -38,7 +57,7 @@ function buildWaves(count: number): WaveDef[] {
         { id: 'zealot', count: zealotCount },
         { id: 'phantom', count: phantomCount },
         { id: 'titan', count: titanCount },
-        { id: 'boss', count: bossCount },
+        ...bossGroups,
       ],
     });
   }
@@ -46,13 +65,16 @@ function buildWaves(count: number): WaveDef[] {
 }
 
 function endlessWave(i: number, rng: Rng): WaveDef {
+  const waveNumber = i + 1;
   const gruntCount = 6 + i * 3 + rng.int(0, 3);
   const scoutCount = Math.floor(i * 1.1) + rng.int(0, 2);
   const bruteCount = Math.floor(i * 0.8) + rng.int(0, 2);
   const zealotCount = Math.floor(i * 0.7) + rng.int(0, 2);
   const phantomCount = Math.floor(i * 0.5) + rng.int(0, 2);
   const titanCount = Math.floor(i * 0.3) + rng.int(0, 1);
-  const bossCount = (i + 1) % 5 === 0 ? Math.floor(i / 5) : 0;
+  const bossGroups = waveNumber % 5 === 0
+    ? bossEncounter(waveNumber).map(group => ({ ...group, count: group.id === 'boss' ? Math.max(1, Math.floor(waveNumber / 10) + 1) : group.count + Math.floor(waveNumber / 10) }))
+    : [];
   return {
     enemies: [
       { id: 'grunt', count: gruntCount },
@@ -61,7 +83,7 @@ function endlessWave(i: number, rng: Rng): WaveDef {
       { id: 'zealot', count: zealotCount },
       { id: 'phantom', count: phantomCount },
       { id: 'titan', count: titanCount },
-      { id: 'boss', count: bossCount },
+      ...bossGroups,
     ],
   };
 }
