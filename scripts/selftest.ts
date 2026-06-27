@@ -15,6 +15,7 @@ import { setLocale, t as tr } from '../src/utils/i18n';
 import { achievementName, enemyName, spellName, towerName, traitName } from '../src/utils/displayText';
 import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 import { dailyMissions, evaluateMissions, missionSummary } from '../src/utils/DailyMissions';
+import { buildProductHealth } from '../src/utils/ProductHealth';
 
 let pass = 0;
 let fail = 0;
@@ -75,6 +76,29 @@ const progress = evaluateMissions(missions, { wave: 20, score: 9999, stats: { ki
 check('daily mission progress evaluates all objectives', progress.length === missions.length);
 check('high activity completes all daily missions', progress.every(item => item.complete));
 check('daily mission summary reports completion', missionSummary(progress).startsWith('3/3'));
+
+// --- Product health diagnostics ---
+const health = buildProductHealth({
+  sessions: 6,
+  totalPlaySec: 900,
+  lastPlayDate: '2026-06-27',
+  returnDays: 1,
+  levelsCompleted: { 0: 1 },
+  levelsAttempted: { 0: 5, 1: 2 },
+  endlessBestWave: 4,
+  endlessRuns: 1,
+  churnPoints: [
+    { level: 0, wave: 1, difficulty: 'normal' },
+    { level: 0, wave: 2, difficulty: 'normal' },
+    { level: 1, wave: 2, difficulty: 'normal' },
+  ],
+  towerUsage: { turret: 20, sniper: 1, mortar: 1, frost: 1 },
+  spellUsage: {},
+  avgSessionSec: 150,
+  longestSessionSec: 300,
+});
+check('product health returns scores', health.retentionScore >= 0 && health.balanceScore >= 0);
+check('product health flags risks', health.risks.length >= 1);
 
 // --- Localization sanity ---
 const i18nKeys = [
