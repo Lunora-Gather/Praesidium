@@ -42,19 +42,20 @@ The current phase is about player retention, replay motivation, measurable feedb
 - Added selftest and release-audit coverage for boss encounter variety.
 - Added a boss encounter classifier so the game can label boss pressure types consistently.
 - HUD next-wave preview now labels boss pressure as FAST ESCORT, ARMORED ESCORT, or PHANTOM SIEGE with encounter-specific advice.
+- Active boss warning banners now use the same boss encounter labels and advice while the fight is happening.
 - Added selftest coverage for the boss encounter classifier.
 
 ## Next integration targets
 
 1. Make weekly mode visible in the main menu after the daily mission panel is stable.
-2. Add matching boss encounter label to the active boss warning banner.
-3. Expand campaign content depth with additional levels.
-4. Add screenshots or GIFs after the next stable deploy.
-5. Run outside playtests and tune from the Health tab risks.
+2. Expand campaign content depth with additional levels.
+3. Add screenshots or GIFs after the next stable deploy.
+4. Run outside playtests and tune from the Health tab risks.
+5. Add balance simulation coverage for any new level expansion.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 85.5%.
+- Strong product target: about 86.5%.
 
-The remaining gap is mostly active boss-warning polish, visible weekly mode, more campaign content, public-facing media, and outside playtest iteration.
+The remaining gap is mostly visible weekly mode, more campaign content, public-facing media, and outside playtest iteration.
