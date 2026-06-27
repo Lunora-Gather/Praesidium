@@ -4,7 +4,7 @@ This file tracks upgrades that improve Praesidium beyond basic release readiness
 
 ## Current focus
 
-The current phase is about player retention, replay motivation, measurable feedback, content depth, and market-facing presentation.
+The current phase is about player retention, replay motivation, measurable feedback, content depth, market-facing presentation, and final release execution.
 
 ## Completed systems
 
@@ -59,17 +59,24 @@ The current phase is about player retention, replay motivation, measurable feedb
 - Added `docs/CAPTURE_RUNBOOK.md` to define required screenshots, GIFs, viewport sizes, filenames, capture order, and release decision criteria.
 - Updated the Media Kit to reflect the 10-level campaign, weekly modifiers, Product Health, and the capture runbook naming scheme.
 
+### Final release process
+
+- Added `scripts/release-gate.ts` to summarize repository readiness and external release confirmations.
+- Added `npm run release:gate` as a final process command separate from deployment verification.
+- Added `docs/FINAL_RELEASE_PROCESS.md` with the final command order, gate definitions, and release decision rules.
+- Added `docs/RELEASE_GATE_REPORT.md` as a fillable final release-candidate decision report.
+
 ## Next integration targets
 
-1. Run and record balance simulation results for the 10-level campaign.
-2. Use the Actionable Tuning Notes to tune Overdrive Gate and Apex Bastion.
-3. Capture the required screenshot/GIF set from `docs/CAPTURE_RUNBOOK.md`.
-4. Run outside playtests and tune from the Health tab risks.
-5. Add final boss pattern work after level 10 is validated.
+1. Run and record `npm run verify` results.
+2. Run and record `npm run release:gate` results.
+3. Run and record balance simulation results for the 10-level campaign.
+4. Capture the required screenshot/GIF set from `docs/CAPTURE_RUNBOOK.md`.
+5. Run outside playtests and make the final decision in `docs/RELEASE_GATE_REPORT.md`.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 95%.
+- Strong product target: about 95.5%.
 
-The remaining gap is mostly actual balance verification, captured media assets, outside playtest iteration, and optional late-game challenge content.
+The remaining gap is now mostly execution: latest Actions confirmation, recorded verification output, recorded balance output, captured media assets, outside playtest results, and the final release decision.
