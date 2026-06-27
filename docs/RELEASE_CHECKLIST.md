@@ -32,6 +32,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [ ] Endless mode reaches a clear pressure curve before collapse.
 - [x] Product health diagnostics can flag balance risks after playtests.
 - [x] Balance review notes template exists for the 10-level campaign.
+- [x] Balance simulation outputs a late-campaign review for levels 9 and 10.
 
 ## 3. First-time player experience
 
@@ -130,6 +131,6 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 - Public free-game release: about 0.1% remaining.
 - Market-grade release: about 0.2% remaining.
-- Strong product target: about 94% complete.
+- Strong product target: about 94.5% complete.
 
-The biggest remaining blockers are actual execution/confirmation tasks, screenshots/GIFs, outside playtest results, final visual QA, and balance verification for the 10-level campaign.
+The biggest remaining blockers are actual execution/confirmation tasks, screenshots/GIFs, outside playtest results, final visual QA, and recorded balance results for the 10-level campaign.
