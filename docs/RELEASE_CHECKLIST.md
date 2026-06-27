@@ -49,6 +49,10 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Level select uses responsive shared layout rules.
 - [x] Main menu and end screens use shared layout rules.
 - [x] Settings screen uses shared layout rules.
+- [x] Stats screen uses shared layout rules.
+- [x] Talent panel uses shared layout rules.
+- [x] Intel Codex uses shared layout rules.
+- [x] Tower details panel uses shared layout rules.
 - [x] Layout QA checklist exists.
 - [ ] HUD is readable at common desktop sizes.
 - [ ] HUD is readable on mobile landscape.
@@ -110,6 +114,6 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## Current estimated gap
 
 - Public free-game release: about 0.1% remaining.
-- Market-grade release: about 0.5% remaining.
+- Market-grade release: about 0.4% remaining.
 
 The biggest remaining blockers are actual execution/confirmation tasks: final local verification, GitHub Pages deploy confirmation, final balance confirmation, real screenshots/GIFs, outside playtest results, and final visual QA across the layout checklist.
