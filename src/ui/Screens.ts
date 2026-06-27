@@ -3,6 +3,7 @@
 
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
+import { DailyMissionPanel } from './DailyMissionPanel';
 import { drawGlassPanel, layoutFor, UI } from './Layout';
 
 export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'daily' | 'resume' | 'restart' | 'next' | 'levels' | 'menu' | 'settings' | 'stats' | null;
@@ -40,6 +41,7 @@ interface SummaryBadge {
 
 export class Screens {
   private regions: Array<{ x: number; y: number; w: number; h: number; action: MenuClickAction }> = [];
+  private readonly dailyMissionPanel = new DailyMissionPanel();
 
   draw(r: Renderer, kind: 'menu' | 'paused' | 'won' | 'lost', score = 0, seed = 0, stats?: ScreenStats): void {
     this.regions = [];
@@ -102,6 +104,7 @@ export class Screens {
 
     if (kind === 'menu') {
       this.drawReleaseMenu(r, cardX, cardY, cardW, cardH, compact, layout.gap);
+      this.dailyMissionPanel.draw(r);
       return;
     }
 
