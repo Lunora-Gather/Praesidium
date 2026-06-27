@@ -154,6 +154,8 @@ check('layout system exists', fileExists('src/ui/Layout.ts'));
 check('layout system defines breakpoints', contains('src/ui/Layout.ts', 'LayoutMode') && contains('src/ui/Layout.ts', 'layoutFor'));
 check('HUD uses shared layout tokens', contains('src/ui/HUD.ts', 'layoutFor'));
 check('level select uses shared layout tokens', contains('src/ui/LevelSelect.ts', 'layoutFor'));
+check('screens use shared layout tokens', contains('src/ui/Screens.ts', 'layoutFor'));
+check('settings screen uses shared layout tokens', contains('src/ui/SettingsScreen.ts', 'layoutFor'));
 check('level themes exist', fileExists('src/ui/LevelThemes.ts'));
 check('world renderer uses level themes', contains('src/ui/WorldRenderer.ts', 'getLevelTheme'));
 check('world renderer has boss warning', contains('src/ui/WorldRenderer.ts', 'drawBossWarning'));
