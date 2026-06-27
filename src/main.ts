@@ -549,4 +549,5 @@ function drawToasts(r: Renderer): void {
 
 const loop = new GameLoop(update, render);
 loop.start();
+document.getElementById('boot-loading')?.remove();
 logger.info('Praesidium booted');

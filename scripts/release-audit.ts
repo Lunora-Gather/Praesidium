@@ -90,6 +90,7 @@ check('html has Twitter title', html.includes('twitter:title'));
 check('html has dark color scheme', html.includes('color-scheme'));
 check('html loads manifest', html.includes('href="./manifest.json"'));
 check('html has portrait orientation hint', html.includes('orientation-hint'));
+check('html avoids blocking Google Fonts', !html.includes('fonts.googleapis.com') && !html.includes('fonts.gstatic.com'));
 
 // README and docs
 check('README mentions quality verification', contains('README.md', 'npm run verify'));

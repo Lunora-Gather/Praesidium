@@ -160,8 +160,8 @@ export class Renderer {
   ): void {
     this.ctx.fillStyle = color;
     const fontName = family === 'header'
-      ? '"Orbitron", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      : '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ? '"Segoe UI", "Arial Black", -apple-system, BlinkMacSystemFont, Roboto, sans-serif'
+      : '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     this.ctx.font = `${weight} ${size}px ${fontName}`;
     this.ctx.textAlign = align;
     this.ctx.textBaseline = baseline;
