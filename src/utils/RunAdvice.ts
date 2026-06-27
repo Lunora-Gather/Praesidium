@@ -10,13 +10,12 @@ export function buildDefeatAdvice(state: GameState): string {
   const towers = state.towers.length;
   const upgrades = stats.upgrades;
   const spells = stats.spellsCast;
-  const livesLost = Math.max(0, stats.livesLost ?? 0);
 
   if (towers <= 1 && wave <= 2) return t('advice.defeat.moreTowers');
   if (towers >= 2 && upgrades === 0) return t('advice.defeat.upgradeEarlier');
   if (wave >= 2 && spells === 0) return t('advice.defeat.useSpells');
   if (state.enemies.some(enemy => enemy.isBoss)) return t('advice.defeat.bossFocus');
-  if (livesLost >= 8 || state.lives <= 0) return t('advice.defeat.coverExit');
+  if (state.lives <= 0) return t('advice.defeat.coverExit');
   if (state.gold >= 120 && towers < 4) return t('advice.defeat.spendGold');
   if (wave >= 3 && towers < 3) return t('advice.defeat.addCoverage');
   return t('summary.defeatAdvice');
