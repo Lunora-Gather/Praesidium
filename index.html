@@ -3,9 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@600;700;800;900&display=swap" rel="stylesheet">
     <meta name="description" content="Praesidium is a sci-fi tower defense web game with campaign levels, endless waves, seeded challenges, talents, achievements, Intel Codex, and bilingual UI." />
     <meta name="keywords" content="Praesidium, tower defense, browser game, canvas game, TypeScript game, sci-fi tower defense" />
     <meta name="author" content="Lunora-Gather" />
@@ -37,6 +34,29 @@
         height: 100vh;
         cursor: crosshair;
         touch-action: none;
+      }
+      #boot-loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+        gap: 12px;
+        color: #dbeafe;
+        background: radial-gradient(circle at 50% 38%, rgba(37, 99, 235, 0.18), transparent 34%), #060a0f;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+      }
+      #boot-loading strong {
+        color: #ffffff;
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+      #boot-loading span {
+        color: #93c5fd;
+        font-size: 13px;
       }
       #orientation-hint {
         position: fixed;
@@ -97,10 +117,14 @@
         font-size: 14px; cursor: pointer;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-BW7AzcZu.js"></script>
+    <script type="module" crossorigin src="./assets/index-Dwkydr_A.js"></script>
   </head>
   <body>
     <canvas id="c"></canvas>
+    <div id="boot-loading" aria-live="polite">
+      <strong>Praesidium</strong>
+      <span>Loading defense grid...</span>
+    </div>
     <div id="orientation-hint" aria-hidden="true">
       <div class="card">
         <strong>Rotate for best play</strong>
