@@ -163,6 +163,8 @@ check('daily mission progress can render after runs', contains('src/ui/DailyMiss
 check('weekly mode system exists', fileExists('src/utils/WeeklyMode.ts') && contains('src/utils/WeeklyMode.ts', 'weeklyMode'));
 check('run advice supports summary advice', contains('src/utils/RunAdvice.ts', 'buildDefeatAdviceFromSummary'));
 check('defeat screen uses run advice', contains('src/ui/Screens.ts', 'buildDefeatAdviceFromSummary'));
+check('boss encounters are diversified', contains('src/game/waves/WaveManager.ts', 'bossEncounter') && contains('src/game/waves/WaveManager.ts', 'phantom'));
+check('selftest covers boss encounter variety', contains('scripts/selftest.ts', 'later boss encounter changes composition'));
 check('talent panel uses shared layout tokens', contains('src/ui/TalentPanel.ts', 'layoutFor'));
 check('codex screen uses shared layout tokens', contains('src/ui/CodexScreen.ts', 'layoutFor'));
 check('tower panel uses shared layout tokens', contains('src/ui/TowerPanel.ts', 'layoutFor'));
