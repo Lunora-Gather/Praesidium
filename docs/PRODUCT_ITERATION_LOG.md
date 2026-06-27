@@ -22,6 +22,7 @@ The current phase is about player retention, replay motivation, measurable feedb
 - Added a main-menu daily objectives panel so the retention loop is visible before starting a run.
 - Added daily mission progress feedback on wide end screens after win or loss.
 - Added weekly mode metadata for longer-term replay goals.
+- Main-menu daily objectives now also surface the active weekly mode on larger screens.
 
 ### Product diagnostics
 
@@ -47,7 +48,7 @@ The current phase is about player retention, replay motivation, measurable feedb
 
 ## Next integration targets
 
-1. Make weekly mode visible in the main menu after the daily mission panel is stable.
+1. Make weekly mode affect optional challenge rules after the menu panel is visually confirmed.
 2. Expand campaign content depth with additional levels.
 3. Add screenshots or GIFs after the next stable deploy.
 4. Run outside playtests and tune from the Health tab risks.
@@ -56,6 +57,6 @@ The current phase is about player retention, replay motivation, measurable feedb
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 86.5%.
+- Strong product target: about 87.5%.
 
-The remaining gap is mostly visible weekly mode, more campaign content, public-facing media, and outside playtest iteration.
+The remaining gap is mostly weekly-mode rule effects, more campaign content, public-facing media, and outside playtest iteration.
