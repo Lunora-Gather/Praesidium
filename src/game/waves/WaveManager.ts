@@ -8,6 +8,7 @@ import type { Enemy } from '../enemies/Enemy';
 import { getEnemyDef } from '../enemies/EnemyRegistry';
 import { Enemy as EnemyClass } from '../enemies/Enemy';
 import { Rng } from '../../utils/rng';
+import { DEFAULT_WEEKLY_RULES, type WeeklyRuleSet } from '../../utils/WeeklyRules';
 
 export interface WaveDef {
   enemies: Array<{ id: string; count: number }>;
@@ -100,6 +101,7 @@ export class WaveManager {
   endlessHpBonus = 0;
   endlessSeed = 0;
   private endlessRng: Rng = new Rng(0);
+  private weeklyRules: WeeklyRuleSet = DEFAULT_WEEKLY_RULES;
 
   constructor(count = BALANCE.waveCount) {
     this.waves = buildWaves(count);
@@ -140,8 +142,9 @@ export class WaveManager {
     while (this.spawnQueue.length > 0 && this.timer >= this.spawnQueue[0].at) {
       const spec = this.spawnQueue.shift()!;
       const def = getEnemyDef(spec.id);
-      const hpMul = (1 + (this.current - 1) * (BALANCE.enemyHpGrowth - 1)) * this.diffHpMul * (1 + this.endlessHpBonus);
-      out.push(new EnemyClass(def, grid.waypoints[0], hpMul));
+      const bossMul = def.isBoss ? this.weeklyRules.bossHpMul : 1;
+      const hpMul = (1 + (this.current - 1) * (BALANCE.enemyHpGrowth - 1)) * this.diffHpMul * this.weeklyRules.hpMul * bossMul * (1 + this.endlessHpBonus);
+      out.push(new EnemyClass(def, grid.waypoints[0], hpMul, this.weeklyRules.speedMul));
     }
     if (this.spawnQueue.length === 0) {
       this.state = 'between';
@@ -153,6 +156,10 @@ export class WaveManager {
   setDifficulty(hpMul: number, countMul: number): void {
     this.diffHpMul = hpMul;
     this.diffCountMul = countMul;
+  }
+
+  setWeeklyRules(rules: WeeklyRuleSet): void {
+    this.weeklyRules = rules;
   }
 
   private diffHpMul = 1;
@@ -190,7 +197,7 @@ export class WaveManager {
     const groups: Array<{ id: string; count: number }> = [];
     for (const group of wave.enemies) {
       if (group.count <= 0) continue;
-      const count = Math.max(1, Math.round(group.count * this.diffCountMul));
+      const count = Math.max(1, Math.round(group.count * this.diffCountMul * this.weeklyRules.countMul));
       groups.push({ id: group.id, count });
     }
     return groups;
@@ -217,7 +224,7 @@ export class WaveManager {
     const ids: string[] = [];
     for (const g of wave.enemies) {
       if (g.count <= 0) continue;
-      const scaled = Math.max(1, Math.round(g.count * this.diffCountMul));
+      const scaled = Math.max(1, Math.round(g.count * this.diffCountMul * this.weeklyRules.countMul));
       for (let i = 0; i < scaled; i++) ids.push(g.id);
       total += scaled;
     }
