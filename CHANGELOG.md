@@ -4,28 +4,32 @@ All notable changes to Praesidium are tracked here.
 
 ## Unreleased
 
+- No unreleased changes.
+
+## 1.0.0 - 2026-06-27
+
 ### Added
 
-- Campaign level select with stars, best scores, progression, difficulty picker, and recommended next level.
-- Visual level themes for all six campaign levels.
-- Boss warning visuals, boss health bar, boss pulse ring, and low-life alert overlay.
-- Intel Codex for tower roles, enemy traits, resistances, and recommended counters.
-- Wave preview with threat and recommended counter information.
-- Talent panel UI for persistent meta-upgrades.
-- Battle report end screens with stars, run metrics, and record badges.
-- Automatic balance simulation script: `npm run balance:sim`.
-- Release checklist and privacy note.
+- Ten-level campaign with late-game maps, themes, unlock progression, stars, best scores, and recommended next level.
+- Endless mode, daily challenge, weekly seeded modifiers, and shareable seed challenge.
+- Six tower types with upgrades, targeting strategies, synergy bonuses, and tower drawer interaction.
+- Enemy trait, resistance, boss warning, boss encounter, and Intel Codex systems.
+- Daily missions, weekly run badge, product-health stats, achievements, talents, offline leaderboard, and run summaries.
+- Shared responsive layout tokens across HUD, level select, screens, settings, stats, talents, codex, and tower panel.
+- Release gate command, release process docs, QA templates, media runbook, and final release report template.
 
 ### Changed
 
-- Main menu upgraded into a release-style landing screen with mode and system highlights.
-- UI localization expanded across tower names, enemy descriptions, spell names, achievements, settings, stats, level select, and battle reports.
-- `npm run verify` now includes typecheck, selftest, save restore test, balance simulation, and production build.
-- Save system now exposes campaign progress helpers for unlocked levels, total stars, completion ratio, and best level scores.
+- Main menu upgraded into a release-style play surface with campaign, endless, daily, challenge, stats, talents, and codex entry points.
+- GitHub Pages deployment now runs Node 24, full verification, and production build before publishing.
+- Public launch path no longer depends on blocking external Google Fonts.
+- `npm run verify` now covers typecheck, runtime selftest, save/restore regression, balance simulation, release audit, and production build.
+- `npm run release:gate` summarizes repository readiness and final external release confirmations.
 
 ### Fixed
 
-- Recorded damage now clamps to actual HP/shield loss instead of counting overkill damage.
-- Mid-run restore now restores run statistics.
-- End screens now avoid showing missing metrics as zero.
+- Boss encounter classifier now distinguishes armored escort, phantom siege, and fast escort boss waves.
+- Mid-run restore keeps run statistics and weekly mode state.
+- Recorded damage clamps to actual HP/shield loss instead of counting overkill damage.
+- End screens avoid showing missing metrics as zero.
 - Localized display helpers fall back safely when a key is missing.

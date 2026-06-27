@@ -6,7 +6,7 @@
 建造防线、升级炮塔、释放技能、解锁天赋，在战役、无尽、每日挑战与种子挑战中守住最后阵地。
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](#技术栈)
-[![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)](#技术栈)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](#技术栈)
 [![Canvas](https://img.shields.io/badge/HTML5-Canvas-E34F26?style=flat-square&logo=html5&logoColor=white)](#技术栈)
 [![Web Audio](https://img.shields.io/badge/Web%20Audio-Procedural-10B981?style=flat-square)](#技术栈)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-222222?style=flat-square&logo=github&logoColor=white)](https://lunora-gather.github.io/Praesidium/)
@@ -44,7 +44,7 @@ https://lunora-gather.github.io/Praesidium/
 
 | 模块 | 内容 |
 | --- | --- |
-| **战役关卡** | 6 个不同路径布局和独立视觉主题的关卡，逐步提高防守压力。 |
+| **战役关卡** | 10 个不同路径布局和独立视觉主题的关卡，逐步提高防守压力。 |
 | **炮塔系统** | 6 种炮塔：Turret、Sniper、Mortar、Frost、Tesla、Cannon。 |
 | **敌人系统** | 多类型敌人拥有不同速度、生命、奖励和抗性，Boss 波有独立警告反馈。 |
 | **升级与出售** | 炮塔支持多级升级，也可以出售回收部分金币。 |
@@ -199,7 +199,7 @@ npm run build
 
 `npm run balance:sim` 会使用脚本玩家自动运行：
 
-- 6 个战役关卡；
+- 10 个战役关卡；
 - Normal / Hard / Brutal 三种难度；
 - balanced / antiFast / antiBoss 三种建造策略。
 
@@ -222,15 +222,15 @@ npm run build
 | `CHANGELOG.md` | 记录主要新增、修改和修复。 |
 | `docs/PRIVACY.md` | 说明游戏只使用浏览器本地存储，不自带远程追踪。 |
 | `docs/RELEASE_CHECKLIST.md` | 发布前检查表和当前市场化差距。 |
+| `docs/RELEASE_NOTES_v1.0.0.md` | 1.0.0 正式发布说明。 |
 
 ---
 
 ## 当前优化重点
 
-- 继续强化移动端塔防交互，例如塔详情底部抽屉和小屏布局；
-- 补充 README 截图/GIF、封面图和更完整的 GitHub Pages 分享卡；
-- 最终运行 `npm run verify` 与 `npm run balance:sim`，确认没有正常模式卡关；
-- 做上线前设备检查：桌面、小屏横屏、移动浏览器、缓存刷新。
+- 保持 `npm run verify` 与 `npm run release:gate` 作为 1.0.0 后续补丁的发布门禁；
+- 持续补充截图/GIF、外部试玩反馈和后续平衡微调记录；
+- 做上线后设备回归：桌面、小屏横屏、移动浏览器、缓存刷新。
 
 ---
 

@@ -17,6 +17,16 @@ export function classifyBossEncounter(groups: EncounterGroup[]): BossEncounterIn
     advice: '',
     color: '#64748b',
   };
+  const bossIndex = groups.findIndex(group => group.id === 'boss' && (group.count ?? 1) > 0);
+  const hasFastBossEscort = bossIndex >= 0 && groups
+    .slice(bossIndex + 1)
+    .some(group => group.id === 'scout' && (group.count ?? 1) > 0);
+  if (hasFastBossEscort) return {
+    id: 'fast_escort',
+    label: 'FAST ESCORT',
+    advice: 'Slow and rapid fire stop leaks around the boss',
+    color: '#38bdf8',
+  };
   if (ids.has('phantom') || ids.has('titan')) return {
     id: 'phantom_siege',
     label: 'PHANTOM SIEGE',
@@ -28,12 +38,6 @@ export function classifyBossEncounter(groups: EncounterGroup[]): BossEncounterIn
     label: 'ARMORED ESCORT',
     advice: 'Use sustained damage and avoid single-type overcommit',
     color: '#f59e0b',
-  };
-  if (ids.has('scout')) return {
-    id: 'fast_escort',
-    label: 'FAST ESCORT',
-    advice: 'Slow and rapid fire stop leaks around the boss',
-    color: '#38bdf8',
   };
   return {
     id: 'standard_boss',

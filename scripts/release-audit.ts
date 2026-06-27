@@ -55,7 +55,7 @@ const requiredFiles = [
   'docs/PLAYTEST_RESULTS_SUMMARY.md',
   'docs/MARKET_READY_PLAN.md',
   'docs/QA_RESULTS_TEMPLATE.md',
-  'docs/RELEASE_NOTES_v0.1.0.md',
+  'docs/RELEASE_NOTES_v1.0.0.md',
   'docs/DEPLOYMENT_STATUS.md',
   '.github/ISSUE_TEMPLATE/bug_report.md',
   '.github/ISSUE_TEMPLATE/playtest_feedback.md',
@@ -67,7 +67,7 @@ const requiredFiles = [
 for (const path of requiredFiles) check(`required file ${path}`, fileExists(path));
 
 // Package scripts
-const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
+const pkg = JSON.parse(read('package.json')) as { version?: string; scripts?: Record<string, string> };
 check('package has typecheck script', !!pkg.scripts?.typecheck);
 check('package has selftest script', !!pkg.scripts?.selftest);
 check('package has save restore test script', !!pkg.scripts?.['test:save']);
@@ -116,8 +116,9 @@ check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'C
 check('playtest plan references issue templates', contains('docs/PLAYTEST_PLAN.md', '.github/ISSUE_TEMPLATE/playtest_feedback.md'));
 check('playtest summary defines market-ready decision', contains('docs/PLAYTEST_RESULTS_SUMMARY.md', 'Market-ready decision'));
 check('market ready plan defines market gate', contains('docs/MARKET_READY_PLAN.md', 'Market-ready gate'));
-check('release notes define v0.1.0', contains('docs/RELEASE_NOTES_v0.1.0.md', 'v0.1.0'));
-check('release notes mention verification', contains('docs/RELEASE_NOTES_v0.1.0.md', 'npm run verify'));
+check('package version is 1.0.0', pkg.version === '1.0.0');
+check('release notes define v1.0.0', contains('docs/RELEASE_NOTES_v1.0.0.md', 'v1.0.0'));
+check('release notes mention verification', contains('docs/RELEASE_NOTES_v1.0.0.md', 'npm run verify'));
 check('deployment status explains empty combined status', contains('docs/DEPLOYMENT_STATUS.md', 'statuses: []'));
 check('deployment status names pages URL', contains('docs/DEPLOYMENT_STATUS.md', 'https://lunora-gather.github.io/Praesidium/'));
 check('bug template has severity labels', contains('.github/ISSUE_TEMPLATE/bug_report.md', 'S0 Blocker'));

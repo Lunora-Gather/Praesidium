@@ -130,7 +130,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Bug and playtest issue templates exist.
 - [x] Issue template contact links exist.
 - [x] PWA manifest is release-ready.
-- [x] v0.1.0 release notes exist.
+- [x] v1.0.0 release notes exist.
 
 ## Current estimated gap
 

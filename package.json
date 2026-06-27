@@ -1,6 +1,6 @@
 {
   "name": "praesidium",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Praesidium — a super large-scale tower defense game (web)",
   "type": "module",
   "scripts": {
