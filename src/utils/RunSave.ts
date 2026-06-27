@@ -10,6 +10,7 @@ export interface RunSnapshot {
   difficulty: string;
   endless: boolean;
   endlessSeed: number;
+  weeklyModeActive?: boolean;
   gold: number;
   lives: number;
   score: number;
