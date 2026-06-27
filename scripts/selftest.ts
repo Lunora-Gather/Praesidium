@@ -10,12 +10,14 @@ import { LEVELS } from '../src/game/grid/LevelManager';
 import { Vec2 } from '../src/engine/math/Vec2';
 import { Pathfinding } from '../src/game/grid/Pathfinding';
 import { GameState } from '../src/game/GameState';
+import { WaveManager } from '../src/game/waves/WaveManager';
 import { SaveSystem } from '../src/utils/SaveSystem';
 import { setLocale, t as tr } from '../src/utils/i18n';
 import { achievementName, enemyName, spellName, towerName, traitName } from '../src/utils/displayText';
 import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 import { dailyMissions, evaluateMissions, missionSummary } from '../src/utils/DailyMissions';
 import { buildProductHealth } from '../src/utils/ProductHealth';
+import { weekKey, weeklyMode, weeklyModeSummary } from '../src/utils/WeeklyMode';
 
 let pass = 0;
 let fail = 0;
@@ -76,6 +78,22 @@ const progress = evaluateMissions(missions, { wave: 20, score: 9999, stats: { ki
 check('daily mission progress evaluates all objectives', progress.length === missions.length);
 check('high activity completes all daily missions', progress.every(item => item.complete));
 check('daily mission summary reports completion', missionSummary(progress).startsWith('3/3'));
+
+// --- Weekly mode / long-term retention ---
+const wk = weekKey(new Date(Date.UTC(2026, 5, 27)));
+const weeklyA = weeklyMode(wk);
+const weeklyB = weeklyMode(wk);
+check('weekly mode has stable week key', wk.startsWith('2026-W'));
+check('weekly mode deterministic per week', weeklyA.id === weeklyB.id);
+check('weekly mode summary includes reward', weeklyModeSummary(weeklyA).includes('reward'));
+
+// --- Boss encounter variety ---
+const wm = new WaveManager(12);
+const wave6 = wm.waves[5].enemies.filter(group => group.count > 0);
+const wave12 = wm.waves[11].enemies.filter(group => group.count > 0);
+check('wave 6 includes boss', wave6.some(group => group.id === 'boss'));
+check('wave 6 boss encounter includes escort enemies', wave6.some(group => group.id !== 'boss' && group.count > 0));
+check('later boss encounter changes composition', wave12.map(group => group.id).join('|') !== wave6.map(group => group.id).join('|'));
 
 // --- Product health diagnostics ---
 const health = buildProductHealth({
