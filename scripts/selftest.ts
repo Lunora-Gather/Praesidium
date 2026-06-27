@@ -18,6 +18,7 @@ import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 import { dailyMissions, evaluateMissions, missionSummary } from '../src/utils/DailyMissions';
 import { buildProductHealth } from '../src/utils/ProductHealth';
 import { weekKey, weeklyMode, weeklyModeSummary } from '../src/utils/WeeklyMode';
+import { weeklyRules, weeklyRuleSummary } from '../src/utils/WeeklyRules';
 import { classifyBossEncounter } from '../src/utils/BossEncounter';
 
 let pass = 0;
@@ -84,9 +85,12 @@ check('daily mission summary reports completion', missionSummary(progress).start
 const wk = weekKey(new Date(Date.UTC(2026, 5, 27)));
 const weeklyA = weeklyMode(wk);
 const weeklyB = weeklyMode(wk);
+const rules = weeklyRules(weeklyA);
 check('weekly mode has stable week key', wk.startsWith('2026-W'));
 check('weekly mode deterministic per week', weeklyA.id === weeklyB.id);
 check('weekly mode summary includes reward', weeklyModeSummary(weeklyA).includes('reward'));
+check('weekly rules expose at least one modifier field', rules.speedMul >= 1 && rules.hpMul >= 1 && rules.countMul >= 1 && rules.startGoldMul <= 1 && rules.bossHpMul >= 1);
+check('weekly rule summary is readable', weeklyRuleSummary(weeklyA).length > 6);
 
 // --- Boss encounter variety ---
 const wm = new WaveManager(18);
@@ -221,6 +225,7 @@ gs2.endless = true;
 gs2.selectLevel(0);
 check('endless starts playing', gs2.phase === 'playing');
 check('endless seed set', gs2.endlessSeed !== 0);
+check('random endless does not auto-enable weekly mode', gs2.weeklyModeActive === false && gs2.activeWeeklyMode === null);
 gs2.waves.forceNext();
 for (let i = 0; i < 60 * 60; i++) {
   gs2.update(dt);
@@ -236,6 +241,8 @@ gs3.endlessSeed = 0xDEADBEEF;
 gs3.selectLevel(0);
 check('challenge seed preserved', gs3.endlessSeed === 0xDEADBEEF);
 check('challenge wave seed set', gs3.waves.endlessSeed === 0xDEADBEEF);
+check('seeded challenge auto-enables weekly mode', gs3.weeklyModeActive === true && gs3.activeWeeklyMode !== null);
+check('weekly mode persists in run snapshot', gs3.snapshot().weeklyModeActive === true);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
