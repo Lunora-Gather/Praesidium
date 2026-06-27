@@ -38,18 +38,20 @@ The current phase is about player retention, replay motivation, measurable feedb
 ### Content depth
 
 - Added `docs/CONTENT_EXPANSION_PLAN.md` with boss patterns, campaign expansion sequence, weekly mode integration targets, and acceptance criteria.
+- Diversified boss encounters so boss waves rotate between fast escort, armored escort, and phantom/siege escort compositions.
+- Added selftest and release-audit coverage for boss encounter variety.
 
 ## Next integration targets
 
 1. Make weekly mode visible in the main menu after the daily mission panel is stable.
-2. Expand boss mechanics and campaign content depth.
-3. Add screenshots or GIFs after the next stable deploy.
-4. Run outside playtests and tune from the Health tab risks.
-5. Add balance simulation coverage for any new levels or boss patterns.
+2. Add clearer boss encounter labels to HUD preview and boss warning.
+3. Expand campaign content depth with additional levels.
+4. Add screenshots or GIFs after the next stable deploy.
+5. Run outside playtests and tune from the Health tab risks.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 82%.
+- Strong product target: about 84%.
 
-The remaining gap is mostly gameplay depth, stronger boss mechanics, more campaign content, public-facing media, and outside playtest iteration.
+The remaining gap is mostly clearer boss presentation, more campaign content, public-facing media, and outside playtest iteration.
