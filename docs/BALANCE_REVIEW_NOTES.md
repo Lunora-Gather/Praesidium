@@ -18,6 +18,7 @@ Use this document after running `npm run balance:sim` or after outside playtests
 - `Late Campaign Review` for levels 9 and 10
 - late-campaign tower distribution
 - late-campaign red flags if level 9 or 10 collapses too early
+- `Actionable Tuning Notes` for next balance changes
 
 ## Simulation summary template
 
@@ -30,6 +31,7 @@ Use this document after running `npm run balance:sim` or after outside playtests
 | Level 10 result | TBD | Watch final-gate boss pressure. |
 | Tower distribution | TBD | Confirm multiple tower types appear. |
 | Late-campaign tower distribution | TBD | Confirm multiple tower types appear on levels 9 and 10. |
+| Actionable tuning notes | TBD | Convert sim flags into concrete map or wave changes. |
 
 ## Red flags
 
@@ -44,6 +46,7 @@ Use this document after running `npm run balance:sim` or after outside playtests
 ## Follow-up actions
 
 1. Record simulation results after the next successful verify run.
-2. Review Product Health risks after outside playtests.
-3. Tune level 9 path pressure before adding optional level 11.
-4. Tune level 10 boss pressure before adding a final boss pattern.
+2. Copy the `Actionable Tuning Notes` section into this file.
+3. Review Product Health risks after outside playtests.
+4. Tune level 9 path pressure before adding optional level 11.
+5. Tune level 10 boss pressure before adding a final boss pattern.
