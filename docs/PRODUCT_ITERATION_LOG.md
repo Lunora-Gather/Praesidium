@@ -48,20 +48,21 @@ The current phase is about player retention, replay motivation, measurable feedb
 - Active boss warning banners now use the same boss encounter labels and advice while the fight is happening.
 - Added selftest coverage for the boss encounter classifier.
 - Expanded the campaign from 6 levels to 8 levels with Relay Array and Blackout Ridge.
+- Expanded the campaign again to 10 levels with Overdrive Gate and Apex Bastion.
 - Added dedicated visual themes for the expanded campaign levels.
-- Added selftest, release-audit, and Campaign Expansion QA coverage for the expanded campaign.
+- Added selftest, release-audit, Campaign Expansion QA, and balance-review-note coverage for the 10-level campaign.
 
 ## Next integration targets
 
-1. Add level 9 as a stronger boss-preparation map.
-2. Add level 10 as a final campaign gate with a distinct boss identity.
+1. Run and record balance simulation results for the 10-level campaign.
+2. Add optional level 11 only after balance results are stable.
 3. Add screenshots or GIFs after the next stable deploy.
 4. Run outside playtests and tune from the Health tab risks.
-5. Add balance simulation review notes after the next content batch.
+5. Add final boss pattern work after level 10 is validated.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 92%.
+- Strong product target: about 94%.
 
-The remaining gap is mostly campaign expansion to 10 to 12 levels, public-facing media, and outside playtest iteration.
+The remaining gap is mostly balance verification, public-facing media, outside playtest iteration, and optional late-game challenge content.
