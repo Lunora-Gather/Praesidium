@@ -4,7 +4,7 @@ This file tracks upgrades that improve Praesidium beyond basic release readiness
 
 ## Current focus
 
-The current phase is about player retention, replay motivation, measurable feedback, and content depth.
+The current phase is about player retention, replay motivation, measurable feedback, content depth, and market-facing presentation.
 
 ## Completed systems
 
@@ -52,18 +52,24 @@ The current phase is about player retention, replay motivation, measurable feedb
 - Added dedicated visual themes for the expanded campaign levels.
 - Added selftest, release-audit, Campaign Expansion QA, and balance-review-note coverage for the 10-level campaign.
 - Upgraded balance simulation with a Late Campaign Review for levels 9 and 10, including late-campaign tower distribution and red-flag output.
+- Added Actionable Tuning Notes to balance simulation so automated flags translate into concrete tuning steps.
+
+### Market-facing package
+
+- Added `docs/CAPTURE_RUNBOOK.md` to define required screenshots, GIFs, viewport sizes, filenames, capture order, and release decision criteria.
+- Updated the Media Kit to reflect the 10-level campaign, weekly modifiers, Product Health, and the capture runbook naming scheme.
 
 ## Next integration targets
 
 1. Run and record balance simulation results for the 10-level campaign.
-2. Use the Late Campaign Review to tune Overdrive Gate and Apex Bastion.
-3. Add screenshots or GIFs after the next stable deploy.
+2. Use the Actionable Tuning Notes to tune Overdrive Gate and Apex Bastion.
+3. Capture the required screenshot/GIF set from `docs/CAPTURE_RUNBOOK.md`.
 4. Run outside playtests and tune from the Health tab risks.
 5. Add final boss pattern work after level 10 is validated.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 94.5%.
+- Strong product target: about 95%.
 
-The remaining gap is mostly actual balance verification, public-facing media, outside playtest iteration, and optional late-game challenge content.
+The remaining gap is mostly actual balance verification, captured media assets, outside playtest iteration, and optional late-game challenge content.
