@@ -1,5 +1,5 @@
 // Level manager: owns a list of LevelDef, tracks current index, advances on win.
-// Phase 2 ships 3 levels with distinct layouts.
+// Campaign content is intentionally data-driven so new levels can be added without touching game flow.
 
 import type { LevelDef } from './Level';
 import { LEVEL_1, TileType } from './Level';
@@ -112,6 +112,36 @@ const LEVEL_6: LevelDef = {
   ],
 };
 
+// Level 7: Relay Array — wide switchbacks reward slow/control and area coverage
+const LEVEL_7: LevelDef = {
+  name: 'Relay Array',
+  cols: COLS,
+  rows: ROWS,
+  tiles: makeTiles(COLS, ROWS, walkPath([
+    [1, 9], [4, 9], [4, 2], [2, 2], [2, 5], [7, 5], [7, 1], [12, 1], [12, 4], [9, 4], [9, 8], [14, 8], [14, 3],
+  ])),
+  waypoints: [
+    { x: 1, y: 9 }, { x: 4, y: 9 }, { x: 4, y: 2 }, { x: 2, y: 2 },
+    { x: 2, y: 5 }, { x: 7, y: 5 }, { x: 7, y: 1 }, { x: 12, y: 1 },
+    { x: 12, y: 4 }, { x: 9, y: 4 }, { x: 9, y: 8 }, { x: 14, y: 8 }, { x: 14, y: 3 },
+  ],
+};
+
+// Level 8: Blackout Ridge — late split-pressure lane with limited central build windows
+const LEVEL_8: LevelDef = {
+  name: 'Blackout Ridge',
+  cols: COLS,
+  rows: ROWS,
+  tiles: makeTiles(COLS, ROWS, walkPath([
+    [1, 3], [5, 3], [5, 9], [3, 9], [3, 6], [8, 6], [8, 2], [13, 2], [13, 10], [10, 10], [10, 5], [14, 5],
+  ])),
+  waypoints: [
+    { x: 1, y: 3 }, { x: 5, y: 3 }, { x: 5, y: 9 }, { x: 3, y: 9 },
+    { x: 3, y: 6 }, { x: 8, y: 6 }, { x: 8, y: 2 }, { x: 13, y: 2 },
+    { x: 13, y: 10 }, { x: 10, y: 10 }, { x: 10, y: 5 }, { x: 14, y: 5 },
+  ],
+};
+
 function markSpawnGoal(def: LevelDef): void {
   const first = def.waypoints[0];
   const last = def.waypoints[def.waypoints.length - 1];
@@ -123,8 +153,10 @@ markSpawnGoal(LEVEL_3);
 markSpawnGoal(LEVEL_4);
 markSpawnGoal(LEVEL_5);
 markSpawnGoal(LEVEL_6);
+markSpawnGoal(LEVEL_7);
+markSpawnGoal(LEVEL_8);
 
-export const LEVELS: LevelDef[] = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6];
+export const LEVELS: LevelDef[] = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6, LEVEL_7, LEVEL_8];
 
 export class LevelManager {
   private index = 0;
