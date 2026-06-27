@@ -14,6 +14,7 @@ import { SaveSystem } from '../src/utils/SaveSystem';
 import { setLocale, t as tr } from '../src/utils/i18n';
 import { achievementName, enemyName, spellName, towerName, traitName } from '../src/utils/displayText';
 import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
+import { dailyMissions, evaluateMissions, missionSummary } from '../src/utils/DailyMissions';
 
 let pass = 0;
 let fail = 0;
@@ -64,6 +65,16 @@ check('end screen action levels exists', endActions.includes('levels'));
 const summaryShape: ScreenStats = { stars: 3, hasNextLevel: true, isNewHighScore: true, isNewLevelScore: true, isStarUpgrade: true };
 check('screen summary supports hasNextLevel', summaryShape.hasNextLevel === true);
 check('screen summary supports record badges', !!summaryShape.isNewHighScore && !!summaryShape.isNewLevelScore && !!summaryShape.isStarUpgrade);
+
+// --- Daily missions / retention ---
+const missions = dailyMissions('2026-06-27');
+const missionsAgain = dailyMissions('2026-06-27');
+check('daily missions returns three objectives', missions.length === 3);
+check('daily missions are deterministic per date', missions.map(m => m.id).join('|') === missionsAgain.map(m => m.id).join('|'));
+const progress = evaluateMissions(missions, { wave: 20, score: 9999, stats: { kills: 999, upgrades: 99, spellsCast: 99, towersPlaced: 99 } });
+check('daily mission progress evaluates all objectives', progress.length === missions.length);
+check('high activity completes all daily missions', progress.every(item => item.complete));
+check('daily mission summary reports completion', missionSummary(progress).startsWith('3/3'));
 
 // --- Localization sanity ---
 const i18nKeys = [
