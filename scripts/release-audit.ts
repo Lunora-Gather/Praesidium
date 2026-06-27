@@ -157,6 +157,9 @@ check('level select uses shared layout tokens', contains('src/ui/LevelSelect.ts'
 check('screens use shared layout tokens', contains('src/ui/Screens.ts', 'layoutFor'));
 check('settings screen uses shared layout tokens', contains('src/ui/SettingsScreen.ts', 'layoutFor'));
 check('stats screen uses shared layout tokens', contains('src/ui/StatsScreen.ts', 'layoutFor'));
+check('stats screen exposes product health tab', contains('src/ui/StatsScreen.ts', "tab_health") && contains('src/ui/StatsScreen.ts', 'buildProductHealth'));
+check('daily mission panel exists', fileExists('src/ui/DailyMissionPanel.ts'));
+check('daily mission progress can render after runs', contains('src/ui/DailyMissionPanel.ts', 'drawProgress'));
 check('talent panel uses shared layout tokens', contains('src/ui/TalentPanel.ts', 'layoutFor'));
 check('codex screen uses shared layout tokens', contains('src/ui/CodexScreen.ts', 'layoutFor'));
 check('tower panel uses shared layout tokens', contains('src/ui/TowerPanel.ts', 'layoutFor'));
