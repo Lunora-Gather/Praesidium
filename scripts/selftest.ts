@@ -20,6 +20,7 @@ import { buildProductHealth } from '../src/utils/ProductHealth';
 import { weekKey, weeklyMode, weeklyModeSummary } from '../src/utils/WeeklyMode';
 import { weeklyRules, weeklyRuleSummary } from '../src/utils/WeeklyRules';
 import { classifyBossEncounter } from '../src/utils/BossEncounter';
+import { drawWeeklyRunBadge } from '../src/ui/WeeklyRunBadge';
 
 let pass = 0;
 let fail = 0;
@@ -91,6 +92,7 @@ check('weekly mode deterministic per week', weeklyA.id === weeklyB.id);
 check('weekly mode summary includes reward', weeklyModeSummary(weeklyA).includes('reward'));
 check('weekly rules expose at least one modifier field', rules.speedMul >= 1 && rules.hpMul >= 1 && rules.countMul >= 1 && rules.startGoldMul <= 1 && rules.bossHpMul >= 1);
 check('weekly rule summary is readable', weeklyRuleSummary(weeklyA).length > 6);
+check('weekly run badge renderer is exported', typeof drawWeeklyRunBadge === 'function');
 
 // --- Boss encounter variety ---
 const wm = new WaveManager(18);
