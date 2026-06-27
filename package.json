@@ -11,9 +11,10 @@
     "selftest": "npx -y tsx scripts/selftest.ts",
     "test:save": "npx -y tsx scripts/save-restore-test.ts",
     "balance:sim": "npx -y tsx scripts/balance-sim.ts",
+    "perf:check": "npx -y tsx scripts/perf-check.ts",
     "release:audit": "npx -y tsx scripts/release-audit.ts",
     "release:gate": "npx -y tsx scripts/release-gate.ts",
-    "verify": "npm run typecheck && npm run selftest && npm run test:save && npm run balance:sim && npm run release:audit && npm run build"
+    "verify": "npm run typecheck && npm run selftest && npm run test:save && npm run balance:sim && npm run perf:check && npm run release:audit && npm run build"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",

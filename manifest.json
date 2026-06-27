@@ -1,7 +1,7 @@
 {
   "name": "Praesidium — Sci-Fi Tower Defense",
   "short_name": "Praesidium",
-  "description": "Build towers, cast spells, unlock talents, and defend six themed campaign zones or endless seeded challenges.",
+  "description": "Build towers, cast spells, unlock talents, and defend ten themed campaign zones or endless seeded challenges.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

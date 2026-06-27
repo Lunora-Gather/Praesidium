@@ -13,7 +13,7 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23060a0f'/><circle cx='16' cy='16' r='8' fill='none' stroke='%233b82f6' stroke-width='3'/><circle cx='16' cy='16' r='3' fill='%233b82f6'/></svg>" />
     <meta property="og:site_name" content="Lunora Gather" />
     <meta property="og:title" content="Praesidium — Sci-Fi Tower Defense" />
-    <meta property="og:description" content="Build, upgrade, cast spells, unlock talents, and defend six themed campaign zones or endless seeded challenges." />
+    <meta property="og:description" content="Build, upgrade, cast spells, unlock talents, and defend ten themed campaign zones or endless seeded challenges." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://lunora-gather.github.io/Praesidium/" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -150,16 +150,13 @@
         msg.textContent = (e.reason && e.reason.stack) || String(e.reason) || 'Promise rejected';
         el.style.display = 'flex';
       });
-      // Proactively unregister any legacy service workers that may be caching stale files
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (var reg of registrations) {
-            reg.unregister().then(function() {
-              console.log('[Praesidium] Legacy Service Worker unregistered.');
-            });
-          }
-        }).catch(function(err) {
-          console.error('[Praesidium] SW unregister error:', err);
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('./sw.js').then(function(reg) {
+            if (reg.update) reg.update();
+          }).catch(function(err) {
+            console.warn('[Praesidium] Service Worker unavailable:', err);
+          });
         });
       }
     </script>

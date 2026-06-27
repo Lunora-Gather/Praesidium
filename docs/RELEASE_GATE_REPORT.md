@@ -6,18 +6,19 @@ Final release decision record for Praesidium v1.0.0.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `npm run verify` | Pass | Local run on 2026-06-27: selftest 161 passed, save/restore 36 passed, release audit 138 passed, production build passed. |
+| `npm run verify` | Pass | Local run on 2026-06-27: selftest 161 passed, save/restore 36 passed, performance check 8 passed, release audit 146 passed, production build passed. |
 | `npm run release:gate` | Pass | Ready checks: 8/8. Repository blockers: none detected by release gate. |
 | `npm audit` | Pass | `found 0 vulnerabilities`. |
-| Production build opens | Pass | GitHub Pages serves HTML and `assets/index-CSndVqly.js` with HTTP 200. |
+| Production build opens | Pass | Local preview served HTML, `assets/index-cqE4RErx.js`, manifest, and `sw.js` with HTTP 200 after the final hardening build. |
+| Browser smoke test | Pass | Local preview rendered the main menu canvas, removed the boot loader, and reported no browser console errors. |
 
 ## Deploy Gate
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Latest GitHub Actions run | Pass | `Deploy to GitHub Pages` run 28284572407 passed for commit `d0a4d2f`. |
-| GitHub Pages latest build | Pass | `https://lunora-gather.github.io/Praesidium/?v=d0a4d2f` returned 200 after deploy. |
-| Hard refresh smoke test | Pass | Page HTML no longer depends on Google Fonts; main script returned 200. |
+| Latest GitHub Actions run | Pass | `Deploy to GitHub Pages` passed before final hardening; re-confirm the new pushed commit in Actions before promotion. |
+| GitHub Pages latest build | Pass | The prior Pages deploy returned 200; re-smoke the post-hardening deploy after GitHub Actions publishes it. |
+| Hard refresh smoke test | Pass | Final local build no longer depends on Google Fonts, registers a versioned service worker, and serves the main script with HTTP 200. |
 
 ## Balance Gate
 

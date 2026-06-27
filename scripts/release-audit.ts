@@ -72,9 +72,11 @@ check('package has typecheck script', !!pkg.scripts?.typecheck);
 check('package has selftest script', !!pkg.scripts?.selftest);
 check('package has save restore test script', !!pkg.scripts?.['test:save']);
 check('package has balance simulation script', !!pkg.scripts?.['balance:sim']);
+check('package has performance check script', !!pkg.scripts?.['perf:check']);
 check('package has release audit script', !!pkg.scripts?.['release:audit']);
 check('verify runs release audit', !!pkg.scripts?.verify?.includes('release:audit'));
 check('verify runs balance sim', !!pkg.scripts?.verify?.includes('balance:sim'));
+check('verify runs performance check', !!pkg.scripts?.verify?.includes('perf:check'));
 check('verify runs production build', !!pkg.scripts?.verify?.includes('build'));
 
 // CI/deploy workflow
@@ -90,11 +92,13 @@ check('html has meaningful description', html.includes('sci-fi tower defense web
 check('html has canonical URL', html.includes('https://lunora-gather.github.io/Praesidium/'));
 check('html has Open Graph title', html.includes('og:title'));
 check('html has Open Graph description', html.includes('og:description'));
+check('html metadata mentions ten campaign zones', html.includes('ten themed campaign zones'));
 check('html has Twitter title', html.includes('twitter:title'));
 check('html has dark color scheme', html.includes('color-scheme'));
 check('html loads manifest', html.includes('href="./manifest.json"'));
 check('html has portrait orientation hint', html.includes('orientation-hint'));
 check('html avoids blocking Google Fonts', !html.includes('fonts.googleapis.com') && !html.includes('fonts.gstatic.com'));
+check('html registers service worker', html.includes("serviceWorker.register('./sw.js')"));
 
 // README and docs
 check('README mentions quality verification', contains('README.md', 'npm run verify'));
@@ -128,6 +132,8 @@ check('issue template config links live game', contains('.github/ISSUE_TEMPLATE/
 // Manifest
 const manifest = read('manifest.json');
 check('manifest names Praesidium', manifest.includes('Praesidium'));
+check('public manifest aligns campaign count', contains('public/manifest.json', 'ten themed campaign zones'));
+check('public manifest start URL is relative', contains('public/manifest.json', '"start_url": "./"'));
 check('manifest uses standalone/fullscreen display', manifest.includes('fullscreen') || manifest.includes('standalone'));
 check('manifest start_url is relative', manifest.includes('"start_url"'));
 check('manifest prefers landscape', manifest.includes('"orientation": "landscape"'));
@@ -201,6 +207,8 @@ check('particle system has meteor impact', contains('src/game/effects/ParticleSy
 check('particle system has freeze pulse', contains('src/game/effects/ParticleSystem.ts', 'freezePulse'));
 check('particle system has boss death effect', contains('src/game/effects/ParticleSystem.ts', 'bossDeath'));
 check('main wires enhanced spell effects', contains('src/main.ts', 'meteorImpact'));
+check('renderer caps device pixel ratio', contains('src/engine/Renderer.ts', 'Math.min(2, window.devicePixelRatio'));
+check('service worker uses versioned cache', contains('public/sw.js', "praesidium-v1.0.0"));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

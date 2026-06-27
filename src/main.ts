@@ -110,9 +110,17 @@ audio.setMuted(settings.get().muted);
 music.setMuted(settings.get().muted);
 
 const resumeAudio = (): void => audio.resume();
+let resizeFrame = 0;
+const scheduleResize = (): void => {
+  if (resizeFrame !== 0) return;
+  resizeFrame = window.requestAnimationFrame(() => {
+    resizeFrame = 0;
+    renderer.resize();
+  });
+};
 window.addEventListener('pointerdown', resumeAudio, { once: true });
 window.addEventListener('keydown', resumeAudio, { once: true });
-window.addEventListener('resize', () => renderer.resize());
+window.addEventListener('resize', scheduleResize);
 window.addEventListener('blur', () => { if (settings.get().pauseOnBlur && state.phase === 'playing') { paused = true; state.autoSave(); } });
 window.addEventListener('focus', () => { if (settings.get().pauseOnBlur && paused && state.phase === 'playing') paused = false; });
 window.addEventListener('beforeunload', () => { if (state.phase === 'playing') state.autoSave(); });

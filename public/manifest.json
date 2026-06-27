@@ -1,19 +1,30 @@
 {
-  "name": "Praesidium",
+  "name": "Praesidium — Sci-Fi Tower Defense",
   "short_name": "Praesidium",
-  "description": "Super large-scale tower defense — endless waves, seeded challenges, 6 levels",
-  "start_url": "/",
+  "description": "Build towers, cast spells, unlock talents, and defend ten themed campaign zones or endless seeded challenges.",
+  "start_url": "./",
+  "scope": "./",
   "display": "fullscreen",
+  "background_color": "#060a0f",
+  "theme_color": "#0f172a",
   "orientation": "landscape",
-  "background_color": "#0a0e14",
-  "theme_color": "#0a0e14",
-  "categories": ["games", "entertainment"],
+  "categories": ["games", "entertainment", "strategy"],
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='64' fill='%230a0e14'/><circle cx='256' cy='256' r='120' fill='none' stroke='%231f6feb' stroke-width='24'/><circle cx='256' cy='256' r='40' fill='%231f6feb'/><rect x='248' y='100' width='16' height='80' rx='8' fill='%231f6feb'/><rect x='248' y='332' width='16' height='80' rx='8' fill='%231f6feb'/><rect x='100' y='248' width='80' height='16' rx='8' fill='%231f6feb'/><rect x='332' y='248' width='80' height='16' rx='8' fill='%231f6feb'/></svg>",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%23060a0f'/%3E%3Ccircle cx='256' cy='256' r='124' fill='none' stroke='%233b82f6' stroke-width='44'/%3E%3Ccircle cx='256' cy='256' r='48' fill='%233b82f6'/%3E%3C/svg%3E",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Play Praesidium",
+      "short_name": "Play",
+      "description": "Open the sci-fi tower defense game.",
+      "url": "./"
     }
   ]
 }

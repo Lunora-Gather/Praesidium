@@ -4,9 +4,10 @@
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
+const env = (import.meta as ImportMeta & { env?: { PROD?: boolean } }).env;
 
 class Logger {
-  private level: LogLevel = 'info';
+  private level: LogLevel = env?.PROD ? 'warn' : 'info';
 
   setLevel(l: LogLevel): void {
     this.level = l;

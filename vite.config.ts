@@ -4,7 +4,7 @@ export default defineConfig({
   base: './',
   build: {
     target: 'es2020',
-    sourcemap: true,
+    sourcemap: false,
     outDir: 'dist',
     assetsInlineLimit: 0,
   },

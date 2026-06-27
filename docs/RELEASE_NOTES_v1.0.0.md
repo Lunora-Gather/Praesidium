@@ -11,6 +11,7 @@ Praesidium v1.0.0 is the first full public release of the sci-fi tower defense b
 - Intel Codex for tower roles, enemy traits, resistances, and strategic guidance.
 - Daily missions, weekly run badge, product-health stats, achievements, talents, offline leaderboard, and run summaries.
 - Mobile landscape support with compact HUD, tower drawer, shared layout tokens, and portrait orientation hint.
+- Versioned service worker cache for faster repeat visits and offline-friendly static assets.
 - Procedural Web Audio with compressor and SFX throttling.
 - Enhanced spell and boss visual feedback with pure code particles.
 - LocalStorage-only persistence; no account, payment flow, advertising SDK, or remote gameplay telemetry.
@@ -30,8 +31,9 @@ npm run release:gate
 2. Runtime selftest.
 3. Save/restore regression test.
 4. Balance simulation.
-5. Release audit.
-6. Production build.
+5. Performance stress check.
+6. Release audit.
+7. Production build.
 
 Also complete:
 

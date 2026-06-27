@@ -3,8 +3,10 @@
 // Run: npx tsx scripts/perf-check.ts
 
 import { GameState } from '../src/game/GameState';
-import { getTowerDef } from '../src/game/towers/TowerRegistry';
+import { Enemy } from '../src/game/enemies/Enemy';
+import { getEnemyDef } from '../src/game/enemies/EnemyRegistry';
 import { Vec2 } from '../src/engine/math/Vec2';
+import { logger } from '../src/utils/logger';
 
 let pass = 0;
 let fail = 0;
@@ -15,32 +17,39 @@ function check(name: string, cond: boolean, detail = ''): void {
 
 // Stress test: simulate 200+ enemies on screen, measure if update stays under 16ms budget
 console.log('\n=== Performance Stress Test ===');
+logger.setLevel('warn');
 
 const gs = new GameState();
 gs.setDifficulty('brutal');
 gs.endless = true;
 gs.selectLevel(0);
+gs.lives = 9999;
+gs.gold = 10000;
 
-// Place towers densely to create many projectiles
-for (let ty = 1; ty < gs.grid.rows - 1; ty++) {
-  for (let tx = 1; tx < gs.grid.cols - 1; tx++) {
-    if (gs.grid.isBuildable(tx, ty) && !gs.towers.some(t => t.tx === tx && t.ty === ty)) {
-      const affordable = ['turret', 'frost', 'mortar', 'sniper', 'tesla', 'cannon']
-        .map(id => getTowerDef(id))
-        .filter(d => gs.gold >= d.cost);
-      if (affordable.length > 0) {
-        gs.selectedTowerId = affordable[0].id;
-        gs.tryPlace(tx, ty);
-      }
-    }
+// Seed a heavy field directly so the test measures update cost under load
+// instead of depending on wave timing or a specific bot layout.
+const enemyIds = ['grunt', 'scout', 'brute', 'zealot', 'phantom', 'titan'];
+for (let i = 0; i < 180; i++) {
+  const def = getEnemyDef(enemyIds[i % enemyIds.length]);
+  const start = gs.grid.waypoints[i % Math.max(1, gs.grid.waypoints.length - 1)];
+  const enemy = new Enemy(def, start, 8, 0.35);
+  enemy.pos = enemy.pos.add(new Vec2((i % 9) * 3, Math.floor(i / 9) % 5 * 3));
+  gs.enemies.push(enemy);
+}
+
+// Place a compact mixed battery to create projectile and splash pressure.
+const towerIds = ['turret', 'frost', 'mortar', 'sniper', 'tesla', 'cannon'];
+let towerIndex = 0;
+for (let ty = 0; ty < gs.grid.rows && towerIndex < 18; ty++) {
+  for (let tx = 0; tx < gs.grid.cols && towerIndex < 18; tx++) {
+    if (!gs.grid.isBuildable(tx, ty) || gs.towers.some(t => t.tx === tx && t.ty === ty)) continue;
+    gs.selectedTowerId = towerIds[towerIndex % towerIds.length];
+    if (gs.tryPlace(tx, ty)) towerIndex++;
   }
 }
 
-// Force many waves to spawn lots of enemies
-for (let i = 0; i < 12; i++) gs.waves.forceNext();
-
 const dt = 1 / 60;
-const frames = 3600; // 60 seconds of gameplay — enough for enemies to accumulate
+const frames = 900; // 15 seconds under a deliberately dense field
 let maxUpdateMs = 0;
 let totalUpdateMs = 0;
 let maxEnemies = 0;

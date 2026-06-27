@@ -13,6 +13,7 @@ export class Renderer {
   // screen shake: decays over time, applied as random offset each frame
   private shakeIntensity = 0;
   private shakeDecay = 0.9;
+  private currentShake = { x: 0, y: 0 };
 
   constructor(public readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -29,17 +30,23 @@ export class Renderer {
   /** Call once per frame to decay shake. */
   updateShake(): void {
     this.shakeIntensity *= this.shakeDecay;
-    if (this.shakeIntensity < 0.3) this.shakeIntensity = 0;
+    if (this.shakeIntensity < 0.3) {
+      this.shakeIntensity = 0;
+      this.currentShake.x = 0;
+      this.currentShake.y = 0;
+      return;
+    }
+    const a = Math.random() * Math.PI * 2;
+    this.currentShake.x = Math.cos(a) * this.shakeIntensity;
+    this.currentShake.y = Math.sin(a) * this.shakeIntensity;
   }
 
   get shakeOffset(): { x: number; y: number } {
-    if (this.shakeIntensity <= 0) return { x: 0, y: 0 };
-    const a = Math.random() * Math.PI * 2;
-    return { x: Math.cos(a) * this.shakeIntensity, y: Math.sin(a) * this.shakeIntensity };
+    return this.currentShake;
   }
 
   resize(): void {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.canvas.width = Math.floor(this.width * dpr);
