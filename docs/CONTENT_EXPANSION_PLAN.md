@@ -6,7 +6,7 @@ This plan tracks the next product-depth upgrades for Praesidium. The goal is to 
 
 | Area | Current direction | Strong product target |
 | --- | --- | --- |
-| Campaign levels | 8 themed levels | 10 to 12 levels |
+| Campaign levels | 10 themed levels | 10 to 12 levels |
 | Boss variety | Boss encounter labels and warning feedback | 4 to 6 recognizable boss patterns |
 | Enemy variety | Core enemy roster | More traits and counterplay moments |
 | Towers | Core tower roster | 1 to 3 additional late-game choices |
@@ -26,6 +26,18 @@ This plan tracks the next product-depth upgrades for Praesidium. The goal is to 
 - Role: late split-pressure pathing with limited central build windows.
 - Primary pressure: stretched coverage and awkward middle-lane transitions.
 - Counterplay: mixed damage, careful tower spacing, and stronger boss preparation.
+
+### Level 9: Overdrive Gate
+
+- Role: speed pressure and boss-preparation coverage check.
+- Primary pressure: fast lane transitions and awkward corner coverage.
+- Counterplay: Frost, Tesla, early upgrades, and forward anti-fast coverage.
+
+### Level 10: Apex Bastion
+
+- Role: final campaign gate before optional challenge maps.
+- Primary pressure: long-range coverage, boss pressure, and late-game tower planning.
+- Counterplay: upgraded Sniper/Cannon, Frost support, Meteor timing, and balanced tower spacing.
 
 ## Boss pattern backlog
 
@@ -57,10 +69,11 @@ This plan tracks the next product-depth upgrades for Praesidium. The goal is to 
 
 1. Added two mid-campaign levels focused on area damage and slow/control.
 2. Added a late-campaign level focused on split pressure.
-3. Next: add level 9 as a stronger boss-preparation map.
-4. Next: add level 10 as a final campaign gate with a distinct boss identity.
-5. Add balance simulation coverage for every new level.
-6. Update Intel Codex with any new enemy and boss traits.
+3. Added level 9 as a stronger boss-preparation map.
+4. Added level 10 as a final campaign gate.
+5. Next: run balance simulation and capture review notes for the 10-level campaign.
+6. Next: consider optional level 11 and 12 only after outside playtest feedback.
+7. Update Intel Codex with any new enemy and boss traits.
 
 ## Weekly mode integration targets
 
