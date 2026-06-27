@@ -34,11 +34,13 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## 3. First-time player experience
 
 - [x] First level teaches tower placement clearly.
+- [x] Tutorial now walks through select, place, wave, inspect, upgrade, support ability, Intel, and talents.
 - [x] Upgrade / sell flow is obvious.
 - [x] Spell usage is taught before it becomes necessary.
 - [x] Wave preview / Intel Codex are discoverable.
 - [x] Victory screen gives a clear next action.
 - [x] Defeat screen gives a useful recovery path.
+- [x] Onboarding QA checklist exists.
 
 ## 4. UI and mobile polish
 
@@ -100,6 +102,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Changelog or release notes exist.
 - [x] Mobile QA checklist exists.
 - [x] Layout QA checklist exists.
+- [x] Onboarding QA checklist exists.
 - [x] Final release QA checklist exists.
 - [x] Deployment status guide exists.
 - [x] Release audit script exists and is included in verify.
@@ -114,6 +117,6 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## Current estimated gap
 
 - Public free-game release: about 0.1% remaining.
-- Market-grade release: about 0.4% remaining.
+- Market-grade release: about 0.35% remaining.
 
-The biggest remaining blockers are actual execution/confirmation tasks: final local verification, GitHub Pages deploy confirmation, final balance confirmation, real screenshots/GIFs, outside playtest results, and final visual QA across the layout checklist.
+The biggest remaining blockers are actual execution/confirmation tasks: final local verification, GitHub Pages deploy confirmation, final balance confirmation, real screenshots/GIFs, outside playtest results, final visual QA across the layout checklist, and first-run QA with outside players.
