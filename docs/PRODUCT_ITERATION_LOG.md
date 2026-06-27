@@ -51,11 +51,12 @@ The current phase is about player retention, replay motivation, measurable feedb
 - Expanded the campaign again to 10 levels with Overdrive Gate and Apex Bastion.
 - Added dedicated visual themes for the expanded campaign levels.
 - Added selftest, release-audit, Campaign Expansion QA, and balance-review-note coverage for the 10-level campaign.
+- Upgraded balance simulation with a Late Campaign Review for levels 9 and 10, including late-campaign tower distribution and red-flag output.
 
 ## Next integration targets
 
 1. Run and record balance simulation results for the 10-level campaign.
-2. Add optional level 11 only after balance results are stable.
+2. Use the Late Campaign Review to tune Overdrive Gate and Apex Bastion.
 3. Add screenshots or GIFs after the next stable deploy.
 4. Run outside playtests and tune from the Health tab risks.
 5. Add final boss pattern work after level 10 is validated.
@@ -63,6 +64,6 @@ The current phase is about player retention, replay motivation, measurable feedb
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 94%.
+- Strong product target: about 94.5%.
 
-The remaining gap is mostly balance verification, public-facing media, outside playtest iteration, and optional late-game challenge content.
+The remaining gap is mostly actual balance verification, public-facing media, outside playtest iteration, and optional late-game challenge content.
