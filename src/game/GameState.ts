@@ -25,6 +25,8 @@ import { Vec2 } from '../engine/math/Vec2';
 import { saveRun, clearRun, RunSnapshot } from '../utils/RunSave';
 import { Analytics } from '../utils/Analytics';
 import { dailySeed } from '../utils/DailyChallenge';
+import { weeklyMode, type WeeklyMode } from '../utils/WeeklyMode';
+import { DEFAULT_WEEKLY_RULES, weeklyRules, type WeeklyRuleSet } from '../utils/WeeklyRules';
 
 export type Phase = 'menu' | 'levelSelect' | 'playing' | 'won' | 'lost';
 
@@ -67,6 +69,9 @@ export class GameState {
   difficulty: Difficulty = 'normal';
   endless = false;
   endlessSeed = 0;
+  weeklyModeActive = false;
+  activeWeeklyMode: WeeklyMode | null = null;
+  private activeWeeklyRules: WeeklyRuleSet = DEFAULT_WEEKLY_RULES;
 
   get diffMul(): DifficultyDef { return DIFFICULTIES[this.difficulty]; }
 
@@ -120,11 +125,18 @@ export class GameState {
     this.analyticsSessionActive = false;
   }
 
+  private configureWeeklyRules(): void {
+    this.activeWeeklyMode = this.weeklyModeActive ? weeklyMode() : null;
+    this.activeWeeklyRules = this.activeWeeklyMode ? weeklyRules(this.activeWeeklyMode) : DEFAULT_WEEKLY_RULES;
+    this.waves.setWeeklyRules(this.activeWeeklyRules);
+  }
+
   start(): void {
     this.lastKnownWave = 0;
     this.grid = new Grid(this.levels.current);
     const diff = DIFFICULTIES[this.difficulty];
-    this.gold = BALANCE.startGold + diff.goldStartBonus;
+    this.configureWeeklyRules();
+    this.gold = Math.max(0, Math.round((BALANCE.startGold + diff.goldStartBonus) * this.activeWeeklyRules.startGoldMul));
     this.lives = BALANCE.startLives + Math.round(this.talents.multiplier('lives'));
     this.score = 0;
     this.lastStars = 0;
@@ -148,10 +160,11 @@ export class GameState {
       this.endlessSeed = 0;
       this.waves.setDifficulty(diff.hpMul, diff.countMul);
     }
+    this.waves.setWeeklyRules(this.activeWeeklyRules);
     this.setPhase('playing');
     this.startAnalyticsSession();
     this.analytics.recordLevelStart(this.levels.levelNumber - 1);
-    logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name });
+    logger.info('Run started', { level: this.levels.levelNumber, name: this.levels.current.name, weeklyMode: this.activeWeeklyMode?.id ?? 'none' });
   }
 
   goMenu(): void {
@@ -179,6 +192,7 @@ export class GameState {
 
   tryPlace(tx: number, ty: number): boolean {
     if (!this.selectedTowerId) return false;
+    if (this.activeWeeklyRules.maxTowers !== null && this.towers.length >= this.activeWeeklyRules.maxTowers) return false;
     const def: TowerDef = getTowerDef(this.selectedTowerId);
     if (this.gold < def.cost) return false;
     if (!this.grid.isBuildable(tx, ty)) return false;
@@ -221,6 +235,7 @@ export class GameState {
   }
 
   castSpell(id: string, target: Vec2): boolean {
+    if (this.activeWeeklyRules.repairDisabled && id === 'repair') return false;
     const sp = this.spells.find((s) => s.def.id === id);
     if (!sp) return false;
     if (!sp.cast(target, this)) return false;
@@ -356,6 +371,7 @@ export class GameState {
       difficulty: this.difficulty,
       endless: this.endless,
       endlessSeed: this.endlessSeed,
+      weeklyModeActive: this.weeklyModeActive,
       gold: this.gold,
       lives: this.lives,
       score: this.score,
