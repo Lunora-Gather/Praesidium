@@ -107,7 +107,9 @@ check('mobile QA covers tower drawer', contains('docs/MOBILE_QA.md', 'Tower draw
 check('layout QA covers HUD and level select', contains('docs/LAYOUT_QA.md', 'HUD') && contains('docs/LAYOUT_QA.md', 'Level select'));
 check('weekly QA covers seeded runs', contains('docs/WEEKLY_MODE_QA.md', 'Seeded challenge starts with weekly mode active'));
 check('campaign expansion QA covers levels 7 to 10', contains('docs/CAMPAIGN_EXPANSION_QA.md', 'Overdrive Gate') && contains('docs/CAMPAIGN_EXPANSION_QA.md', 'Apex Bastion'));
+check('campaign expansion QA expects late review', contains('docs/CAMPAIGN_EXPANSION_QA.md', 'Late Campaign Review'));
 check('balance review notes cover ten-level campaign', contains('docs/BALANCE_REVIEW_NOTES.md', 'Campaign levels: 10'));
+check('balance review notes document late report', contains('docs/BALANCE_REVIEW_NOTES.md', 'Late Campaign Review'));
 check('QA results template records release decision', contains('docs/QA_RESULTS_TEMPLATE.md', 'Release decision'));
 check('media kit defines screenshot list', contains('docs/MEDIA_KIT.md', 'Screenshot capture list'));
 check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'Commercial release gate'));
@@ -172,6 +174,8 @@ check('weekly rules affect seeded runs', contains('src/game/GameState.ts', 'week
 check('campaign has ten levels', contains('src/game/grid/LevelManager.ts', 'LEVEL_9') && contains('src/game/grid/LevelManager.ts', 'LEVEL_10') && contains('src/game/grid/LevelManager.ts', 'Apex Bastion'));
 check('level themes include ten-level campaign themes', contains('src/ui/LevelThemes.ts', 'overdrive-gate') && contains('src/ui/LevelThemes.ts', 'apex-bastion'));
 check('selftest covers ten-level campaign', contains('scripts/selftest.ts', 'campaign has at least ten levels'));
+check('balance sim has late campaign review', contains('scripts/balance-sim.ts', 'Late Campaign Review') && contains('scripts/balance-sim.ts', 'LATE_CAMPAIGN_START'));
+check('balance sim names late campaign maps', contains('scripts/balance-sim.ts', 'level 9') && contains('scripts/balance-sim.ts', 'level 10'));
 check('run advice supports summary advice', contains('src/utils/RunAdvice.ts', 'buildDefeatAdviceFromSummary'));
 check('defeat screen uses run advice', contains('src/ui/Screens.ts', 'buildDefeatAdviceFromSummary'));
 check('boss encounters are diversified', contains('src/game/waves/WaveManager.ts', 'bossEncounter') && contains('src/game/waves/WaveManager.ts', 'phantom'));
