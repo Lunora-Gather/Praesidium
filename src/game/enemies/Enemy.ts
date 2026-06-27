@@ -24,13 +24,13 @@ export class Enemy {
   readonly resist: Partial<Record<DamageType, number>> | undefined;
   readonly isBoss: boolean;
 
-  constructor(def: EnemyDef, startPos: Vec2, waveHpMul: number) {
+  constructor(def: EnemyDef, startPos: Vec2, waveHpMul: number, speedMul = 1) {
     this.id = def.id;
     this.color = def.color;
     this.radius = def.radius;
     this.hp = def.hp * waveHpMul;
     this.maxHp = this.hp;
-    this.baseSpeed = def.speed;
+    this.baseSpeed = def.speed * speedMul;
     this.reward = def.reward; // base reward; difficulty/talent multipliers applied at kill site
     this.pos = Vec2.from(startPos);
     this.resist = def.resist;
