@@ -8,6 +8,17 @@ Use this document after running `npm run balance:sim` or after outside playtests
 - Newest maps: Overdrive Gate and Apex Bastion
 - Required command: `npm run balance:sim`
 
+## Automated report sections
+
+`npm run balance:sim` now prints:
+
+- overall Normal / Hard / Brutal win-rate
+- best result by level and difficulty
+- total tower placement distribution
+- `Late Campaign Review` for levels 9 and 10
+- late-campaign tower distribution
+- late-campaign red flags if level 9 or 10 collapses too early
+
 ## Simulation summary template
 
 | Area | Result | Notes |
@@ -18,10 +29,13 @@ Use this document after running `npm run balance:sim` or after outside playtests
 | Level 9 result | TBD | Watch speed-pressure leaks. |
 | Level 10 result | TBD | Watch final-gate boss pressure. |
 | Tower distribution | TBD | Confirm multiple tower types appear. |
+| Late-campaign tower distribution | TBD | Confirm multiple tower types appear on levels 9 and 10. |
 
 ## Red flags
 
 - Any normal-mode level collapses before completing wave 1.
+- Level 9 collapses before meaningful speed-pressure learning.
+- Level 10 collapses before final-gate strategy emerges.
 - Level 9 requires only one specific tower opening.
 - Level 10 becomes only a high-HP grind without strategy changes.
 - Frost or Sniper becomes mandatory in every late map.
