@@ -14,6 +14,7 @@ import { DamageType } from '../game/DamageType';
 import { classifyBossEncounter } from '../utils/BossEncounter';
 import { TOP_H, BOT_H } from './HUD';
 import { getLevelTheme, LevelTheme } from './LevelThemes';
+import { drawWeeklyRunBadge } from './WeeklyRunBadge';
 
 export class WorldRenderer {
   private staticCanvas: HTMLCanvasElement | null = null;
@@ -207,6 +208,7 @@ export class WorldRenderer {
     }
 
     this.drawBossWarning(r, s);
+    drawWeeklyRunBadge(r, s);
     this.drawLowLifeOverlay(r, s);
   }
 
