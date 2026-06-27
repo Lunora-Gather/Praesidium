@@ -19,6 +19,7 @@ The current phase is about player retention, replay motivation, and measurable f
 - Added deterministic daily mission generation.
 - Added daily mission progress evaluation.
 - Added selftests so the daily mission system is covered by `npm run verify`.
+- Added a main-menu daily objectives panel so the retention loop is visible before starting a run.
 
 ### Product diagnostics
 
@@ -28,15 +29,15 @@ The current phase is about player retention, replay motivation, and measurable f
 
 ## Next integration targets
 
-1. Surface daily missions on the main menu.
-2. Show daily mission progress after win or loss.
-3. Display product health diagnostics inside Stats or a QA-only panel.
-4. Connect RunAdvice to the defeat screen with specific retry advice.
-5. Add a weekly challenge rule set after daily missions are visible.
+1. Show daily mission progress after win or loss.
+2. Display product health diagnostics inside Stats or a QA-only panel.
+3. Connect RunAdvice to the defeat screen with specific retry advice.
+4. Add a weekly challenge rule set after daily missions are visible.
+5. Expand boss mechanics and campaign content depth.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 76%.
+- Strong product target: about 78%.
 
-The remaining gap is mostly gameplay depth, visible retention loops, more content, stronger boss mechanics, public-facing media, and outside playtest iteration.
+The remaining gap is mostly post-run mission progress, gameplay depth, visible diagnostic feedback, more content, stronger boss mechanics, public-facing media, and outside playtest iteration.
