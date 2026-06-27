@@ -109,8 +109,14 @@ export class Screens {
     }
 
     if (kind === 'paused') r.text(t('hud.paused_title'), cx, cardY + 75, UI.color.textMuted, 13, 'center');
-    if (kind === 'won') this.drawVictoryReport(r, cardX, cardY, cardW, score, stats, compact);
-    if (kind === 'lost') this.drawDefeatReport(r, cardX, cardY, cardW, score, seed, stats, compact);
+    if (kind === 'won') {
+      this.drawVictoryReport(r, cardX, cardY, cardW, score, stats, compact);
+      this.dailyMissionPanel.drawProgress(r, { score, ...(stats ?? {}) });
+    }
+    if (kind === 'lost') {
+      this.drawDefeatReport(r, cardX, cardY, cardW, score, seed, stats, compact);
+      this.dailyMissionPanel.drawProgress(r, { score, ...(stats ?? {}) });
+    }
 
     const btnW = cardW - 48;
     const btnH = compact ? 34 : 38;
