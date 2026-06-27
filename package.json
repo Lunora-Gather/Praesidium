@@ -12,6 +12,7 @@
     "test:save": "npx -y tsx scripts/save-restore-test.ts",
     "balance:sim": "npx -y tsx scripts/balance-sim.ts",
     "release:audit": "npx -y tsx scripts/release-audit.ts",
+    "release:gate": "npx -y tsx scripts/release-gate.ts",
     "verify": "npm run typecheck && npm run selftest && npm run test:save && npm run balance:sim && npm run release:audit && npm run build"
   },
   "devDependencies": {
