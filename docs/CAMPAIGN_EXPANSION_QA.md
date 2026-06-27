@@ -18,6 +18,7 @@ This checklist covers the campaign expansion from 6 levels to 10 levels and prep
 - Each level has at least two waypoints.
 - Campaign star maximum follows the expanded level count and reaches at least 30 stars.
 - Balance simulation automatically includes all campaign levels.
+- Balance simulation includes a late-campaign review for levels 9 and 10.
 
 ## Browser smoke test
 
@@ -42,7 +43,9 @@ Pass criteria:
 
 - No normal-mode level collapses before completing wave 1.
 - Levels 7, 8, 9, and 10 appear in the simulation report.
+- `Late Campaign Review` appears in the simulation output.
 - Tower placement distribution still includes multiple tower types.
+- Late-campaign tower distribution still includes multiple tower types.
 - At least one normal-mode bot plan reaches meaningful late-wave progress on levels 9 and 10.
 
 ## Next content targets
