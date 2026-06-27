@@ -45,6 +45,7 @@ const requiredFiles = [
   'docs/PRIVACY.md',
   'docs/RELEASE_CHECKLIST.md',
   'docs/MOBILE_QA.md',
+  'docs/LAYOUT_QA.md',
   'docs/FINAL_RELEASE_QA.md',
   'docs/MEDIA_KIT.md',
   'docs/PLAYTEST_PLAN.md',
@@ -100,6 +101,7 @@ check('privacy explains localStorage', contains('docs/PRIVACY.md', 'localStorage
 check('changelog has Unreleased section', contains('CHANGELOG.md', '## Unreleased'));
 check('final QA defines release candidate criteria', contains('docs/FINAL_RELEASE_QA.md', 'public free-game release candidate'));
 check('mobile QA covers tower drawer', contains('docs/MOBILE_QA.md', 'Tower drawer'));
+check('layout QA covers HUD and level select', contains('docs/LAYOUT_QA.md', 'HUD') && contains('docs/LAYOUT_QA.md', 'Level select'));
 check('QA results template records release decision', contains('docs/QA_RESULTS_TEMPLATE.md', 'Release decision'));
 check('media kit defines screenshot list', contains('docs/MEDIA_KIT.md', 'Screenshot capture list'));
 check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'Commercial release gate'));
@@ -148,6 +150,10 @@ check('display helpers include achievement localization', displayText.includes('
 check('display helpers include trait localization', displayText.includes('traitName'));
 
 // Key release features wired in code
+check('layout system exists', fileExists('src/ui/Layout.ts'));
+check('layout system defines breakpoints', contains('src/ui/Layout.ts', 'LayoutMode') && contains('src/ui/Layout.ts', 'layoutFor'));
+check('HUD uses shared layout tokens', contains('src/ui/HUD.ts', 'layoutFor'));
+check('level select uses shared layout tokens', contains('src/ui/LevelSelect.ts', 'layoutFor'));
 check('level themes exist', fileExists('src/ui/LevelThemes.ts'));
 check('world renderer uses level themes', contains('src/ui/WorldRenderer.ts', 'getLevelTheme'));
 check('world renderer has boss warning', contains('src/ui/WorldRenderer.ts', 'drawBossWarning'));
