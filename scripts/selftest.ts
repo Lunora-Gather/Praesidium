@@ -7,6 +7,7 @@ import { Tower } from '../src/game/towers/Tower';
 import { getTowerDef } from '../src/game/towers/TowerRegistry';
 import { Grid } from '../src/game/grid/Grid';
 import { LEVELS } from '../src/game/grid/LevelManager';
+import { TileType } from '../src/game/grid/Level';
 import { Vec2 } from '../src/engine/math/Vec2';
 import { Pathfinding } from '../src/game/grid/Pathfinding';
 import { GameState } from '../src/game/GameState';
@@ -34,6 +35,16 @@ check('3 stars at full lives', computeStars(20) === 3);
 check('2 stars at 10 lives', computeStars(10) === 2);
 check('1 star at 1 life', computeStars(1) === 1);
 check('0 stars at 0 lives', computeStars(0) === 0);
+
+// --- Campaign content ---
+check('campaign has at least eight levels', LEVELS.length >= 8);
+for (const [i, level] of LEVELS.entries()) {
+  check(`level ${i + 1} has waypoints`, level.waypoints.length >= 2);
+  check(`level ${i + 1} has spawn tile`, level.tiles.includes(TileType.Spawn));
+  check(`level ${i + 1} has goal tile`, level.tiles.includes(TileType.Goal));
+  check(`level ${i + 1} has path tiles`, level.tiles.includes(TileType.Path));
+  check(`level ${i + 1} has buildable tiles`, level.tiles.includes(TileType.Buildable));
+}
 
 // --- Damage resistance ---
 check('no resist = full damage', applyResistance(100, DamageType.Fire, {}) === 100);
@@ -173,7 +184,7 @@ save.recordLevelScore(1, 1234);
 check('getStars returns best stars', save.getStars(1) === 2 && save.getStars(2) === 3);
 check('getLevelScore returns best score', save.getLevelScore(1) === 1234);
 check('campaign total stars', save.getTotalStars() === 5);
-check('campaign max stars', save.getMaxStars() === LEVELS.length * 3);
+check('campaign max stars follows content count', save.getMaxStars() === LEVELS.length * 3 && save.getMaxStars() >= 24);
 check('campaign ratio', Math.abs(save.getCampaignCompletionRatio() - 5 / (LEVELS.length * 3)) < 1e-9);
 save.recordLevelReached(999);
 check('recordLevelReached clamps to max level', save.getUnlockedLevelCount() === LEVELS.length);
