@@ -10,10 +10,11 @@ export class DailyMissionPanel {
     const layout = layoutFor(r);
     const missions = dailyMissions(dailyDateStr());
     const isSmall = layout.isPhone || r.height < 560;
-    const w = Math.min(r.width - layout.safe * 2, isSmall ? 360 : 420);
+    const isSideRail = r.width >= 1060 && r.height >= 620;
+    const w = Math.min(r.width - layout.safe * 2, isSmall ? 360 : isSideRail ? 320 : 420);
     const h = isSmall ? 106 : 126;
-    const x = r.width / 2 - w / 2;
-    const y = Math.max(layout.safe, r.height - h - layout.safe);
+    const x = isSideRail ? r.width - w - layout.safe : r.width / 2 - w / 2;
+    const y = isSideRail ? 96 : Math.max(layout.safe, r.height - h - layout.safe);
 
     const bg = r.linearGradient(x, y, x, y + h, [
       { offset: 0, color: 'rgba(15, 23, 42, 0.88)' },
