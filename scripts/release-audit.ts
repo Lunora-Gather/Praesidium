@@ -46,6 +46,8 @@ const requiredFiles = [
   'docs/RELEASE_CHECKLIST.md',
   'docs/MOBILE_QA.md',
   'docs/LAYOUT_QA.md',
+  'docs/WEEKLY_MODE_QA.md',
+  'docs/CAMPAIGN_EXPANSION_QA.md',
   'docs/FINAL_RELEASE_QA.md',
   'docs/MEDIA_KIT.md',
   'docs/PLAYTEST_PLAN.md',
@@ -102,6 +104,8 @@ check('changelog has Unreleased section', contains('CHANGELOG.md', '## Unrelease
 check('final QA defines release candidate criteria', contains('docs/FINAL_RELEASE_QA.md', 'public free-game release candidate'));
 check('mobile QA covers tower drawer', contains('docs/MOBILE_QA.md', 'Tower drawer'));
 check('layout QA covers HUD and level select', contains('docs/LAYOUT_QA.md', 'HUD') && contains('docs/LAYOUT_QA.md', 'Level select'));
+check('weekly QA covers seeded runs', contains('docs/WEEKLY_MODE_QA.md', 'Seeded challenge starts with weekly mode active'));
+check('campaign expansion QA covers levels 7 and 8', contains('docs/CAMPAIGN_EXPANSION_QA.md', 'Relay Array') && contains('docs/CAMPAIGN_EXPANSION_QA.md', 'Blackout Ridge'));
 check('QA results template records release decision', contains('docs/QA_RESULTS_TEMPLATE.md', 'Release decision'));
 check('media kit defines screenshot list', contains('docs/MEDIA_KIT.md', 'Screenshot capture list'));
 check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'Commercial release gate'));
@@ -161,10 +165,18 @@ check('stats screen exposes product health tab', contains('src/ui/StatsScreen.ts
 check('daily mission panel exists', fileExists('src/ui/DailyMissionPanel.ts'));
 check('daily mission progress can render after runs', contains('src/ui/DailyMissionPanel.ts', 'drawProgress'));
 check('weekly mode system exists', fileExists('src/utils/WeeklyMode.ts') && contains('src/utils/WeeklyMode.ts', 'weeklyMode'));
+check('weekly run badge exists', fileExists('src/ui/WeeklyRunBadge.ts') && contains('src/ui/WeeklyRunBadge.ts', 'drawWeeklyRunBadge'));
+check('weekly rules affect seeded runs', contains('src/game/GameState.ts', 'weeklyModeActive') && contains('src/game/waves/WaveManager.ts', 'setWeeklyRules'));
+check('campaign has eight levels', contains('src/game/grid/LevelManager.ts', 'LEVEL_7') && contains('src/game/grid/LevelManager.ts', 'LEVEL_8') && contains('src/game/grid/LevelManager.ts', 'Blackout Ridge'));
+check('level themes include expanded campaign themes', contains('src/ui/LevelThemes.ts', 'relay-array') && contains('src/ui/LevelThemes.ts', 'blackout-ridge'));
+check('selftest covers expanded campaign', contains('scripts/selftest.ts', 'campaign has at least eight levels'));
 check('run advice supports summary advice', contains('src/utils/RunAdvice.ts', 'buildDefeatAdviceFromSummary'));
 check('defeat screen uses run advice', contains('src/ui/Screens.ts', 'buildDefeatAdviceFromSummary'));
 check('boss encounters are diversified', contains('src/game/waves/WaveManager.ts', 'bossEncounter') && contains('src/game/waves/WaveManager.ts', 'phantom'));
+check('boss encounter classifier exists', fileExists('src/utils/BossEncounter.ts') && contains('src/utils/BossEncounter.ts', 'classifyBossEncounter'));
+check('HUD labels boss encounters', contains('src/ui/HUD.ts', 'classifyBossEncounter') && contains('src/ui/HUD.ts', 'encounter.label'));
 check('selftest covers boss encounter variety', contains('scripts/selftest.ts', 'later boss encounter changes composition'));
+check('selftest covers boss encounter classifier', contains('scripts/selftest.ts', 'boss classifier detects fast escort'));
 check('talent panel uses shared layout tokens', contains('src/ui/TalentPanel.ts', 'layoutFor'));
 check('codex screen uses shared layout tokens', contains('src/ui/CodexScreen.ts', 'layoutFor'));
 check('tower panel uses shared layout tokens', contains('src/ui/TowerPanel.ts', 'layoutFor'));
