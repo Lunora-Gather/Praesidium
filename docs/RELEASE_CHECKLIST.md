@@ -44,6 +44,10 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 - [x] Main menu looks like a release screen, not a debug menu.
 - [x] Level select clearly shows progress, stars, scores, and next level.
+- [x] Shared layout system exists for breakpoints, spacing, panels, and cards.
+- [x] HUD uses shared layout tokens and centered tower shop layout.
+- [x] Level select uses responsive shared layout rules.
+- [x] Layout QA checklist exists.
 - [ ] HUD is readable at common desktop sizes.
 - [ ] HUD is readable on mobile landscape.
 - [x] Tower placement has low accidental-click risk.
@@ -89,6 +93,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Privacy note explains localStorage-only persistence.
 - [x] Changelog or release notes exist.
 - [x] Mobile QA checklist exists.
+- [x] Layout QA checklist exists.
 - [x] Final release QA checklist exists.
 - [x] Deployment status guide exists.
 - [x] Release audit script exists and is included in verify.
@@ -103,6 +108,6 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## Current estimated gap
 
 - Public free-game release: about 0.1% remaining.
-- Market-grade release: about 0.7% remaining.
+- Market-grade release: about 0.6% remaining.
 
 The biggest remaining blockers are actual execution/confirmation tasks: final local verification, GitHub Pages deploy confirmation, final balance confirmation, real screenshots/GIFs, and outside playtest results.
