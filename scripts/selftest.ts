@@ -37,7 +37,9 @@ check('1 star at 1 life', computeStars(1) === 1);
 check('0 stars at 0 lives', computeStars(0) === 0);
 
 // --- Campaign content ---
-check('campaign has at least eight levels', LEVELS.length >= 8);
+check('campaign has at least ten levels', LEVELS.length >= 10);
+check('campaign includes Overdrive Gate', LEVELS.some(level => level.name === 'Overdrive Gate'));
+check('campaign includes Apex Bastion', LEVELS.some(level => level.name === 'Apex Bastion'));
 for (const [i, level] of LEVELS.entries()) {
   check(`level ${i + 1} has waypoints`, level.waypoints.length >= 2);
   check(`level ${i + 1} has spawn tile`, level.tiles.includes(TileType.Spawn));
@@ -184,7 +186,7 @@ save.recordLevelScore(1, 1234);
 check('getStars returns best stars', save.getStars(1) === 2 && save.getStars(2) === 3);
 check('getLevelScore returns best score', save.getLevelScore(1) === 1234);
 check('campaign total stars', save.getTotalStars() === 5);
-check('campaign max stars follows content count', save.getMaxStars() === LEVELS.length * 3 && save.getMaxStars() >= 24);
+check('campaign max stars follows content count', save.getMaxStars() === LEVELS.length * 3 && save.getMaxStars() >= 30);
 check('campaign ratio', Math.abs(save.getCampaignCompletionRatio() - 5 / (LEVELS.length * 3)) < 1e-9);
 save.recordLevelReached(999);
 check('recordLevelReached clamps to max level', save.getUnlockedLevelCount() === LEVELS.length);
