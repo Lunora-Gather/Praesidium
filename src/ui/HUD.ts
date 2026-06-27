@@ -7,6 +7,7 @@ import { getEnemyDef } from '../game/enemies/EnemyRegistry';
 import { Vec2 } from '../engine/math/Vec2';
 import { t } from '../utils/i18n';
 import { enemyName, towerName, traitName as localizedTraitName } from '../utils/displayText';
+import { layoutFor, UI } from './Layout';
 
 export interface HudRegions {
   shop: Array<{ x: number; y: number; w: number; h: number; towerId: string }>;
@@ -19,13 +20,15 @@ export const BOT_H = 72;
 export class HUD {
   draw(r: Renderer, s: GameState, speed = 1, autoSend = false): HudRegions {
     const regions: HudRegions = { shop: [], buttons: [] };
+    const layout = layoutFor(r);
 
     const topGrad = r.linearGradient(0, 0, 0, TOP_H, [
       { offset: 0, color: 'rgba(6, 10, 15, 0.98)' },
-      { offset: 1, color: 'rgba(10, 16, 28, 0.95)' },
+      { offset: 0.72, color: 'rgba(10, 16, 28, 0.96)' },
+      { offset: 1, color: 'rgba(15, 23, 42, 0.92)' },
     ]);
     r.rect(0, 0, r.width, TOP_H, topGrad);
-    r.rect(0, TOP_H - 1, r.width, 1, 'rgba(59,130,246,0.18)');
+    r.rect(0, TOP_H - 1, r.width, 1, 'rgba(96,165,250,0.22)');
 
     const isSmall = r.width < 850;
     const isTiny = r.width < 700;
@@ -36,15 +39,15 @@ export class HUD {
       const valW = Math.max(isSmall ? 22 : 36, val.length * (isSmall ? 7.5 : 10));
       const total = icoW + valW + 4;
       const displayIcon = isSmall ? icon[0] : icon;
-      r.text(displayIcon, x + icoW / 2, TOP_H / 2, '#64748b', 10, 'center', 'bold', 'middle');
+      r.text(displayIcon, x + icoW / 2, TOP_H / 2, UI.color.textDim, 10, 'center', 'bold', 'middle');
       r.text(val,  x + icoW + 2, TOP_H / 2, color, isSmall ? 13 : 16, 'left', 'bold', 'middle', 'header');
       return x + total + (isSmall ? 6 : 12);
     };
 
-    let lx = 12;
-    lx = pill(t('hud.gold'), `${s.gold}`, '#fbbf24', lx);
+    let lx = layout.safe;
+    lx = pill(t('hud.gold'), `${s.gold}`, UI.color.gold, lx);
     const livesCol = s.lives <= 5
-      ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f87171')
+      ? (Math.floor(Date.now() / 400) % 2 === 0 ? UI.color.red : '#f87171')
       : '#34d399';
     lx = pill(t('hud.lives'), `${s.lives}`, livesCol, lx);
     lx = pill(t('hud.wave'), `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399', lx);
@@ -62,20 +65,23 @@ export class HUD {
 
     const btnH = 30;
     const btnY = (TOP_H - btnH) / 2;
-    let bx = r.width - 8;
+    let bx = r.width - layout.safe;
 
     const topBtn = (label: string, active: boolean, color: string, action: string, w = 68): void => {
       bx -= w;
       const bg = active
-        ? r.linearGradient(bx, btnY, bx, btnY + btnH, [{ offset: 0, color }, { offset: 1, color }])
-        : 'rgba(20,30,50,0.8)';
-      const border = active ? color : 'rgba(255,255,255,0.07)';
+        ? r.linearGradient(bx, btnY, bx, btnY + btnH, [{ offset: 0, color }, { offset: 1, color: '#1e293b' }])
+        : r.linearGradient(bx, btnY, bx, btnY + btnH, [
+          { offset: 0, color: 'rgba(30, 41, 59, 0.88)' },
+          { offset: 1, color: 'rgba(15, 23, 42, 0.82)' },
+        ]);
+      const border = active ? color : 'rgba(148,163,184,0.12)';
       if (active) r.setShadow(color, 6);
-      r.roundRect(bx, btnY, w, btnH, 6, bg, true, border, 1);
+      r.roundRect(bx, btnY, w, btnH, 8, bg, true, border, 1);
       r.clearShadow();
       r.text(label, bx + w / 2, btnY + btnH / 2, '#e2e8f0', 11, 'center', 'bold', 'middle');
       regions.buttons.push({ x: bx, y: btnY, w, h: btnH, action });
-      bx -= isTiny ? 4 : 5;
+      bx -= isTiny ? 4 : 6;
     };
 
     const waveInProg = s.waves.inProgress;
@@ -104,7 +110,7 @@ export class HUD {
       const bw = Math.min(240, r.width * 0.42); const bwY = TOP_H - 2;
       const bwX = (r.width - bw) / 2;
       r.roundRect(bwX, bwY, bw, 2, 1, 'rgba(255,255,255,0.06)', true);
-      r.roundRect(bwX, bwY, bw * s.waves.betweenProgress, 2, 1, '#3b82f6', true);
+      r.roundRect(bwX, bwY, bw * s.waves.betweenProgress, 2, 1, UI.color.blue, true);
     }
 
     this.drawWavePreview(r, s, waveInProg, isSmall);
@@ -117,15 +123,16 @@ export class HUD {
     r.rect(0, botY, r.width, BOT_H, botGrad);
     r.rect(0, botY, r.width, 1, 'rgba(59,130,246,0.12)');
 
-    const gap = r.width < 520 ? 6 : 8;
-    const padding = r.width < 520 ? 8 : 12;
+    const gap = r.width < 520 ? 6 : layout.gap;
+    const padding = r.width < 520 ? 8 : layout.safe;
     const availShop = r.width - padding * 2;
     const rawCardW = (availShop - gap * (TOWER_LIST.length - 1)) / TOWER_LIST.length;
     const minCardW = r.width < 520 ? 44 : 80;
     const maxCardW = r.width < 520 ? 66 : 120;
     const cardW = Math.max(minCardW, Math.min(maxCardW, rawCardW));
+    const shopW = cardW * TOWER_LIST.length + gap * (TOWER_LIST.length - 1);
 
-    let sx = padding;
+    let sx = Math.max(padding, (r.width - shopW) / 2);
     for (const def of TOWER_LIST) {
       const selected = s.selectedTowerId === def.id;
       const affordable = s.gold >= def.cost;
@@ -137,14 +144,14 @@ export class HUD {
       let border: string;
       if (selected) {
         bg = r.linearGradient(sx, cardY, sx, cardY + cardH, [
-          { offset: 0, color: 'rgba(59,130,246,0.3)' },
-          { offset: 1, color: 'rgba(37,99,235,0.15)' },
+          { offset: 0, color: 'rgba(59,130,246,0.36)' },
+          { offset: 1, color: 'rgba(37,99,235,0.16)' },
         ]);
-        border = '#3b82f6';
+        border = UI.color.blue;
         r.setShadow('rgba(59,130,246,0.5)', 14);
       } else if (affordable) {
         bg = r.linearGradient(sx, cardY, sx, cardY + cardH, [
-          { offset: 0, color: 'rgba(20,32,56,0.9)' },
+          { offset: 0, color: 'rgba(20,32,56,0.92)' },
           { offset: 1, color: 'rgba(10,16,28,0.9)' },
         ]);
         border = 'rgba(255,255,255,0.12)';
@@ -153,7 +160,7 @@ export class HUD {
         border = 'rgba(255,255,255,0.03)';
       }
 
-      r.roundRect(sx, cardY, cardW, cardH, 8, bg, true, border, selected ? 1.5 : 1);
+      r.roundRect(sx, cardY, cardW, cardH, 10, bg, true, border, selected ? 1.6 : 1);
       r.clearShadow();
 
       const dotX = sx + (cardW < 60 ? cardW / 2 : 12);
@@ -165,15 +172,15 @@ export class HUD {
       const textX = sx + (cardW < 60 ? cardW / 2 : 22);
       if (cardW >= 95) {
         r.text(displayName, textX, cardY + 9, affordable ? '#f1f5f9' : '#475569', 11, 'left', 'bold');
-        r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? '#fbbf24' : '#374151', 10, 'left', 'bold', 'top', 'header');
+        r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? UI.color.gold : '#374151', 10, 'left', 'bold', 'top', 'header');
         const idx = TOWER_LIST.findIndex(d => d.id === def.id) + 1;
         r.text(`[${idx}]`, sx + cardW - 16, cardY + 9, 'rgba(100,116,139,0.7)', 9, 'right', 'normal', 'top', 'header');
       } else if (cardW >= 60) {
         r.text(displayName.slice(0, 4), textX, cardY + cardH / 2 - 6, affordable ? '#f1f5f9' : '#475569', 10, 'left', 'bold');
-        r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? '#fbbf24' : '#374151', 9, 'left', 'bold', 'top', 'header');
+        r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? UI.color.gold : '#374151', 9, 'left', 'bold', 'top', 'header');
       } else {
         r.text(displayName.slice(0, 1), textX, cardY + 26, affordable ? '#f1f5f9' : '#475569', 10, 'center', 'bold');
-        r.text(`${def.cost}`, textX, cardY + 40, affordable ? '#fbbf24' : '#374151', 8, 'center', 'bold', 'top', 'header');
+        r.text(`${def.cost}`, textX, cardY + 40, affordable ? UI.color.gold : '#374151', 8, 'center', 'bold', 'top', 'header');
       }
 
       regions.shop.push({ x: sx, y: cardY, w: cardW, h: cardH, towerId: def.id });
@@ -205,7 +212,7 @@ export class HUD {
     const x = (r.width - w) / 2;
     const y = TOP_H + 8;
 
-    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.82)', true, 'rgba(59, 130, 246, 0.24)', 1);
+    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.84)', true, 'rgba(59, 130, 246, 0.28)', 1);
     r.text(line1, r.width / 2, y + 10, '#bfdbfe', 10, 'center', 'bold', 'top', 'header');
     r.text(line2, r.width / 2, y + 27, '#94a3b8', 9.5, 'center', 'bold', 'top');
   }
