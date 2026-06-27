@@ -18,6 +18,7 @@ import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 import { dailyMissions, evaluateMissions, missionSummary } from '../src/utils/DailyMissions';
 import { buildProductHealth } from '../src/utils/ProductHealth';
 import { weekKey, weeklyMode, weeklyModeSummary } from '../src/utils/WeeklyMode';
+import { classifyBossEncounter } from '../src/utils/BossEncounter';
 
 let pass = 0;
 let fail = 0;
@@ -88,12 +89,16 @@ check('weekly mode deterministic per week', weeklyA.id === weeklyB.id);
 check('weekly mode summary includes reward', weeklyModeSummary(weeklyA).includes('reward'));
 
 // --- Boss encounter variety ---
-const wm = new WaveManager(12);
+const wm = new WaveManager(18);
 const wave6 = wm.waves[5].enemies.filter(group => group.count > 0);
 const wave12 = wm.waves[11].enemies.filter(group => group.count > 0);
+const wave18 = wm.waves[17].enemies.filter(group => group.count > 0);
 check('wave 6 includes boss', wave6.some(group => group.id === 'boss'));
 check('wave 6 boss encounter includes escort enemies', wave6.some(group => group.id !== 'boss' && group.count > 0));
 check('later boss encounter changes composition', wave12.map(group => group.id).join('|') !== wave6.map(group => group.id).join('|'));
+check('boss classifier detects armored escort', classifyBossEncounter(wave6).id === 'armored_escort');
+check('boss classifier detects phantom siege', classifyBossEncounter(wave12).id === 'phantom_siege');
+check('boss classifier detects fast escort', classifyBossEncounter(wave18).id === 'fast_escort');
 
 // --- Product health diagnostics ---
 const health = buildProductHealth({
