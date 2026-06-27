@@ -33,6 +33,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Product health diagnostics can flag balance risks after playtests.
 - [x] Balance review notes template exists for the 10-level campaign.
 - [x] Balance simulation outputs a late-campaign review for levels 9 and 10.
+- [x] Balance simulation outputs actionable tuning notes.
 
 ## 3. First-time player experience
 
@@ -113,11 +114,12 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Layout QA checklist exists.
 - [x] Weekly Mode QA checklist exists.
 - [x] Campaign Expansion QA checklist exists.
+- [x] Capture runbook exists for screenshots and GIFs.
 - [x] Onboarding QA checklist exists.
 - [x] Final release QA checklist exists.
 - [x] Deployment status guide exists.
 - [x] Release audit script exists and is included in verify.
-- [x] Media kit guide exists.
+- [x] Media kit guide exists and reflects the 10-level campaign.
 - [x] Product iteration log exists.
 - [x] Balance review notes template exists.
 - [x] Commercial playtest plan exists.
@@ -130,7 +132,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## Current estimated gap
 
 - Public free-game release: about 0.1% remaining.
-- Market-grade release: about 0.2% remaining.
-- Strong product target: about 94.5% complete.
+- Market-grade release: about 0.15% remaining.
+- Strong product target: about 95% complete.
 
-The biggest remaining blockers are actual execution/confirmation tasks, screenshots/GIFs, outside playtest results, final visual QA, and recorded balance results for the 10-level campaign.
+The biggest remaining blockers are actual execution/confirmation tasks, captured screenshots/GIFs, outside playtest results, final visual QA, and recorded balance results for the 10-level campaign.
