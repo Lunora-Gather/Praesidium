@@ -6,6 +6,7 @@ import { TOWER_LIST, getTowerDef } from '../game/towers/TowerRegistry';
 import { getEnemyDef } from '../game/enemies/EnemyRegistry';
 import { Vec2 } from '../engine/math/Vec2';
 import { t } from '../utils/i18n';
+import { classifyBossEncounter } from '../utils/BossEncounter';
 import { enemyName, towerName, traitName as localizedTraitName } from '../utils/displayText';
 import { layoutFor, UI } from './Layout';
 
@@ -40,7 +41,7 @@ export class HUD {
       const total = icoW + valW + 4;
       const displayIcon = isSmall ? icon[0] : icon;
       r.text(displayIcon, x + icoW / 2, TOP_H / 2, UI.color.textDim, 10, 'center', 'bold', 'middle');
-      r.text(val,  x + icoW + 2, TOP_H / 2, color, isSmall ? 13 : 16, 'left', 'bold', 'middle', 'header');
+      r.text(val, x + icoW + 2, TOP_H / 2, color, isSmall ? 13 : 16, 'left', 'bold', 'middle', 'header');
       return x + total + (isSmall ? 6 : 12);
     };
 
@@ -205,16 +206,24 @@ export class HUD {
     const more = preview.enemies.length > 5 ? ' · …' : '';
     const threats = this.previewThreats(preview.enemies);
     const recommended = this.previewRecommendations(preview.enemies);
-    const line1 = `${t('hud.nextWave')} ${preview.waveNumber}: ${enemyText}${more}`;
-    const line2 = `${t('hud.threats')}: ${threats}  |  ${t('hud.recommended')}: ${recommended}`;
-    const w = Math.min(620, Math.max(420, Math.max(line1.length, line2.length) * 5.7 + 32));
-    const h = 44;
+    const encounter = classifyBossEncounter(preview.enemies);
+    const hasEncounter = encounter.id !== 'none';
+    const line1 = hasEncounter
+      ? `${t('hud.nextWave')} ${preview.waveNumber}: ${encounter.label} · ${enemyText}${more}`
+      : `${t('hud.nextWave')} ${preview.waveNumber}: ${enemyText}${more}`;
+    const line2 = hasEncounter
+      ? `${encounter.advice}  |  ${t('hud.recommended')}: ${recommended}`
+      : `${t('hud.threats')}: ${threats}  |  ${t('hud.recommended')}: ${recommended}`;
+    const w = Math.min(hasEncounter ? 760 : 620, Math.max(420, Math.max(line1.length, line2.length) * 5.7 + 34));
+    const h = hasEncounter ? 52 : 44;
     const x = (r.width - w) / 2;
     const y = TOP_H + 8;
+    const border = hasEncounter ? `${encounter.color}88` : 'rgba(59, 130, 246, 0.28)';
 
-    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.84)', true, 'rgba(59, 130, 246, 0.28)', 1);
-    r.text(line1, r.width / 2, y + 10, '#bfdbfe', 10, 'center', 'bold', 'top', 'header');
-    r.text(line2, r.width / 2, y + 27, '#94a3b8', 9.5, 'center', 'bold', 'top');
+    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.84)', true, border, 1);
+    if (hasEncounter) r.roundRect(x + 8, y + 8, 5, h - 16, 3, encounter.color, true);
+    r.text(line1, r.width / 2, y + 10, hasEncounter ? encounter.color : '#bfdbfe', 10, 'center', 'bold', 'top', 'header');
+    r.text(line2, r.width / 2, y + (hasEncounter ? 31 : 27), '#94a3b8', 9.5, 'center', 'bold', 'top');
   }
 
   private previewThreats(enemies: Array<{ id: string; count: number }>): string {
