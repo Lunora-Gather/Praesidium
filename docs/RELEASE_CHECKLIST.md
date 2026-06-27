@@ -14,6 +14,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 
 - [ ] `npm run verify` passes locally.
 - [x] Deploy workflow runs `npm run verify` before publishing.
+- [x] `npm run release:gate` command exists for final process review.
 - [ ] GitHub Actions deploys without errors.
 - [ ] GitHub Pages opens the latest build.
 - [ ] Hard refresh test confirms no stale cached build.
@@ -115,6 +116,8 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Weekly Mode QA checklist exists.
 - [x] Campaign Expansion QA checklist exists.
 - [x] Capture runbook exists for screenshots and GIFs.
+- [x] Final release process exists.
+- [x] Release gate report template exists.
 - [x] Onboarding QA checklist exists.
 - [x] Final release QA checklist exists.
 - [x] Deployment status guide exists.
@@ -132,7 +135,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## Current estimated gap
 
 - Public free-game release: about 0.1% remaining.
-- Market-grade release: about 0.15% remaining.
-- Strong product target: about 95% complete.
+- Market-grade release: about 0.1% remaining.
+- Strong product target: about 95.5% complete.
 
-The biggest remaining blockers are actual execution/confirmation tasks, captured screenshots/GIFs, outside playtest results, final visual QA, and recorded balance results for the 10-level campaign.
+The biggest remaining blockers are execution/confirmation tasks: latest Actions result, recorded verify output, recorded balance output, captured screenshots/GIFs, outside playtest results, and final release decision.
