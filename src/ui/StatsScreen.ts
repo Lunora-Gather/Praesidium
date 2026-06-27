@@ -1,4 +1,4 @@
-// Stats/Profile screen: shows player analytics data and offline deterministic leaderboards.
+// Stats/Profile screen: shows player analytics data, leaderboards, and product health diagnostics.
 
 import { Renderer } from '../engine/Renderer';
 import { AnalyticsData } from '../utils/Analytics';
@@ -7,11 +7,12 @@ import { SaveSystem } from '../utils/SaveSystem';
 import { getLeaderboard } from '../utils/Leaderboard';
 import { getTowerDef } from '../game/towers/TowerRegistry';
 import { towerName } from '../utils/displayText';
+import { buildProductHealth, type ProductRisk } from '../utils/ProductHealth';
 import { drawGlassPanel, layoutFor, UI } from './Layout';
 
 export class StatsScreen {
   private regions: Array<{ x: number; y: number; w: number; h: number; action: string }> = [];
-  currentTab: 'stats' | 'rankings' = 'stats';
+  currentTab: 'stats' | 'rankings' | 'health' = 'stats';
   selectedBoard: 'level' | 'endless' | 'daily' = 'daily';
   selectedLevelIdx = 0;
 
@@ -33,18 +34,20 @@ export class StatsScreen {
     ]);
     r.text(t('stats.title'), cx, titleY, titleGrad, layout.isCompact ? 23 : 26, 'center', 'bold', 'top', 'header');
 
-    const tabW = layout.isPhone ? 116 : 130;
+    const tabW = layout.isPhone ? 92 : 112;
     const tabH = layout.isCompact ? 25 : 28;
-    const tabGap = layout.gap;
-    const tabStartX = cx - (tabW * 2 + tabGap) / 2;
+    const tabGap = Math.max(6, layout.gap - 2);
+    const tabStartX = cx - (tabW * 3 + tabGap * 2) / 2;
     const tabY = titleY + (layout.isCompact ? 34 : 38);
 
     this.drawTab(r, tabStartX, tabY, tabW, tabH, t('stats.statistics'), this.currentTab === 'stats', 'tab_stats');
     this.drawTab(r, tabStartX + tabW + tabGap, tabY, tabW, tabH, t('stats.rankings'), this.currentTab === 'rankings', 'tab_rankings');
+    this.drawTab(r, tabStartX + (tabW + tabGap) * 2, tabY, tabW, tabH, 'Health', this.currentTab === 'health', 'tab_health');
 
     const startY = tabY + tabH + (layout.isCompact ? 12 : 18);
     if (this.currentTab === 'stats') this.drawStatsTab(r, data, startY);
-    else this.drawRankingsTab(r, save, startY);
+    else if (this.currentTab === 'rankings') this.drawRankingsTab(r, save, startY);
+    else this.drawHealthTab(r, data, startY);
   }
 
   private drawTab(r: Renderer, x: number, y: number, w: number, h: number, label: string, selected: boolean, action: string): void {
@@ -53,7 +56,7 @@ export class StatsScreen {
       : 'rgba(30, 41, 59, 0.7)';
     const border = selected ? UI.color.blue : 'rgba(255, 255, 255, 0.08)';
     r.roundRect(x, y, w, h, h / 2, bg, true, border, 1);
-    r.text(label.toUpperCase(), x + w / 2, y + h / 2, '#ffffff', 10, 'center', 'bold', 'middle', 'header');
+    r.text(label.toUpperCase(), x + w / 2, y + h / 2, '#ffffff', w < 100 ? 8 : 10, 'center', 'bold', 'middle', 'header');
     this.regions.push({ x, y, w, h, action });
   }
 
@@ -100,6 +103,60 @@ export class StatsScreen {
     const rows = Math.ceil(cards.length / colCount);
     const btnY = startY + rows * (cardH + gap) + (layout.isCompact ? 0 : 4);
     this.drawCloseButton(r, Math.min(btnY, r.height - 52), 'menu', t('common.menu'));
+  }
+
+  private drawHealthTab(r: Renderer, data: Readonly<AnalyticsData>, startY: number): void {
+    const layout = layoutFor(r);
+    const cx = r.width / 2;
+    const health = buildProductHealth(data);
+    const gap = layout.gap;
+    const panelW = Math.min(layout.panelW, 640);
+    const panelX = cx - panelW / 2;
+    const scoreCols = r.width >= 620 ? 2 : 1;
+    const scoreW = (panelW - gap * (scoreCols - 1)) / scoreCols;
+    const scoreH = layout.isCompact ? 82 : 94;
+
+    this.drawScoreCard(r, panelX, startY, scoreW, scoreH, 'Retention', health.retentionScore, this.scoreColor(health.retentionScore), 'Return days + session length');
+    const balanceX = scoreCols === 2 ? panelX + scoreW + gap : panelX;
+    const balanceY = scoreCols === 2 ? startY : startY + scoreH + gap;
+    this.drawScoreCard(r, balanceX, balanceY, scoreW, scoreH, 'Balance', health.balanceScore, this.scoreColor(health.balanceScore), 'Win-rate target fit');
+
+    const riskY = startY + (scoreCols === 2 ? scoreH + gap : scoreH * 2 + gap * 2);
+    const riskH = Math.min(250, r.height - riskY - 76);
+    this.drawRiskPanel(r, panelX, riskY, panelW, Math.max(150, riskH), health.risks);
+    this.drawCloseButton(r, Math.min(riskY + riskH + 12, r.height - 52), 'close', t('common.back'));
+  }
+
+  private drawScoreCard(r: Renderer, x: number, y: number, w: number, h: number, title: string, score: number, color: string, subtitle: string): void {
+    drawGlassPanel(r, x, y, w, h, 12, color, 0.88);
+    r.text(title.toUpperCase(), x + 16, y + 12, UI.color.textMuted, 10, 'left', 'bold', 'top', 'header');
+    r.text(`${score}`, x + w - 18, y + 14, color, 30, 'right', 'bold', 'top', 'header');
+    r.text('/100', x + w - 16, y + 47, UI.color.textDim, 10, 'right', 'bold', 'top', 'header');
+    r.text(subtitle, x + 16, y + h - 24, UI.color.text, 11, 'left', 'bold');
+  }
+
+  private drawRiskPanel(r: Renderer, x: number, y: number, w: number, h: number, risks: ProductRisk[]): void {
+    drawGlassPanel(r, x, y, w, h, 12, risks.length > 0 ? '#f59e0b' : UI.color.green, 0.88);
+    r.text('PRODUCT RISKS', x + 16, y + 12, UI.color.textMuted, 10, 'left', 'bold', 'top', 'header');
+    r.text(`${risks.length}`, x + w - 16, y + 12, risks.length > 0 ? UI.color.gold : UI.color.green, 12, 'right', 'bold', 'top', 'header');
+
+    if (risks.length === 0) {
+      r.text('No major risks detected yet. Gather more outside playtest data to confirm.', x + 16, y + 52, UI.color.text, 12, 'left', 'bold');
+      r.text('Tip: run at least 5–10 sessions before treating this score as meaningful.', x + 16, y + 78, UI.color.textDim, 10, 'left', 'normal');
+      return;
+    }
+
+    const visible = risks.slice(0, Math.max(3, Math.floor((h - 44) / 38)));
+    let rowY = y + 38;
+    for (const item of visible) {
+      const color = this.riskColor(item.level);
+      r.roundRect(x + 12, rowY, w - 24, 32, 8, 'rgba(15, 23, 42, 0.68)', true, 'rgba(148, 163, 184, 0.08)', 1);
+      r.roundRect(x + 12, rowY, 4, 32, 2, color, true);
+      r.text(item.level.toUpperCase(), x + 24, rowY + 6, color, 8, 'left', 'bold', 'top', 'header');
+      r.text(this.truncate(item.title, w > 520 ? 48 : 32), x + 86, rowY + 5, UI.color.text, 11, 'left', 'bold', 'top');
+      r.text(this.truncate(item.detail, w > 520 ? 74 : 44), x + 86, rowY + 19, UI.color.textDim, 8.5, 'left', 'normal', 'top');
+      rowY += 38;
+    }
   }
 
   private drawSessionRows(r: Renderer, x: number, y: number, w: number, h: number, rows: Array<[string, string]>): void {
@@ -251,6 +308,22 @@ export class StatsScreen {
     return t('stats.leaderboard.daily');
   }
 
+  private scoreColor(score: number): string {
+    if (score >= 75) return UI.color.green;
+    if (score >= 50) return UI.color.gold;
+    return UI.color.red;
+  }
+
+  private riskColor(level: ProductRisk['level']): string {
+    if (level === 'high') return UI.color.red;
+    if (level === 'medium') return UI.color.gold;
+    return UI.color.green;
+  }
+
+  private truncate(text: string, max: number): string {
+    return text.length <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;
+  }
+
   hit(x: number, y: number): string | null {
     for (const b of this.regions) if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b.action;
     return null;
@@ -259,6 +332,7 @@ export class StatsScreen {
   apply(action: string): void {
     if (action === 'tab_stats') this.currentTab = 'stats';
     else if (action === 'tab_rankings') this.currentTab = 'rankings';
+    else if (action === 'tab_health') this.currentTab = 'health';
     else if (action === 'board_endless') this.selectedBoard = 'endless';
     else if (action === 'board_daily') this.selectedBoard = 'daily';
     else if (action.startsWith('level_')) {
