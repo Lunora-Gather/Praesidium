@@ -34,7 +34,7 @@ Praesidium is playable on desktop first, but public release should still pass a 
 - [ ] Tower shop cards do not overlap spell buttons.
 - [ ] Spell buttons are large enough and show cooldown/ready state.
 
-### Tower interaction
+### Tower drawer interaction
 
 - [ ] Selecting a placed tower opens the bottom drawer on phone-sized screens.
 - [ ] Upgrade and Sell buttons are large enough to tap.
@@ -57,7 +57,7 @@ Praesidium is playable on desktop first, but public release should still pass a 
 
 ## Current mobile polish status
 
-- Mobile tower drawer: implemented.
+- Mobile Tower drawer: implemented.
 - Compact main menu: implemented.
 - Compact victory/defeat screens: implemented.
 - Remaining risk: HUD density on very small landscape screens.

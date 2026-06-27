@@ -77,7 +77,7 @@ check('verify runs production build', !!pkg.scripts?.verify?.includes('build'));
 check('deploy workflow runs npm ci', contains('.github/workflows/deploy.yml', 'npm ci'));
 check('deploy workflow runs verify before publish', contains('.github/workflows/deploy.yml', 'npm run verify'));
 check('deploy workflow publishes dist', contains('.github/workflows/deploy.yml', 'publish_dir: ./dist'));
-check('deploy workflow uses Node 20', contains('.github/workflows/deploy.yml', 'node-version: 20'));
+check('deploy workflow uses Node 24', contains('.github/workflows/deploy.yml', 'node-version: 24'));
 
 // HTML metadata
 const html = read('index.html');
