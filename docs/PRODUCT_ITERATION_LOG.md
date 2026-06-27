@@ -27,18 +27,19 @@ The current phase is about player retention, replay motivation, and measurable f
 - Added product health diagnostics from local analytics.
 - Product health can flag risks such as weak return signal, short sessions, low win rate, high win rate, early churn, low tower usage, and dominant tower usage.
 - Added selftests for product health risk generation.
+- Added a visible Health tab inside the Stats screen with retention score, balance score, and risk list.
 
 ## Next integration targets
 
-1. Display product health diagnostics inside Stats or a QA-only panel.
-2. Connect RunAdvice to the defeat screen with specific retry advice.
-3. Add a weekly challenge rule set after daily missions are visible.
-4. Expand boss mechanics and campaign content depth.
-5. Add screenshots or GIFs after the next stable deploy.
+1. Connect RunAdvice to the defeat screen with specific retry advice.
+2. Add a weekly challenge rule set after daily missions are visible.
+3. Expand boss mechanics and campaign content depth.
+4. Add screenshots or GIFs after the next stable deploy.
+5. Run outside playtests and tune from the Health tab risks.
 
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 79%.
+- Strong product target: about 80%.
 
-The remaining gap is mostly gameplay depth, visible diagnostic feedback, more content, stronger boss mechanics, public-facing media, and outside playtest iteration.
+The remaining gap is mostly gameplay depth, stronger boss mechanics, more campaign content, public-facing media, and outside playtest iteration.
