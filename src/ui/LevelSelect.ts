@@ -6,6 +6,7 @@ import { SaveSystem } from '../utils/SaveSystem';
 import { Difficulty, DIFFICULTY_LIST } from '../config/Difficulty';
 import { getLocale, t } from '../utils/i18n';
 import { getLevelTheme } from './LevelThemes';
+import { cardColumns, layoutFor, UI } from './Layout';
 
 export type LevelSelectAction = { kind: 'level'; index: number } | { kind: 'back' } | { kind: 'diff'; diff: Difficulty };
 
@@ -20,6 +21,7 @@ export class LevelSelect {
 
   draw(r: Renderer): void {
     this.regions = [];
+    const layout = layoutFor(r);
 
     const bgGrad = r.linearGradient(0, 0, 0, r.height, [
       { offset: 0, color: '#090d16' },
@@ -29,7 +31,9 @@ export class LevelSelect {
     r.rect(0, 0, r.width, r.height, bgGrad);
 
     const cx = r.width / 2;
-    const isSmall = r.width < 760;
+    const isSmall = layout.isPhone;
+    const isCompact = layout.isCompact;
+    const titleY = isSmall ? 18 : 28;
 
     const titleGrad = r.linearGradient(cx - 120, 34, cx + 120, 34, [
       { offset: 0, color: '#60a5fa' },
@@ -37,7 +41,7 @@ export class LevelSelect {
       { offset: 1, color: '#3b82f6' }
     ]);
     r.setShadow('rgba(59, 130, 246, 0.3)', 12, 0, 0);
-    r.text(t('level.select'), cx, isSmall ? 18 : 28, titleGrad, isSmall ? 24 : 30, 'center', 'bold', 'top', 'header');
+    r.text(t('level.select'), cx, titleY, titleGrad, isSmall ? 24 : 30, 'center', 'bold', 'top', 'header');
     r.clearShadow();
 
     const progressY = isSmall ? 54 : 70;
@@ -45,14 +49,17 @@ export class LevelSelect {
     this.drawDifficultyPicker(r, cx, progressY + (isSmall ? 42 : 50), isSmall);
 
     const total = this.levels.total;
-    const cols = isSmall ? 2 : Math.min(3, total);
-    const gap = isSmall ? 10 : 16;
-    const cardW = Math.min(isSmall ? 166 : 218, Math.floor((r.width - 32 - gap * (cols - 1)) / cols));
-    const cardH = isSmall ? 118 : 138;
+    const gap = isSmall ? layout.gap : layout.cardGap;
+    const cols = isSmall ? 2 : cardColumns(r, total, 218, 176, layout.safe, gap);
     const rows = Math.ceil(total / cols);
+    const startY = progressY + (isSmall ? 88 : 104);
+    const backArea = isCompact ? 48 : 60;
+    const availableH = Math.max(250, r.height - startY - backArea);
+    const idealCardH = isSmall ? 118 : 138;
+    const cardH = Math.max(isSmall ? 104 : 122, Math.min(idealCardH, Math.floor((availableH - gap * (rows - 1)) / rows)));
+    const cardW = Math.min(isSmall ? 166 : 218, Math.floor((r.width - layout.safe * 2 - gap * (cols - 1)) / cols));
     const totalW = cols * cardW + (cols - 1) * gap;
     const startX = cx - totalW / 2;
-    const startY = progressY + (isSmall ? 88 : 104);
     const nextIndex = this.nextPlayableIndex();
 
     for (let i = 0; i < total; i++) {
@@ -60,11 +67,11 @@ export class LevelSelect {
       const row = Math.floor(i / cols);
       const x = startX + col * (cardW + gap);
       const y = startY + row * (cardH + gap);
-      this.drawLevelCard(r, x, y, cardW, cardH, i, i === nextIndex, isSmall);
+      this.drawLevelCard(r, x, y, cardW, cardH, i, i === nextIndex, isSmall, isCompact);
     }
 
-    const btnY = Math.min(r.height - 48, startY + rows * (cardH + gap) + 12);
-    this.drawBackButton(r, cx, btnY);
+    const btnY = Math.min(r.height - 44, startY + rows * (cardH + gap) + (isCompact ? 8 : 12));
+    this.drawBackButton(r, cx, btnY, isCompact);
   }
 
   private drawCampaignProgress(r: Renderer, cx: number, y: number, isSmall: boolean): void {
@@ -77,15 +84,15 @@ export class LevelSelect {
     const h = isSmall ? 30 : 36;
     const x = cx - w / 2;
 
-    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.72)', true, 'rgba(148, 163, 184, 0.12)', 1);
-    r.text(`★ ${stars}/${maxStars}`, x + 16, y + h / 2, '#fbbf24', isSmall ? 11 : 13, 'left', 'bold', 'middle', 'header');
+    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.72)', true, UI.color.stroke, 1);
+    r.text(`★ ${stars}/${maxStars}`, x + 16, y + h / 2, UI.color.gold, isSmall ? 11 : 13, 'left', 'bold', 'middle', 'header');
     r.text(`${t('level.level')} ${unlocked}/${total}`, cx, y + h / 2, '#cbd5e1', isSmall ? 11 : 13, 'center', 'bold', 'middle', 'header');
     r.text(`${Math.round(ratio * 100)}%`, x + w - 16, y + h / 2, '#60a5fa', isSmall ? 11 : 13, 'right', 'bold', 'middle', 'header');
 
     const barW = w - 28;
     const barY = y + h + 6;
     r.roundRect(x + 14, barY, barW, 4, 2, 'rgba(30, 41, 59, 0.9)', true);
-    r.roundRect(x + 14, barY, Math.max(4, barW * ratio), 4, 2, '#3b82f6', true);
+    r.roundRect(x + 14, barY, Math.max(4, barW * ratio), 4, 2, UI.color.blue, true);
   }
 
   private drawDifficultyPicker(r: Renderer, cx: number, y: number, isSmall: boolean): void {
@@ -114,7 +121,7 @@ export class LevelSelect {
     if (current && !isSmall) r.text(this.difficultyDescription(current.id), cx, y + diffH + 12, '#64748b', 11, 'center', 'bold', 'top');
   }
 
-  private drawLevelCard(r: Renderer, x: number, y: number, w: number, h: number, index: number, isRecommended: boolean, isSmall: boolean): void {
+  private drawLevelCard(r: Renderer, x: number, y: number, w: number, h: number, index: number, isRecommended: boolean, isSmall: boolean, isCompact: boolean): void {
     const levelNumber = index + 1;
     const theme = getLevelTheme(levelNumber);
     const unlocked = this.save.isLevelUnlocked(levelNumber);
@@ -138,7 +145,8 @@ export class LevelSelect {
     r.clearShadow();
     r.roundRect(x, y, 4, h, 2, accent, true);
 
-    this.drawMiniRoute(r, x + 12, y + h - (isSmall ? 34 : 38), w - 24, isSmall ? 22 : 26, theme.accent, unlocked ? 0.42 : 0.16);
+    const routeH = isCompact ? 18 : isSmall ? 22 : 26;
+    this.drawMiniRoute(r, x + 12, y + h - routeH - 12, w - 24, routeH, theme.accent, unlocked ? 0.42 : 0.16);
 
     if (isRecommended && unlocked) {
       const badgeW = isSmall ? 58 : 72;
@@ -148,19 +156,19 @@ export class LevelSelect {
 
     r.text(`${t('level.level')} ${levelNumber}`, x + 16, y + 12, unlocked ? '#94a3b8' : '#475569', isSmall ? 9 : 10, 'left', 'bold', 'top', 'header');
     r.text(levelName, x + 16, y + 32, unlocked ? '#f8fafc' : '#64748b', isSmall ? 13 : 15, 'left', 'bold', 'top', 'header');
-    if (!isSmall) r.text(theme.name, x + 16, y + 52, unlocked ? theme.accent : '#475569', 9, 'left', 'bold', 'top', 'header');
+    if (!isSmall && h >= 132) r.text(theme.name, x + 16, y + 52, unlocked ? theme.accent : '#475569', 9, 'left', 'bold', 'top', 'header');
 
-    const starY = y + (isSmall ? 57 : 70);
+    const starY = y + (isCompact ? 52 : isSmall ? 57 : 70);
     r.setShadow('rgba(251, 191, 36, 0.24)', 6, 0, 0);
     for (let s = 0; s < 3; s++) {
       const starX = x + 17 + s * (isSmall ? 20 : 24);
       const active = s < stars;
-      r.text(active ? '★' : '☆', starX, starY, active ? '#fbbf24' : '#475569', isSmall ? 17 : 20, 'left', 'normal', 'top', 'header');
+      r.text(active ? '★' : '☆', starX, starY, active ? UI.color.gold : '#475569', isSmall ? 17 : 20, 'left', 'normal', 'top', 'header');
     }
     r.clearShadow();
 
     const scoreLabel = score > 0 ? `${t('hud.score')} ${score.toLocaleString()}` : `${t('hud.score')} —`;
-    r.text(scoreLabel, x + 16, y + (isSmall ? 86 : 101), unlocked ? '#cbd5e1' : '#475569', isSmall ? 10 : 11, 'left', 'bold', 'top', 'header');
+    r.text(scoreLabel, x + 16, y + h - 38, unlocked ? '#cbd5e1' : '#475569', isSmall ? 10 : 11, 'left', 'bold', 'top', 'header');
 
     if (unlocked) {
       const actionText = completed ? t('menu.playAgain') : t('level.clickToPlay');
@@ -190,16 +198,16 @@ export class LevelSelect {
     r.ctx.restore();
   }
 
-  private drawBackButton(r: Renderer, cx: number, y: number): void {
-    const bw = 180;
-    const bh = 36;
+  private drawBackButton(r: Renderer, cx: number, y: number, compact: boolean): void {
+    const bw = compact ? 156 : 180;
+    const bh = compact ? 32 : 36;
     const bx = cx - bw / 2;
     const backBtnGrad = r.linearGradient(bx, y, bx, y + bh, [
       { offset: 0, color: '#475569' },
       { offset: 1, color: '#1e293b' }
     ]);
     r.roundRect(bx, y, bw, bh, 9, backBtnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text(t('common.menu'), cx, y + bh / 2, '#ffffff', 13, 'center', 'bold', 'middle');
+    r.text(t('common.menu'), cx, y + bh / 2, '#ffffff', compact ? 12 : 13, 'center', 'bold', 'middle');
     this.regions.push({ x: bx, y, w: bw, h: bh, action: { kind: 'back' } });
   }
 
