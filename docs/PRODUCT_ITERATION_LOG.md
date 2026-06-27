@@ -40,11 +40,14 @@ The current phase is about player retention, replay motivation, measurable feedb
 - Added `docs/CONTENT_EXPANSION_PLAN.md` with boss patterns, campaign expansion sequence, weekly mode integration targets, and acceptance criteria.
 - Diversified boss encounters so boss waves rotate between fast escort, armored escort, and phantom/siege escort compositions.
 - Added selftest and release-audit coverage for boss encounter variety.
+- Added a boss encounter classifier so the game can label boss pressure types consistently.
+- HUD next-wave preview now labels boss pressure as FAST ESCORT, ARMORED ESCORT, or PHANTOM SIEGE with encounter-specific advice.
+- Added selftest coverage for the boss encounter classifier.
 
 ## Next integration targets
 
 1. Make weekly mode visible in the main menu after the daily mission panel is stable.
-2. Add clearer boss encounter labels to HUD preview and boss warning.
+2. Add matching boss encounter label to the active boss warning banner.
 3. Expand campaign content depth with additional levels.
 4. Add screenshots or GIFs after the next stable deploy.
 5. Run outside playtests and tune from the Health tab risks.
@@ -52,6 +55,6 @@ The current phase is about player retention, replay motivation, measurable feedb
 ## Progress estimate
 
 - Free public release: about 99.9%.
-- Strong product target: about 84%.
+- Strong product target: about 85.5%.
 
-The remaining gap is mostly clearer boss presentation, more campaign content, public-facing media, and outside playtest iteration.
+The remaining gap is mostly active boss-warning polish, visible weekly mode, more campaign content, public-facing media, and outside playtest iteration.
