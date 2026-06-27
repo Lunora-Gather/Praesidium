@@ -142,6 +142,36 @@ const LEVEL_8: LevelDef = {
   ],
 };
 
+// Level 9: Overdrive Gate — speed pressure and boss-preparation coverage check
+const LEVEL_9: LevelDef = {
+  name: 'Overdrive Gate',
+  cols: COLS,
+  rows: ROWS,
+  tiles: makeTiles(COLS, ROWS, walkPath([
+    [1, 10], [6, 10], [6, 7], [2, 7], [2, 2], [8, 2], [8, 5], [13, 5], [13, 9], [10, 9], [10, 3], [14, 3],
+  ])),
+  waypoints: [
+    { x: 1, y: 10 }, { x: 6, y: 10 }, { x: 6, y: 7 }, { x: 2, y: 7 },
+    { x: 2, y: 2 }, { x: 8, y: 2 }, { x: 8, y: 5 }, { x: 13, y: 5 },
+    { x: 13, y: 9 }, { x: 10, y: 9 }, { x: 10, y: 3 }, { x: 14, y: 3 },
+  ],
+};
+
+// Level 10: Apex Bastion — final campaign gate with long-range and boss pressure
+const LEVEL_10: LevelDef = {
+  name: 'Apex Bastion',
+  cols: COLS,
+  rows: ROWS,
+  tiles: makeTiles(COLS, ROWS, walkPath([
+    [1, 6], [4, 6], [4, 2], [12, 2], [12, 10], [3, 10], [3, 4], [8, 4], [8, 8], [14, 8], [14, 5],
+  ])),
+  waypoints: [
+    { x: 1, y: 6 }, { x: 4, y: 6 }, { x: 4, y: 2 }, { x: 12, y: 2 },
+    { x: 12, y: 10 }, { x: 3, y: 10 }, { x: 3, y: 4 }, { x: 8, y: 4 },
+    { x: 8, y: 8 }, { x: 14, y: 8 }, { x: 14, y: 5 },
+  ],
+};
+
 function markSpawnGoal(def: LevelDef): void {
   const first = def.waypoints[0];
   const last = def.waypoints[def.waypoints.length - 1];
@@ -155,8 +185,10 @@ markSpawnGoal(LEVEL_5);
 markSpawnGoal(LEVEL_6);
 markSpawnGoal(LEVEL_7);
 markSpawnGoal(LEVEL_8);
+markSpawnGoal(LEVEL_9);
+markSpawnGoal(LEVEL_10);
 
-export const LEVELS: LevelDef[] = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6, LEVEL_7, LEVEL_8];
+export const LEVELS: LevelDef[] = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6, LEVEL_7, LEVEL_8, LEVEL_9, LEVEL_10];
 
 export class LevelManager {
   private index = 0;
