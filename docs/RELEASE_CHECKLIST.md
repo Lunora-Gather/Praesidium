@@ -30,6 +30,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [ ] No tower is completely unused across balance simulations.
 - [x] Boss waves have a warning cue.
 - [ ] Endless mode reaches a clear pressure curve before collapse.
+- [x] Product health diagnostics can flag balance risks after playtests.
 
 ## 3. First-time player experience
 
@@ -40,6 +41,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Wave preview / Intel Codex are discoverable.
 - [x] Victory screen gives a clear next action.
 - [x] Defeat screen gives a useful recovery path.
+- [x] RunAdvice helper exists for future specific retry advice.
 - [x] Onboarding QA checklist exists.
 
 ## 4. UI and mobile polish
@@ -79,6 +81,9 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [ ] Unlock progression persists correctly.
 - [ ] Talent points feel meaningful.
 - [ ] Achievements are understandable and rewarding.
+- [x] Daily mission generation exists.
+- [x] Daily mission progress evaluation exists.
+- [ ] Daily missions are visible in the UI.
 - [ ] Daily challenge has a clear reason to return.
 - [ ] Challenge seed sharing is easy to understand.
 
@@ -107,6 +112,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Deployment status guide exists.
 - [x] Release audit script exists and is included in verify.
 - [x] Media kit guide exists.
+- [x] Product iteration log exists.
 - [x] Commercial playtest plan exists.
 - [x] Playtest results summary template exists.
 - [x] Bug and playtest issue templates exist.
@@ -117,6 +123,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## Current estimated gap
 
 - Public free-game release: about 0.1% remaining.
-- Market-grade release: about 0.35% remaining.
+- Market-grade release: about 0.3% remaining.
+- Strong product target: about 77% complete.
 
-The biggest remaining blockers are actual execution/confirmation tasks: final local verification, GitHub Pages deploy confirmation, final balance confirmation, real screenshots/GIFs, outside playtest results, final visual QA across the layout checklist, and first-run QA with outside players.
+The biggest remaining blockers are actual execution/confirmation tasks, UI visibility for retention loops, stronger boss mechanics, more content depth, screenshots/GIFs, outside playtest results, and final visual QA.
