@@ -1,6 +1,6 @@
 // Deterministic-ish balance simulation: runs simple bot strategies across levels/difficulties.
 // It is not a replacement for playtesting; it is a regression alarm for impossible levels,
-// runaway difficulty spikes, and obvious tower under/over-use.
+// runaway difficulty spikes, obvious tower under/over-use, and late-campaign blockers.
 
 const store: Record<string, string> = {};
 (globalThis as any).localStorage = {
@@ -19,6 +19,7 @@ type BotPlanId = 'balanced' | 'antiFast' | 'antiBoss';
 
 interface SimResult {
   level: number;
+  levelName: string;
   difficulty: Difficulty;
   plan: BotPlanId;
   won: boolean;
@@ -44,6 +45,7 @@ const BOT_PLANS: Record<BotPlanId, string[]> = {
 const DT = 1 / 30;
 const MAX_SECONDS = 420;
 const THINK_INTERVAL = 0.35;
+const LATE_CAMPAIGN_START = 9;
 
 function buildableSites(state: GameState): Array<{ tx: number; ty: number; score: number }> {
   const waypoints = state.grid.waypoints;
@@ -155,6 +157,7 @@ function simulate(levelIndex: number, difficulty: Difficulty, plan: BotPlanId): 
   const stats = state.stats.get();
   return {
     level: levelIndex + 1,
+    levelName: LEVELS[levelIndex]?.name ?? `Level ${levelIndex + 1}`,
     difficulty,
     plan,
     won: state.phase === 'won',
@@ -184,7 +187,64 @@ function bestByLevelAndDifficulty(results: SimResult[]): SimResult[] {
   return [...groups.values()].sort((a, b) => a.level - b.level || DIFFICULTY_LIST.findIndex(d => d.id === a.difficulty) - DIFFICULTY_LIST.findIndex(d => d.id === b.difficulty));
 }
 
-function summarize(results: SimResult[]): void {
+function resultLine(r: SimResult): string {
+  const mark = r.won ? 'WIN ' : 'LOSS';
+  return `${mark} L${String(r.level).padStart(2, '0')} ${r.levelName.padEnd(16)} ${r.difficulty.padEnd(6)} via ${r.plan.padEnd(8)} | stars=${r.stars} lives=${r.lives} wave=${r.wave} score=${r.score} kills=${r.kills} towers=${r.towers} upgrades=${r.upgrades}`;
+}
+
+function towerTotalsFor(results: SimResult[]): Map<string, number> {
+  const towerTotals = new Map<string, number>();
+  for (const r of results) {
+    for (const [id, count] of Object.entries(r.build)) towerTotals.set(id, (towerTotals.get(id) ?? 0) + count);
+  }
+  return towerTotals;
+}
+
+function printTowerDistribution(results: SimResult[], title: string): void {
+  const totals = towerTotalsFor(results);
+  console.log(`\n${title}`);
+  for (const [id, count] of [...totals.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`- ${id.padEnd(7)} ${count}`);
+  }
+}
+
+function lateCampaignReview(best: SimResult[], allResults: SimResult[]): string[] {
+  const risks: string[] = [];
+  const lateBest = best.filter(r => r.level >= LATE_CAMPAIGN_START);
+  const normalLate = lateBest.filter(r => r.difficulty === 'normal');
+  const level9 = normalLate.find(r => r.level === 9);
+  const level10 = normalLate.find(r => r.level === 10);
+
+  console.log('\n=== Late Campaign Review ===');
+  if (normalLate.length === 0) {
+    console.log('No late-campaign normal results found.');
+    risks.push('late-campaign results missing');
+  } else {
+    for (const r of normalLate) console.log(resultLine(r));
+  }
+
+  if (!level9) risks.push('level 9 result missing');
+  else if (!level9.won && level9.wave <= 2) risks.push('level 9 collapses before meaningful speed-pressure learning');
+
+  if (!level10) risks.push('level 10 result missing');
+  else if (!level10.won && level10.wave <= 2) risks.push('level 10 collapses before final-gate strategy emerges');
+
+  const lateAll = allResults.filter(r => r.level >= LATE_CAMPAIGN_START);
+  const lateTowerTotals = towerTotalsFor(lateAll);
+  const usedLateTowers = [...lateTowerTotals.values()].filter(count => count > 0).length;
+  if (usedLateTowers < Math.min(4, TOWER_LIST.length)) risks.push('late-campaign simulations use too few tower types');
+
+  printTowerDistribution(lateAll, 'Late-campaign tower distribution:');
+
+  if (risks.length === 0) console.log('\n✓ No late-campaign automation red flags detected.');
+  else {
+    console.log('\n⚠ Late-campaign review flags:');
+    for (const risk of risks) console.log(`- ${risk}`);
+  }
+  return risks;
+}
+
+function summarize(results: SimResult[]): string[] {
   const best = bestByLevelAndDifficulty(results);
   const normal = best.filter(r => r.difficulty === 'normal');
   const hard = best.filter(r => r.difficulty === 'hard');
@@ -200,27 +260,21 @@ function summarize(results: SimResult[]): void {
   console.log(`Brutal win-rate: ${(winRate(brutal) * 100).toFixed(0)}% | avg stars ${avgStars(brutal).toFixed(2)}`);
 
   console.log('\nBest result by level/difficulty:');
-  for (const r of best) {
-    const mark = r.won ? 'WIN ' : 'LOSS';
-    console.log(`${mark} L${r.level} ${r.difficulty.padEnd(6)} via ${r.plan.padEnd(8)} | stars=${r.stars} lives=${r.lives} wave=${r.wave} score=${r.score} kills=${r.kills} towers=${r.towers} upgrades=${r.upgrades}`);
-  }
+  for (const r of best) console.log(resultLine(r));
 
+  const risks: string[] = [];
   const weakSpots = best.filter(r => r.difficulty === 'normal' && !r.won);
   if (weakSpots.length > 0) {
     console.log('\n⚠ Normal-mode blockers detected:');
-    for (const r of weakSpots) console.log(`- Level ${r.level} failed best bot plan at wave ${r.wave}.`);
+    for (const r of weakSpots) console.log(`- Level ${r.level} (${r.levelName}) failed best bot plan at wave ${r.wave}.`);
   } else {
     console.log('\n✓ No normal-mode blockers detected by the simple bot.');
   }
 
-  const towerTotals = new Map<string, number>();
-  for (const r of results) {
-    for (const [id, count] of Object.entries(r.build)) towerTotals.set(id, (towerTotals.get(id) ?? 0) + count);
-  }
-  console.log('\nTower placement distribution across all simulations:');
-  for (const [id, count] of [...towerTotals.entries()].sort((a, b) => b[1] - a[1])) {
-    console.log(`- ${id.padEnd(7)} ${count}`);
-  }
+  printTowerDistribution(results, 'Tower placement distribution across all simulations:');
+
+  risks.push(...lateCampaignReview(best, results));
+  return risks;
 }
 
 const results: SimResult[] = [];
@@ -232,10 +286,15 @@ for (let levelIndex = 0; levelIndex < LEVELS.length; levelIndex++) {
   }
 }
 
-summarize(results);
+const risks = summarize(results);
 
 const normalBest = bestByLevelAndDifficulty(results).filter(r => r.difficulty === 'normal');
 if (normalBest.some(r => r.wave <= 1 && !r.won)) {
   console.error('\nBalance sim failed: a normal-mode level collapses before completing wave 1.');
+  process.exit(1);
+}
+
+if (risks.some(risk => risk.includes('result missing'))) {
+  console.error('\nBalance sim failed: required late-campaign review result is missing.');
   process.exit(1);
 }
