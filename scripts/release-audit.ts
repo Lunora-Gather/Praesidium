@@ -160,6 +160,9 @@ check('stats screen uses shared layout tokens', contains('src/ui/StatsScreen.ts'
 check('stats screen exposes product health tab', contains('src/ui/StatsScreen.ts', "tab_health") && contains('src/ui/StatsScreen.ts', 'buildProductHealth'));
 check('daily mission panel exists', fileExists('src/ui/DailyMissionPanel.ts'));
 check('daily mission progress can render after runs', contains('src/ui/DailyMissionPanel.ts', 'drawProgress'));
+check('weekly mode system exists', fileExists('src/utils/WeeklyMode.ts') && contains('src/utils/WeeklyMode.ts', 'weeklyMode'));
+check('run advice supports summary advice', contains('src/utils/RunAdvice.ts', 'buildDefeatAdviceFromSummary'));
+check('defeat screen uses run advice', contains('src/ui/Screens.ts', 'buildDefeatAdviceFromSummary'));
 check('talent panel uses shared layout tokens', contains('src/ui/TalentPanel.ts', 'layoutFor'));
 check('codex screen uses shared layout tokens', contains('src/ui/CodexScreen.ts', 'layoutFor'));
 check('tower panel uses shared layout tokens', contains('src/ui/TowerPanel.ts', 'layoutFor'));
