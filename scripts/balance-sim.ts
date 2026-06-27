@@ -1,6 +1,7 @@
 // Deterministic-ish balance simulation: runs simple bot strategies across levels/difficulties.
 // It is not a replacement for playtesting; it is a regression alarm for impossible levels,
 // runaway difficulty spikes, obvious tower under/over-use, and late-campaign blockers.
+// The report now includes actionable tuning notes so late-campaign fixes can be planned quickly.
 
 const store: Record<string, string> = {};
 (globalThis as any).localStorage = {
@@ -244,6 +245,39 @@ function lateCampaignReview(best: SimResult[], allResults: SimResult[]): string[
   return risks;
 }
 
+function actionNotesForRisks(risks: string[]): string[] {
+  const notes = new Set<string>();
+  for (const risk of risks) {
+    if (risk.includes('normal blocker')) {
+      notes.add('Review the failing level wave mix first; reduce early count spikes before changing tower stats globally.');
+    }
+    if (risk.includes('level 9')) {
+      notes.add('For Overdrive Gate, tune speed pressure before HP pressure: add safer early build windows or reduce fast enemy density.');
+    }
+    if (risk.includes('level 10')) {
+      notes.add('For Apex Bastion, keep the final gate strategic: prefer clearer boss phases or path coverage windows over raw HP inflation.');
+    }
+    if (risk.includes('too few tower types')) {
+      notes.add('Improve late-map tower diversity by adding build positions that reward both control towers and long-range damage.');
+    }
+    if (risk.includes('result missing')) {
+      notes.add('Check the simulation loop or level registration before tuning numbers; missing results mean the data is incomplete.');
+    }
+  }
+
+  if (notes.size === 0) {
+    notes.add('No automated tuning action required. Record the report in docs/BALANCE_REVIEW_NOTES.md and compare against outside playtests.');
+    notes.add('If playtests still show frustration, tune level readability before changing numerical balance.');
+  }
+  return [...notes];
+}
+
+function printActionableTuningNotes(risks: string[]): void {
+  console.log('\n=== Actionable Tuning Notes ===');
+  const notes = actionNotesForRisks(risks);
+  for (let i = 0; i < notes.length; i++) console.log(`${i + 1}. ${notes[i]}`);
+}
+
 function summarize(results: SimResult[]): string[] {
   const best = bestByLevelAndDifficulty(results);
   const normal = best.filter(r => r.difficulty === 'normal');
@@ -266,7 +300,10 @@ function summarize(results: SimResult[]): string[] {
   const weakSpots = best.filter(r => r.difficulty === 'normal' && !r.won);
   if (weakSpots.length > 0) {
     console.log('\n⚠ Normal-mode blockers detected:');
-    for (const r of weakSpots) console.log(`- Level ${r.level} (${r.levelName}) failed best bot plan at wave ${r.wave}.`);
+    for (const r of weakSpots) {
+      console.log(`- Level ${r.level} (${r.levelName}) failed best bot plan at wave ${r.wave}.`);
+      risks.push(`normal blocker on level ${r.level}`);
+    }
   } else {
     console.log('\n✓ No normal-mode blockers detected by the simple bot.');
   }
@@ -274,6 +311,7 @@ function summarize(results: SimResult[]): string[] {
   printTowerDistribution(results, 'Tower placement distribution across all simulations:');
 
   risks.push(...lateCampaignReview(best, results));
+  printActionableTuningNotes(risks);
   return risks;
 }
 
