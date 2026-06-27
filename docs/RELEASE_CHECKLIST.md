@@ -31,6 +31,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Boss waves have a warning cue.
 - [ ] Endless mode reaches a clear pressure curve before collapse.
 - [x] Product health diagnostics can flag balance risks after playtests.
+- [x] Balance review notes template exists for the 10-level campaign.
 
 ## 3. First-time player experience
 
@@ -68,6 +69,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## 5. Visual and audio polish
 
 - [x] Each level has a recognizable mood or visual identity.
+- [x] Ten campaign levels have distinct theme coverage.
 - [x] Boss waves have a warning cue.
 - [x] Spells have stronger impact feedback.
 - [x] Kills and explosions are readable but not noisy.
@@ -83,8 +85,9 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [ ] Achievements are understandable and rewarding.
 - [x] Daily mission generation exists.
 - [x] Daily mission progress evaluation exists.
-- [ ] Daily missions are visible in the UI.
-- [ ] Daily challenge has a clear reason to return.
+- [x] Daily missions are visible in the UI.
+- [x] Weekly mode is visible in the main-menu retention panel.
+- [x] Weekly mode has seeded-run rule modifiers and an in-run badge.
 - [ ] Challenge seed sharing is easy to understand.
 
 ## 7. Localization
@@ -107,12 +110,15 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Changelog or release notes exist.
 - [x] Mobile QA checklist exists.
 - [x] Layout QA checklist exists.
+- [x] Weekly Mode QA checklist exists.
+- [x] Campaign Expansion QA checklist exists.
 - [x] Onboarding QA checklist exists.
 - [x] Final release QA checklist exists.
 - [x] Deployment status guide exists.
 - [x] Release audit script exists and is included in verify.
 - [x] Media kit guide exists.
 - [x] Product iteration log exists.
+- [x] Balance review notes template exists.
 - [x] Commercial playtest plan exists.
 - [x] Playtest results summary template exists.
 - [x] Bug and playtest issue templates exist.
@@ -123,7 +129,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 ## Current estimated gap
 
 - Public free-game release: about 0.1% remaining.
-- Market-grade release: about 0.3% remaining.
-- Strong product target: about 77% complete.
+- Market-grade release: about 0.2% remaining.
+- Strong product target: about 94% complete.
 
-The biggest remaining blockers are actual execution/confirmation tasks, UI visibility for retention loops, stronger boss mechanics, more content depth, screenshots/GIFs, outside playtest results, and final visual QA.
+The biggest remaining blockers are actual execution/confirmation tasks, screenshots/GIFs, outside playtest results, final visual QA, and balance verification for the 10-level campaign.
