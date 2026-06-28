@@ -31,9 +31,10 @@ export class LevelSelect {
     r.rect(0, 0, r.width, r.height, bgGrad);
 
     const cx = r.width / 2;
-    const isSmall = layout.isPhone;
+    const isCompactLandscape = layout.isCompact && r.width > r.height;
+    const isSmall = layout.isPhone || isCompactLandscape;
     const isCompact = layout.isCompact;
-    const titleY = isSmall ? 18 : 28;
+    const titleY = isCompactLandscape ? 10 : isSmall ? 18 : 28;
 
     const titleGrad = r.linearGradient(cx - 120, 34, cx + 120, 34, [
       { offset: 0, color: '#60a5fa' },
@@ -44,19 +45,20 @@ export class LevelSelect {
     r.text(t('level.select'), cx, titleY, titleGrad, isSmall ? 24 : 30, 'center', 'bold', 'top', 'header');
     r.clearShadow();
 
-    const progressY = isSmall ? 54 : 70;
+    const progressY = isCompactLandscape ? 42 : isSmall ? 54 : 70;
     this.drawCampaignProgress(r, cx, progressY, isSmall);
-    this.drawDifficultyPicker(r, cx, progressY + (isSmall ? 42 : 50), isSmall);
+    this.drawDifficultyPicker(r, cx, progressY + (isCompactLandscape ? 34 : isSmall ? 42 : 50), isSmall);
 
     const total = this.levels.total;
     const gap = isSmall ? layout.gap : layout.cardGap;
-    const cols = isSmall ? 2 : cardColumns(r, total, 218, 176, layout.safe, gap);
+    const cols = isCompactLandscape ? Math.min(total, 5) : isSmall ? 2 : cardColumns(r, total, 218, 176, layout.safe, gap);
     const rows = Math.ceil(total / cols);
-    const startY = progressY + (isSmall ? 88 : 104);
-    const backArea = isCompact ? 48 : 60;
+    const startY = progressY + (isCompactLandscape ? 78 : isSmall ? 88 : 104);
+    const backArea = isCompact ? 42 : 60;
     const availableH = Math.max(250, r.height - startY - backArea);
-    const idealCardH = isSmall ? 118 : 138;
-    const cardH = Math.max(isSmall ? 104 : 122, Math.min(idealCardH, Math.floor((availableH - gap * (rows - 1)) / rows)));
+    const idealCardH = isCompactLandscape ? 96 : isSmall ? 118 : 138;
+    const minCardH = isCompactLandscape ? 76 : isSmall ? 104 : 122;
+    const cardH = Math.max(minCardH, Math.min(idealCardH, Math.floor((availableH - gap * (rows - 1)) / rows)));
     const cardW = Math.min(isSmall ? 166 : 218, Math.floor((r.width - layout.safe * 2 - gap * (cols - 1)) / cols));
     const totalW = cols * cardW + (cols - 1) * gap;
     const startX = cx - totalW / 2;

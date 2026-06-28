@@ -30,6 +30,8 @@ All notable changes to Praesidium are tracked here.
 ### Fixed
 
 - Boss encounter classifier now distinguishes armored escort, phantom siege, and fast escort boss waves.
+- Compact landscape level select now shows all ten campaign levels without vertical overflow.
+- Small landscape main menu no longer lets Daily Objectives or shortcut hints cover primary actions.
 - Versioned service worker registration replaces the temporary legacy service worker unregister path.
 - PWA manifest metadata now consistently describes the ten-level campaign and uses a relative start URL.
 - Canvas resize and device-pixel-ratio handling now reduce high-DPI startup cost and resize churn.

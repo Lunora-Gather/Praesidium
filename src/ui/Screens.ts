@@ -185,6 +185,8 @@ export class Screens {
     this.drawButton(r, btnX, y, halfW, btnH, t('menu.settings'), 'settings', '#475569', '#334155', compact ? 11 : 13, false);
     this.drawButton(r, btnX + halfW + 10, y, halfW, btnH, t('stats.title'), 'stats', '#475569', '#334155', compact ? 11 : 13, false);
 
+    if (compact && r.height < 430) return;
+
     const hintY = Math.min(cardY + cardH - 38, y + btnH + (compact ? 16 : 24));
     r.roundRect(cardX + 24, hintY - 8, cardW - 48, compact ? 28 : 34, 10, 'rgba(2, 6, 23, 0.35)', true, 'rgba(148, 163, 184, 0.08)', 1);
     r.text(t('menu.shortcuts'), cx, hintY + 1, UI.color.textDim, compact ? 8 : 9.5, 'center');

@@ -18,6 +18,8 @@ export interface MissionPanelRunStats {
 
 export class DailyMissionPanel {
   draw(r: Renderer): void {
+    if (!this.shouldDrawMenuPanel(r)) return;
+
     const missions = dailyMissions(dailyDateStr());
     const week = weeklyMode();
     const box = this.panelBox(r, false);
@@ -73,6 +75,11 @@ export class DailyMissionPanel {
     const x = isSideRail ? r.width - w - layout.safe : r.width / 2 - w / 2;
     const y = isSideRail ? (progressMode ? 258 : 80) : Math.max(layout.safe, r.height - h - layout.safe);
     return { x, y, w, h, isSmall };
+  }
+
+  private shouldDrawMenuPanel(r: Renderer): boolean {
+    const isSideRail = r.width >= 1060 && r.height >= 620;
+    return isSideRail || r.height >= 740;
   }
 
   private drawFrame(r: Renderer, x: number, y: number, w: number, h: number, title: string): void {

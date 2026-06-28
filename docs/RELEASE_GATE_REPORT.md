@@ -6,11 +6,11 @@ Final release decision record for Praesidium v1.0.0.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `npm run verify` | Pass | Local run on 2026-06-27: selftest 161 passed, save/restore 36 passed, performance check 8 passed, release audit 146 passed, production build passed. |
+| `npm run verify` | Pass | Local run on 2026-06-28: selftest 161 passed, save/restore 36 passed, performance check 8 passed, release audit 149 passed, production build passed. |
 | `npm run release:gate` | Pass | Ready checks: 8/8. Repository blockers: none detected by release gate. |
 | `npm audit` | Pass | `found 0 vulnerabilities`. |
-| Production build opens | Pass | Local preview served HTML, `assets/index-cqE4RErx.js`, manifest, and `sw.js` with HTTP 200 after the final hardening build. |
-| Browser smoke test | Pass | Local preview rendered the main menu canvas, removed the boot loader, and reported no browser console errors. |
+| Production build opens | Pass | Local preview served HTML, `assets/index-9nVemyky.js`, manifest, and `sw.js` with HTTP 200 after the final mobile hardening build. |
+| Browser smoke test | Pass | Desktop preview rendered the main menu canvas; mobile landscape smoke covered menu, level select, tower placement, and wave start with no browser console errors. |
 
 ## Deploy Gate
 

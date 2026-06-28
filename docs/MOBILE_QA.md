@@ -19,11 +19,12 @@ Praesidium is playable on desktop first, but public release should still pass a 
 - [ ] Campaign / Endless / Daily / Challenge buttons fit.
 - [ ] Settings and Stats buttons are tappable.
 - [ ] Shortcut hint does not overlap primary actions.
+- [ ] Daily Objectives panel is hidden or placed away from primary actions on small landscape screens.
 
 ### Level select
 
 - [ ] Progress bar and difficulty buttons fit.
-- [ ] Level cards remain readable in two-column mobile layout.
+- [ ] Level cards remain readable in compact mobile layout.
 - [ ] Locked and recommended-level states are clear.
 - [ ] Back/Menu button remains tappable.
 
@@ -59,5 +60,7 @@ Praesidium is playable on desktop first, but public release should still pass a 
 
 - Mobile Tower drawer: implemented.
 - Compact main menu: implemented.
+- Compact landscape level select: implemented.
+- Small landscape Daily Objectives overlap guard: implemented.
 - Compact victory/defeat screens: implemented.
 - Remaining risk: HUD density on very small landscape screens.
