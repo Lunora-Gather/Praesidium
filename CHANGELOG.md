@@ -21,6 +21,7 @@ All notable changes to Praesidium are tracked here.
 ### Changed
 
 - Main menu upgraded into a release-style play surface with campaign, endless, daily, challenge, stats, talents, and codex entry points.
+- Main menu layout redesigned into a full-screen command surface with adaptive hero copy, a primary campaign action, compact mode tiles, and a lightweight Daily/Weekly ops brief.
 - Battlefield rendering now uses richer ambient backdrops, path-flow markers, tower glows, enemy shadows, projectile halos, and cleaner health bars.
 - GitHub Pages deployment now runs Node 24, full verification, and production build before publishing.
 - Public launch path no longer depends on blocking external Google Fonts.

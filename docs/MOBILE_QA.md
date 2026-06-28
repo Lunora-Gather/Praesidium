@@ -19,7 +19,7 @@ Praesidium is playable on desktop first, but public release should still pass a 
 - [ ] Campaign / Endless / Daily / Challenge buttons fit.
 - [ ] Settings and Stats buttons are tappable.
 - [ ] Shortcut hint does not overlap primary actions.
-- [ ] Daily Objectives panel is hidden or placed away from primary actions on small landscape screens.
+- [ ] Daily/Weekly ops brief is hidden or placed away from primary actions on small landscape screens.
 
 ### Level select
 
@@ -59,8 +59,8 @@ Praesidium is playable on desktop first, but public release should still pass a 
 ## Current mobile polish status
 
 - Mobile Tower drawer: implemented.
-- Compact main menu: implemented.
+- Adaptive full-screen main menu: implemented.
 - Compact landscape level select: implemented.
-- Small landscape Daily Objectives overlap guard: implemented.
+- Small landscape ops brief overlap guard: implemented.
 - Compact victory/defeat screens: implemented.
 - Remaining risk: HUD density on very small landscape screens.

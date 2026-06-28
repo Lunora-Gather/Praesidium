@@ -63,7 +63,7 @@ const gates: GateItem[] = [
     item: 'daily and weekly systems are visible',
     done: exists('src/ui/DailyMissionPanel.ts') && exists('src/ui/WeeklyRunBadge.ts') && includes('src/game/GameState.ts', 'weeklyModeActive'),
     evidence: 'DailyMissionPanel, WeeklyRunBadge, GameState',
-    next: 'Capture screenshots showing Daily Objectives and in-run Weekly Mode badge.',
+    next: 'Capture screenshots showing the main-menu ops brief and in-run Weekly Mode badge.',
   },
   {
     area: 'QA',

@@ -205,7 +205,9 @@ check('world renderer has boss warning', contains('src/ui/WorldRenderer.ts', 'dr
 check('HUD has tiny screen branch', contains('src/ui/HUD.ts', 'isUltraTiny'));
 check('tower panel has mobile drawer', contains('src/ui/TowerPanel.ts', 'drawMobileDrawer'));
 check('screens have compact layout', contains('src/ui/Screens.ts', 'compact'));
-check('screens hide compact landscape shortcut overlap', contains('src/ui/Screens.ts', 'r.height < 430'));
+check('screens use adaptive full-screen menu dock', contains('src/ui/Screens.ts', 'drawModeDock'));
+check('screens preserve daily weekly ops brief', contains('src/ui/Screens.ts', 'drawOpsBrief'));
+check('screens avoid compact landscape backdrop collision', contains('src/ui/Screens.ts', 'r.height >= 560'));
 check('tutorial has Intel step', contains('src/utils/Tutorial.ts', 'tutorial.intel'));
 check('settings persist mute', contains('src/config/Settings.ts', 'muted') && contains('src/config/Settings.ts', 'save(KEY, this.current)'));
 check('audio has compressor', contains('src/engine/Audio.ts', 'DynamicsCompressorNode'));

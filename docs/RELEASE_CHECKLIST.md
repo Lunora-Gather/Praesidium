@@ -89,7 +89,7 @@ This checklist tracks the gap between a strong playable build and a public/marke
 - [x] Daily mission generation exists.
 - [x] Daily mission progress evaluation exists.
 - [x] Daily missions are visible in the UI.
-- [x] Weekly mode is visible in the main-menu retention panel.
+- [x] Weekly mode is visible in the main-menu ops brief.
 - [x] Weekly mode has seeded-run rule modifiers and an in-run badge.
 - [ ] Challenge seed sharing is easy to understand.
 

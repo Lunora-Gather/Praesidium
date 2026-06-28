@@ -4,7 +4,7 @@ This checklist verifies that weekly mode is visible, understandable, and active 
 
 ## Entry points
 
-- Main menu shows the active weekly mode on larger screens.
+- Main menu shows the active weekly mode in the ops brief on larger screens.
 - Random Endless starts without weekly mode active.
 - Daily run starts with weekly mode active.
 - Seeded challenge starts with weekly mode active.

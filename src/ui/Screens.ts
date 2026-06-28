@@ -3,7 +3,10 @@
 
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
+import { dailyDateStr } from '../utils/DailyChallenge';
+import { dailyMissions } from '../utils/DailyMissions';
 import { buildDefeatAdviceFromSummary } from '../utils/RunAdvice';
+import { weeklyMode } from '../utils/WeeklyMode';
 import { DailyMissionPanel } from './DailyMissionPanel';
 import { drawGlassPanel, layoutFor, UI } from './Layout';
 
@@ -56,16 +59,17 @@ export class Screens {
     ]);
     r.rect(0, 0, r.width, r.height, bgGrad);
 
-    if (kind === 'menu') this.drawMenuBackdrop(r);
+    if (kind === 'menu') {
+      this.drawReleaseMenu(r, layout.isCompact);
+      return;
+    }
 
     const cx = r.width / 2;
     const cy = r.height / 2;
     const isEndScreen = kind === 'won' || kind === 'lost';
     const compact = layout.isCompact;
-    const cardW = Math.min(r.width - layout.safe * 2, kind === 'menu' ? layout.panelMaxW : isEndScreen ? 520 : 460);
-    const cardH = kind === 'menu'
-      ? Math.min(compact ? 500 : 540, r.height - layout.safe * 2)
-      : isEndScreen
+    const cardW = Math.min(r.width - layout.safe * 2, isEndScreen ? 520 : 460);
+    const cardH = isEndScreen
         ? Math.min(compact ? 398 : 430, r.height - layout.safe * 2)
         : Math.min(360, r.height - layout.safe * 2);
     const cardX = cx - cardW / 2;
@@ -76,7 +80,7 @@ export class Screens {
     if (kind === 'lost') glowColor = UI.color.red;
     drawGlassPanel(r, cardX, cardY, cardW, cardH, layout.radius + 2, glowColor, 0.9);
 
-    const titleKey = kind === 'menu' ? 'app.title' : kind === 'paused' ? 'hud.pause' : kind === 'won' ? 'win.title' : 'lose.title';
+    const titleKey = kind === 'paused' ? 'hud.pause' : kind === 'won' ? 'win.title' : 'lose.title';
     let titleGrad: CanvasGradient;
     let textGlow = 'rgba(59, 130, 246, 0.4)';
 
@@ -101,14 +105,8 @@ export class Screens {
     }
 
     r.setShadow(textGlow, 12, 0, 0);
-    r.text(t(titleKey), cx, cardY + 22, titleGrad, kind === 'menu' ? (compact ? 34 : 40) : (compact ? 31 : 36), 'center', 'bold', 'top', 'header');
+    r.text(t(titleKey), cx, cardY + 22, titleGrad, compact ? 31 : 36, 'center', 'bold', 'top', 'header');
     r.clearShadow();
-
-    if (kind === 'menu') {
-      this.drawReleaseMenu(r, cardX, cardY, cardW, cardH, compact, layout.gap);
-      this.dailyMissionPanel.draw(r);
-      return;
-    }
 
     if (kind === 'paused') r.text(t('hud.paused_title'), cx, cardY + 75, UI.color.textMuted, 13, 'center');
     if (kind === 'won') {
@@ -145,62 +143,214 @@ export class Screens {
     this.drawButton(r, btnX, startButtonY + btnH + 10, btnW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
   }
 
-  private drawReleaseMenu(r: Renderer, cardX: number, cardY: number, cardW: number, cardH: number, compact: boolean, gap: number): void {
-    const cx = cardX + cardW / 2;
-    r.text(t('app.tagline'), cx, cardY + (compact ? 64 : 72), '#cbd5e1', compact ? 12 : 13, 'center', 'bold');
-    r.text('Campaign · Endless · Daily · Challenge Seed', cx, cardY + (compact ? 82 : 92), UI.color.textDim, compact ? 9 : 10, 'center', 'bold', 'top', 'header');
+  private drawReleaseMenu(r: Renderer, compact: boolean): void {
+    this.drawMenuBackdrop(r);
 
-    const stripY = cardY + (compact ? 106 : 118);
-    const chipGap = Math.max(6, gap - 2);
-    const chipH = compact ? 34 : 42;
-    const chipW = (cardW - 48 - chipGap * 3) / 4;
-    const chips: Array<[string, string, string]> = [
-      ['★', t('level.level'), '#60a5fa'],
-      ['✦', t('talent.title'), UI.color.gold],
-      ['ⓘ', t('codex.title'), '#a78bfa'],
-      ['🏆', t('stats.title'), '#34d399'],
-    ];
-    let chipX = cardX + 24;
-    for (const [icon, label, color] of chips) {
-      r.roundRect(chipX, stripY, chipW, chipH, 12, 'rgba(2, 6, 23, 0.44)', true, `${color}55`, 1);
-      r.text(icon, chipX + chipW / 2, stripY + (compact ? 6 : 9), color, compact ? 11 : 13, 'center', 'bold', 'top', 'header');
-      r.text(label, chipX + chipW / 2, stripY + (compact ? 20 : 25), '#cbd5e1', compact ? 7.5 : 8.5, 'center', 'bold', 'top', 'header');
-      chipX += chipW + chipGap;
-    }
+    const layout = layoutFor(r);
+    const safe = Math.max(layout.safe, 18);
+    const isShort = r.height < 560;
+    const isWide = r.width >= 960 && r.height >= 560;
+    const actionW = Math.min(isWide ? 470 : 560, r.width - safe * 2);
+    const actionX = isWide ? r.width - safe - actionW : (r.width - actionW) / 2;
+    const actionY = isWide ? Math.max(72, r.height * 0.17) : Math.max(safe + 100, r.height * 0.31);
+    const heroX = isWide ? safe + 22 : r.width / 2;
+    const heroY = isWide ? Math.max(84, r.height * 0.18) : safe + 24;
+    const heroAlign: CanvasTextAlign = isWide ? 'left' : 'center';
 
-    const btnW = cardW - 64;
-    const btnH = compact ? 34 : 38;
-    const rowGap = Math.max(8, gap);
-    const btnX = cx - btnW / 2;
-    let y = cardY + (compact ? 154 : 182);
-    this.drawButton(r, btnX, y, btnW, btnH, t('menu.start'), 'start', UI.color.blue, '#1d4ed8');
-    y += btnH + rowGap;
-    this.drawButton(r, btnX, y, btnW, btnH, t('menu.endless'), 'endless', UI.color.violet, '#6d28d9');
-    y += btnH + rowGap;
-
-    const halfW = (btnW - 10) / 2;
-    this.drawButton(r, btnX, y, halfW, btnH, t('menu.daily'), 'daily', UI.color.green, '#047857', compact ? 11 : 13);
-    this.drawButton(r, btnX + halfW + 10, y, halfW, btnH, t('menu.challenge'), 'challenge', '#a855f7', '#7e22ce', compact ? 11 : 13);
-    y += btnH + rowGap;
-    this.drawButton(r, btnX, y, halfW, btnH, t('menu.settings'), 'settings', '#475569', '#334155', compact ? 11 : 13, false);
-    this.drawButton(r, btnX + halfW + 10, y, halfW, btnH, t('stats.title'), 'stats', '#475569', '#334155', compact ? 11 : 13, false);
-
-    if (compact && r.height < 430) return;
-
-    const hintY = Math.min(cardY + cardH - 38, y + btnH + (compact ? 16 : 24));
-    r.roundRect(cardX + 24, hintY - 8, cardW - 48, compact ? 28 : 34, 10, 'rgba(2, 6, 23, 0.35)', true, 'rgba(148, 163, 184, 0.08)', 1);
-    r.text(t('menu.shortcuts'), cx, hintY + 1, UI.color.textDim, compact ? 8 : 9.5, 'center');
+    this.drawHeroCopy(r, heroX, heroY, heroAlign, compact, isShort);
+    if (isWide && !isShort) this.drawOpsBrief(r, heroX, heroY + 180, 330);
+    this.drawModeDock(r, actionX, actionY, actionW, compact || isShort);
   }
 
   private drawMenuBackdrop(r: Renderer): void {
-    const cx = r.width / 2;
-    const cy = r.height / 2;
+    const horizonY = Math.max(140, Math.floor(r.height * 0.58));
+    const gridGrad = r.linearGradient(0, horizonY, 0, r.height, [
+      { offset: 0, color: 'rgba(14, 165, 233, 0.12)' },
+      { offset: 1, color: 'rgba(2, 6, 23, 0)' },
+    ]);
+    r.rect(0, horizonY, r.width, r.height - horizonY, gridGrad, true);
+
+    const oldAlpha = r.ctx.globalAlpha;
     r.ctx.save();
-    r.ctx.globalAlpha = 0.16;
-    r.circle({ x: cx - 210, y: cy - 180 } as any, 90, '#3b82f6', true);
-    r.circle({ x: cx + 220, y: cy + 180 } as any, 110, '#a855f7', true);
-    r.circle({ x: cx + 260, y: cy - 170 } as any, 60, '#10b981', true);
+    r.ctx.globalAlpha = 0.18;
+    r.ctx.strokeStyle = 'rgba(103, 232, 249, 0.42)';
+    r.ctx.lineWidth = 1;
+    for (let y = horizonY + 18; y < r.height; y += 34) {
+      r.ctx.beginPath();
+      r.ctx.moveTo(0, y);
+      r.ctx.lineTo(r.width, y + (y - horizonY) * 0.08);
+      r.ctx.stroke();
+    }
+    for (let x = -r.width; x < r.width * 2; x += 92) {
+      r.ctx.beginPath();
+      r.ctx.moveTo(x, r.height);
+      r.ctx.lineTo(r.width / 2 + (x - r.width / 2) * 0.16, horizonY);
+      r.ctx.stroke();
+    }
+    if (r.height >= 560) {
+      r.ctx.globalAlpha = 0.24;
+      this.drawPreviewPath(r, Math.max(42, r.width * 0.08), horizonY - 92, Math.min(r.width * 0.7, 680));
+    }
     r.ctx.restore();
+    r.ctx.globalAlpha = oldAlpha;
+  }
+
+  private drawHeroCopy(r: Renderer, x: number, y: number, align: CanvasTextAlign, compact: boolean, isShort: boolean): void {
+    const titleSize = isShort ? 30 : compact ? 38 : 56;
+    const taglineSize = isShort ? 11 : compact ? 12 : 14;
+    const titleW = align === 'left' ? 430 : Math.min(480, r.width - 36);
+    const titleX1 = align === 'left' ? x : x - titleW / 2;
+    const titleGrad = r.linearGradient(titleX1, y, titleX1 + titleW, y, [
+      { offset: 0, color: '#67e8f9' },
+      { offset: 0.5, color: '#93c5fd' },
+      { offset: 1, color: '#f0abfc' },
+    ]);
+
+    r.text('PRAESIDIUM', x, y, titleGrad, titleSize, align, 'bold', 'top', 'header');
+    r.text(t('app.tagline'), x, y + titleSize + (isShort ? 5 : 8), '#dbeafe', taglineSize, align, 'bold', 'top');
+    if (!isShort) {
+      r.text('10 zones · Daily ops · Weekly modifiers', x, y + titleSize + 28, UI.color.textDim, compact ? 9.5 : 11, align, 'bold', 'top', 'header');
+    }
+
+    const railW = align === 'left' ? 300 : Math.min(330, r.width - 48);
+    const railX = align === 'left' ? x : x - railW / 2;
+    const railY = y + titleSize + (isShort ? 31 : 58);
+    const items: Array<[string, string, string]> = [
+      ['01', 'Campaign', '#60a5fa'],
+      ['∞', 'Endless', '#a78bfa'],
+      ['24H', 'Daily', '#2dd4bf'],
+    ];
+    const itemW = (railW - 12) / 3;
+    for (let i = 0; i < items.length; i++) {
+      const [kicker, label, color] = items[i];
+      const ix = railX + i * (itemW + 6);
+      r.roundRect(ix, railY, itemW, isShort ? 31 : 38, 7, 'rgba(2, 6, 23, 0.34)', true, `${color}55`, 1);
+      r.text(kicker, ix + itemW / 2, railY + (isShort ? 6 : 7), color, isShort ? 10 : 12, 'center', 'bold', 'top', 'header');
+      r.text(label, ix + itemW / 2, railY + (isShort ? 19 : 23), '#cbd5e1', isShort ? 7.5 : 8.5, 'center', 'bold', 'top', 'header');
+    }
+  }
+
+  private drawModeDock(r: Renderer, x: number, y: number, w: number, compact: boolean): void {
+    const gap = compact ? 7 : 9;
+    const primaryH = compact ? 58 : 70;
+    const tileH = compact ? 48 : 56;
+    const utilH = compact ? 34 : 38;
+
+    this.drawPrimaryButton(r, x, y, w, primaryH, t('menu.start'), 'start');
+    y += primaryH + gap;
+
+    const cols = w >= 440 ? 3 : 1;
+    const tileW = cols === 3 ? (w - gap * 2) / 3 : w;
+    const modes: Array<[string, string, string, string, MenuClickAction]> = [
+      ['∞', t('menu.endless'), 'Score climb', '#a78bfa', 'endless'],
+      ['◆', t('menu.daily'), 'Fresh route', '#2dd4bf', 'daily'],
+      ['#', t('menu.challenge'), 'Seed run', '#f0abfc', 'challenge'],
+    ];
+    for (let i = 0; i < modes.length; i++) {
+      const col = cols === 3 ? i : 0;
+      const row = cols === 3 ? 0 : i;
+      const [icon, label, sub, color, action] = modes[i];
+      this.drawModeTile(r, x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH, icon, label, sub, color, action, compact);
+    }
+    y += cols === 3 ? tileH + gap : modes.length * (tileH + gap);
+
+    const utilW = (w - gap) / 2;
+    this.drawUtilityButton(r, x, y, utilW, utilH, '⚙', t('menu.settings'), 'settings');
+    this.drawUtilityButton(r, x + utilW + gap, y, utilW, utilH, '▣', t('stats.title'), 'stats');
+
+    if (!compact && r.height >= 650) {
+      const hintY = y + utilH + 18;
+      r.text(t('menu.shortcuts'), x + w / 2, hintY, UI.color.textDim, 9, 'center', 'bold', 'top');
+    }
+  }
+
+  private drawOpsBrief(r: Renderer, x: number, y: number, w: number): void {
+    const mission = dailyMissions(dailyDateStr())[0];
+    const week = weeklyMode();
+    r.text("TODAY'S OPS", x, y, '#67e8f9', 10, 'left', 'bold', 'top', 'header');
+    r.roundRect(x, y + 22, w, 1, 1, 'rgba(103, 232, 249, 0.36)', true);
+    r.text(mission.title, x, y + 36, '#e2e8f0', 12, 'left', 'bold', 'top', 'header');
+    r.text(`Daily +${mission.reward}  /  Weekly +${week.reward}`, x, y + 55, UI.color.textMuted, 9.5, 'left', 'bold', 'top');
+    r.text(this.truncate(week.title, 38), x, y + 73, '#c4b5fd', 10, 'left', 'bold', 'top', 'header');
+  }
+
+  private drawPreviewPath(r: Renderer, x: number, y: number, w: number): void {
+    const h = Math.max(86, Math.min(128, r.height * 0.16));
+    const points = [
+      { x, y: y + h * 0.62 },
+      { x: x + w * 0.22, y: y + h * 0.62 },
+      { x: x + w * 0.22, y: y + h * 0.22 },
+      { x: x + w * 0.54, y: y + h * 0.22 },
+      { x: x + w * 0.54, y: y + h * 0.78 },
+      { x: x + w, y: y + h * 0.78 },
+    ];
+    r.ctx.save();
+    r.ctx.strokeStyle = 'rgba(96, 165, 250, 0.7)';
+    r.ctx.lineWidth = 10;
+    r.ctx.lineCap = 'round';
+    r.ctx.lineJoin = 'round';
+    r.ctx.beginPath();
+    r.ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) r.ctx.lineTo(points[i].x, points[i].y);
+    r.ctx.stroke();
+    r.ctx.strokeStyle = 'rgba(219, 234, 254, 0.84)';
+    r.ctx.lineWidth = 2;
+    r.ctx.stroke();
+    for (let i = 1; i < points.length - 1; i += 2) {
+      const p = points[i];
+      r.ctx.fillStyle = i === 1 ? '#34d399' : '#f59e0b';
+      r.ctx.beginPath();
+      r.ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+      r.ctx.fill();
+    }
+    r.ctx.restore();
+  }
+
+  private drawPrimaryButton(r: Renderer, x: number, y: number, w: number, h: number, label: string, action: MenuClickAction): void {
+    const grad = r.linearGradient(x, y, x + w, y + h, [
+      { offset: 0, color: '#2563eb' },
+      { offset: 0.52, color: '#0ea5e9' },
+      { offset: 1, color: '#14b8a6' },
+    ]);
+    r.setShadow('rgba(14, 165, 233, 0.34)', 22, 0, 7);
+    r.roundRect(x, y, w, h, 8, grad, true, 'rgba(219, 234, 254, 0.36)', 1.4);
+    r.clearShadow();
+    r.ctx.save();
+    r.ctx.globalAlpha = 0.18;
+    r.ctx.fillStyle = '#ffffff';
+    r.ctx.beginPath();
+    r.ctx.moveTo(x + 16, y + 12);
+    r.ctx.lineTo(x + w - 18, y + 8);
+    r.ctx.lineTo(x + w - 48, y + h - 10);
+    r.ctx.lineTo(x + 32, y + h - 8);
+    r.ctx.closePath();
+    r.ctx.fill();
+    r.ctx.restore();
+    r.text('▶', x + 28, y + h / 2, '#ffffff', h >= 66 ? 18 : 15, 'center', 'bold', 'middle', 'header');
+    r.text(label, x + 54, y + h / 2 - 1, '#ffffff', h >= 66 ? 18 : 15, 'left', 'bold', 'middle', 'header');
+    r.text('CAMPAIGN', x + w - 18, y + h / 2, 'rgba(255,255,255,0.74)', h >= 66 ? 10 : 8.5, 'right', 'bold', 'middle', 'header');
+    this.regions.push({ x, y, w, h, action });
+  }
+
+  private drawModeTile(r: Renderer, x: number, y: number, w: number, h: number, icon: string, label: string, sub: string, color: string, action: MenuClickAction, compact: boolean): void {
+    const grad = r.linearGradient(x, y, x, y + h, [
+      { offset: 0, color: 'rgba(15, 23, 42, 0.84)' },
+      { offset: 1, color: 'rgba(2, 6, 23, 0.72)' },
+    ]);
+    r.roundRect(x, y, w, h, 8, grad, true, `${color}55`, 1.1);
+    r.roundRect(x, y, 4, h, 2, color, true);
+    const iconX = x + (compact ? 22 : 25);
+    r.text(icon, iconX, y + h / 2, color, compact ? 13 : 15, 'center', 'bold', 'middle', 'header');
+    r.text(label, x + (compact ? 42 : 48), y + (compact ? 10 : 11), '#f8fafc', compact ? 11 : 12.5, 'left', 'bold', 'top', 'header');
+    r.text(sub, x + (compact ? 42 : 48), y + (compact ? 27 : 32), UI.color.textMuted, compact ? 8 : 9, 'left', 'bold', 'top');
+    this.regions.push({ x, y, w, h, action });
+  }
+
+  private drawUtilityButton(r: Renderer, x: number, y: number, w: number, h: number, icon: string, label: string, action: MenuClickAction): void {
+    r.roundRect(x, y, w, h, 8, 'rgba(15, 23, 42, 0.58)', true, 'rgba(148, 163, 184, 0.18)', 1);
+    r.text(icon, x + 22, y + h / 2, '#cbd5e1', 12, 'center', 'bold', 'middle', 'header');
+    r.text(label, x + 42, y + h / 2, '#cbd5e1', 11, 'left', 'bold', 'middle', 'header');
+    this.regions.push({ x, y, w, h, action });
   }
 
   private drawVictoryReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, stats: ScreenStats | undefined, compact: boolean): void {
@@ -328,6 +478,10 @@ export class Screens {
     const m = Math.floor(sec / 60);
     const s = Math.round(sec % 60);
     return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+
+  private truncate(text: string, max: number): string {
+    return text.length <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;
   }
 
   hit(x: number, y: number): MenuClickAction {
