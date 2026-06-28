@@ -38,9 +38,11 @@ export class WorldRenderer {
       this.cacheKey = key;
     }
 
+    this.drawBattleBackdrop(r, theme);
+
     if (this.staticCanvas) {
       const ctx = r.ctx;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(this.staticCanvas, r.camX * dpr, r.camY * dpr);
@@ -60,14 +62,20 @@ export class WorldRenderer {
       const ctx = r.ctx;
       const sp = r.toScreen(t.pos);
       const z = r.zoom;
+      this.drawTowerGlow(r, t);
       ctx.save();
       ctx.translate(sp.x, sp.y);
       ctx.rotate(t.angle);
+      ctx.shadowColor = t.def.color;
+      ctx.shadowBlur = 10 * z;
       ctx.fillStyle = '#1c2740';
       ctx.fillRect(-t.def.radius * z, -t.def.radius * z, t.def.radius * 2 * z, t.def.radius * 2 * z);
       ctx.strokeStyle = t.def.color;
       ctx.lineWidth = 2 * z;
       ctx.strokeRect(-t.def.radius * z, -t.def.radius * z, t.def.radius * 2 * z, t.def.radius * 2 * z);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      ctx.fillRect(-t.def.radius * z + 3 * z, -t.def.radius * z + 3 * z, t.def.radius * 2 * z - 6 * z, 3 * z);
       ctx.fillStyle = t.def.color;
       const id = t.def.id;
       if (id === 'turret') {
@@ -130,6 +138,7 @@ export class WorldRenderer {
       const sp = r.toScreen(e.pos);
       const z = r.zoom;
       const rad = e.radius * z;
+      this.drawEnemyShadow(r, e);
       ctx.save();
       ctx.translate(sp.x, sp.y);
       if (e.isBoss) {
@@ -175,8 +184,8 @@ export class WorldRenderer {
       const barW = e.radius * 2;
       const barX = e.pos.x - e.radius;
       const barY = e.pos.y - e.radius - 6;
-      r.rect(barX, barY, barW, 3, '#000', true);
-      r.rect(barX, barY, barW * e.hpRatio, 3, e.hpRatio < 0.35 ? '#f87171' : '#4caf50', true);
+      r.roundRect(barX - 1, barY - 1, barW + 2, 5, 2, 'rgba(0,0,0,0.72)', true);
+      r.roundRect(barX, barY, Math.max(2, barW * e.hpRatio), 3, 2, e.hpRatio < 0.35 ? '#f87171' : '#4ade80', true);
       if (e.isBoss) this.drawBossBar(r, e.hpRatio);
     }
 
@@ -192,6 +201,10 @@ export class WorldRenderer {
         }
         r.ctx.globalAlpha = 1;
       }
+      r.ctx.save();
+      r.ctx.globalAlpha = 0.22;
+      r.circle(p.pos, p.splash ? 9 : 7, p.color, true);
+      r.ctx.restore();
       r.circle(p.pos, p.splash ? 4 : 3, p.color);
     }
 
@@ -210,6 +223,54 @@ export class WorldRenderer {
     this.drawBossWarning(r, s);
     drawWeeklyRunBadge(r, s);
     this.drawLowLifeOverlay(r, s);
+  }
+
+  private drawBattleBackdrop(r: Renderer, theme: LevelTheme): void {
+    const oldCamX = r.camX;
+    const oldCamY = r.camY;
+    const oldZoom = r.zoom;
+    r.camX = 0; r.camY = 0; r.zoom = 1;
+    const bg = r.linearGradient(0, TOP_H, 0, r.height - BOT_H, [
+      { offset: 0, color: theme.background },
+      { offset: 0.55, color: '#020617' },
+      { offset: 1, color: '#01040a' },
+    ]);
+    r.rect(0, TOP_H, r.width, r.height - TOP_H - BOT_H, bg, true);
+    r.ctx.save();
+    const halo = r.ctx.createRadialGradient(r.width * 0.5, TOP_H + 120, 20, r.width * 0.5, TOP_H + 120, Math.max(r.width, r.height) * 0.65);
+    halo.addColorStop(0, theme.ambient);
+    halo.addColorStop(1, 'rgba(2, 6, 23, 0)');
+    r.ctx.fillStyle = halo;
+    r.ctx.fillRect(0, TOP_H, r.width, r.height - TOP_H - BOT_H);
+    r.ctx.globalAlpha = 0.08;
+    for (let y = TOP_H + 18; y < r.height - BOT_H; y += 18) r.ctx.fillRect(0, y, r.width, 1);
+    r.ctx.restore();
+    r.camX = oldCamX; r.camY = oldCamY; r.zoom = oldZoom;
+  }
+
+  private drawTowerGlow(r: Renderer, tower: GameState['towers'][number]): void {
+    const p = r.toScreen(tower.pos);
+    const radius = tower.def.radius * 2.4;
+    const g = r.ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, radius);
+    g.addColorStop(0, `${tower.def.color}55`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    r.ctx.save();
+    r.ctx.fillStyle = g;
+    r.ctx.beginPath();
+    r.ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    r.ctx.fill();
+    r.ctx.restore();
+  }
+
+  private drawEnemyShadow(r: Renderer, enemy: GameState['enemies'][number]): void {
+    const p = r.toScreen(enemy.pos);
+    r.ctx.save();
+    r.ctx.globalAlpha = enemy.isBoss ? 0.34 : 0.24;
+    r.ctx.fillStyle = '#000';
+    r.ctx.beginPath();
+    r.ctx.ellipse(p.x, p.y + enemy.radius * 0.66, enemy.radius * 1.15, enemy.radius * 0.42, 0, 0, Math.PI * 2);
+    r.ctx.fill();
+    r.ctx.restore();
   }
 
   private drawLightning(ctx: CanvasRenderingContext2D, r: Renderer, from: Vec2, to: Vec2, color: string, z: number): void {
@@ -305,7 +366,7 @@ export class WorldRenderer {
       this.staticCtx = this.staticCanvas.getContext('2d');
     }
     const ctx = this.staticCtx!;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = g.widthPx;
     const h = g.heightPx;
     this.staticCanvas.width = Math.floor(w * dpr);
@@ -334,6 +395,13 @@ export class WorldRenderer {
         if (t === TileType.Buildable) {
           ctx.fillStyle = theme.buildableHighlight;
           ctx.fillRect(px, py, g.tile, 3);
+          ctx.strokeStyle = `${theme.accent}22`;
+          ctx.beginPath();
+          ctx.moveTo(px + 8, py + 8);
+          ctx.lineTo(px + 18, py + 8);
+          ctx.moveTo(px + 8, py + 8);
+          ctx.lineTo(px + 8, py + 18);
+          ctx.stroke();
         }
         if (t === TileType.Path) {
           ctx.fillStyle = 'rgba(255,255,255,0.035)';
@@ -366,6 +434,7 @@ export class WorldRenderer {
       ctx.strokeStyle = theme.pathCore;
       ctx.lineWidth = 2;
       ctx.stroke();
+      this.drawPathFlow(ctx, g.waypoints, theme);
     }
 
     const drawMarker = (p: Vec2, fill: string, ring: string): void => {
@@ -382,8 +451,41 @@ export class WorldRenderer {
       ctx.beginPath();
       ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = `${fill}66`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+      ctx.stroke();
     };
     drawMarker(g.waypoints[0], theme.spawn, theme.spawnRing);
     drawMarker(g.waypoints[g.waypoints.length - 1], theme.goal, theme.goalRing);
+  }
+
+  private drawPathFlow(ctx: CanvasRenderingContext2D, points: readonly Vec2[], theme: LevelTheme): void {
+    ctx.save();
+    ctx.fillStyle = `${theme.pathCore}88`;
+    for (let i = 0; i + 1 < points.length; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 40) continue;
+      const ux = dx / len;
+      const uy = dy / len;
+      const px = -uy;
+      const py = ux;
+      for (let d = 52; d < len; d += 96) {
+        const cx = a.x + ux * d;
+        const cy = a.y + uy * d;
+        ctx.beginPath();
+        ctx.moveTo(cx + ux * 12, cy + uy * 12);
+        ctx.lineTo(cx - ux * 10 + px * 7, cy - uy * 10 + py * 7);
+        ctx.lineTo(cx - ux * 10 - px * 7, cy - uy * 10 - py * 7);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 }

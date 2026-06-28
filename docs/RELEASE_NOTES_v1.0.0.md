@@ -11,6 +11,7 @@ Praesidium v1.0.0 is the first full public release of the sci-fi tower defense b
 - Intel Codex for tower roles, enemy traits, resistances, and strategic guidance.
 - Daily missions, weekly run badge, product-health stats, achievements, talents, offline leaderboard, and run summaries.
 - Mobile landscape support with compact HUD, compact 10-level select, tower drawer, shared layout tokens, and portrait orientation hint.
+- Polished battlefield presentation with ambient map lighting, path-flow direction markers, tower glows, enemy shadows, projectile halos, and capped particle effects.
 - Versioned service worker cache for faster repeat visits and offline-friendly static assets.
 - Procedural Web Audio with compressor and SFX throttling.
 - Enhanced spell and boss visual feedback with pure code particles.

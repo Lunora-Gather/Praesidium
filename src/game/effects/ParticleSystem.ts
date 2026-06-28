@@ -33,6 +33,9 @@ export interface Shockwave {
 }
 
 export class ParticleSystem {
+  private static readonly MAX_PARTICLES = 420;
+  private static readonly MAX_FLOATS = 48;
+  private static readonly MAX_SHOCKWAVES = 24;
   private readonly particles: Particle[] = [];
   private readonly floats: FloatText[] = [];
   private readonly shockwaves: Shockwave[] = [];
@@ -40,6 +43,7 @@ export class ParticleSystem {
   /** Burst `count` particles from `origin` with given color/speed. */
   burst(origin: Vec2, count: number, color: string, speed = 120, life = 0.5, size = 3): void {
     for (let i = 0; i < count; i++) {
+      if (this.particles.length >= ParticleSystem.MAX_PARTICLES) return;
       const a = Math.random() * Math.PI * 2;
       const s = speed * (0.5 + Math.random() * 0.5);
       this.particles.push({
@@ -57,6 +61,7 @@ export class ParticleSystem {
   /** Directional burst, useful for impacts and spell cones. */
   directionalBurst(origin: Vec2, count: number, color: string, angle: number, spread = Math.PI / 3, speed = 160, life = 0.45, size = 3): void {
     for (let i = 0; i < count; i++) {
+      if (this.particles.length >= ParticleSystem.MAX_PARTICLES) return;
       const a = angle + (Math.random() - 0.5) * spread;
       const s = speed * (0.45 + Math.random() * 0.75);
       this.particles.push({
@@ -118,6 +123,7 @@ export class ParticleSystem {
 
   /** Floating text — damage numbers, gold rewards, etc. */
   floatText(pos: Vec2, text: string, color = '#fff', life = 0.8): void {
+    if (this.floats.length >= ParticleSystem.MAX_FLOATS) this.floats.shift();
     this.floats.push({
       pos: Vec2.from(pos),
       text,
@@ -130,6 +136,7 @@ export class ParticleSystem {
 
   /** Spawn expanding shockwave ring. */
   shockwave(pos: Vec2, maxRadius: number, color: string, life = 0.4): void {
+    if (this.shockwaves.length >= ParticleSystem.MAX_SHOCKWAVES) this.shockwaves.shift();
     this.shockwaves.push({
       pos: Vec2.from(pos),
       radius: 0,

@@ -197,6 +197,10 @@ check('codex screen uses shared layout tokens', contains('src/ui/CodexScreen.ts'
 check('tower panel uses shared layout tokens', contains('src/ui/TowerPanel.ts', 'layoutFor'));
 check('level themes exist', fileExists('src/ui/LevelThemes.ts'));
 check('world renderer uses level themes', contains('src/ui/WorldRenderer.ts', 'getLevelTheme'));
+check('world renderer draws battle backdrop', contains('src/ui/WorldRenderer.ts', 'drawBattleBackdrop'));
+check('world renderer draws path flow markers', contains('src/ui/WorldRenderer.ts', 'drawPathFlow'));
+check('world renderer draws tower glow', contains('src/ui/WorldRenderer.ts', 'drawTowerGlow'));
+check('world renderer draws enemy shadow', contains('src/ui/WorldRenderer.ts', 'drawEnemyShadow'));
 check('world renderer has boss warning', contains('src/ui/WorldRenderer.ts', 'drawBossWarning'));
 check('HUD has tiny screen branch', contains('src/ui/HUD.ts', 'isUltraTiny'));
 check('tower panel has mobile drawer', contains('src/ui/TowerPanel.ts', 'drawMobileDrawer'));
@@ -209,6 +213,7 @@ check('audio has SFX throttling', contains('src/engine/Audio.ts', 'canPlay'));
 check('particle system has meteor impact', contains('src/game/effects/ParticleSystem.ts', 'meteorImpact'));
 check('particle system has freeze pulse', contains('src/game/effects/ParticleSystem.ts', 'freezePulse'));
 check('particle system has boss death effect', contains('src/game/effects/ParticleSystem.ts', 'bossDeath'));
+check('particle system caps pooled effects', contains('src/game/effects/ParticleSystem.ts', 'MAX_PARTICLES'));
 check('main wires enhanced spell effects', contains('src/main.ts', 'meteorImpact'));
 check('renderer caps device pixel ratio', contains('src/engine/Renderer.ts', 'Math.min(2, window.devicePixelRatio'));
 check('service worker uses versioned cache', contains('public/sw.js', "praesidium-v1.0.0"));
