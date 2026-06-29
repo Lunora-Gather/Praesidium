@@ -6,7 +6,7 @@ import { SaveSystem } from '../utils/SaveSystem';
 import { Difficulty, DIFFICULTY_LIST } from '../config/Difficulty';
 import { getLocale, t } from '../utils/i18n';
 import { getLevelTheme } from './LevelThemes';
-import { cardColumns, layoutFor, UI } from './Layout';
+import { layoutFor, UI } from './Layout';
 
 export type LevelSelectAction = { kind: 'level'; index: number } | { kind: 'back' } | { kind: 'diff'; diff: Difficulty };
 
@@ -29,6 +29,7 @@ export class LevelSelect {
       { offset: 1, color: '#02060c' }
     ]);
     r.rect(0, 0, r.width, r.height, bgGrad);
+    this.drawMapBackdrop(r);
 
     const cx = r.width / 2;
     const isCompactLandscape = layout.isCompact && r.width > r.height;
@@ -50,19 +51,17 @@ export class LevelSelect {
     this.drawDifficultyPicker(r, cx, progressY + (isCompactLandscape ? 34 : isSmall ? 42 : 50), isSmall);
 
     const total = this.levels.total;
-    const gap = isSmall ? layout.gap : layout.cardGap;
-    const cols = isCompactLandscape ? Math.min(total, 5) : isSmall ? 2 : cardColumns(r, total, 218, 176, layout.safe, gap);
-    const rows = Math.ceil(total / cols);
-    const startY = progressY + (isCompactLandscape ? 78 : isSmall ? 88 : 104);
-    const backArea = isCompact ? 42 : 60;
-    const availableH = Math.max(250, r.height - startY - backArea);
-    const idealCardH = isCompactLandscape ? 96 : isSmall ? 118 : 138;
-    const minCardH = isCompactLandscape ? 76 : isSmall ? 104 : 122;
-    const cardH = Math.max(minCardH, Math.min(idealCardH, Math.floor((availableH - gap * (rows - 1)) / rows)));
-    const cardW = Math.min(isSmall ? 166 : 218, Math.floor((r.width - layout.safe * 2 - gap * (cols - 1)) / cols));
+    const gap = isCompactLandscape ? 8 : isSmall ? layout.gap : 14;
+    const cols = isCompactLandscape ? 5 : isSmall ? 2 : 5;
+    const startY = progressY + (isCompactLandscape ? 74 : isSmall ? 90 : 132);
+    const cardH = isCompactLandscape ? 68 : isSmall ? 104 : 118;
+    const cardW = Math.min(isCompactLandscape ? 166 : isSmall ? 166 : 206, Math.floor((r.width - layout.safe * 2 - gap * (cols - 1)) / cols));
     const totalW = cols * cardW + (cols - 1) * gap;
     const startX = cx - totalW / 2;
     const nextIndex = this.nextPlayableIndex();
+
+    if (!isSmall) r.text('CAMPAIGN ROUTE', startX, startY - 26, '#67e8f9', 10, 'left', 'bold', 'top', 'header');
+    this.drawRouteRail(r, startX, startY, cardW, cardH, gap, cols, total);
 
     for (let i = 0; i < total; i++) {
       const col = i % cols;
@@ -72,8 +71,7 @@ export class LevelSelect {
       this.drawLevelCard(r, x, y, cardW, cardH, i, i === nextIndex, isSmall, isCompact);
     }
 
-    const btnY = Math.min(r.height - 44, startY + rows * (cardH + gap) + (isCompact ? 8 : 12));
-    this.drawBackButton(r, cx, btnY, isCompact);
+    this.drawBackButton(r, cx, layout.safe + 10, isCompact);
   }
 
   private drawCampaignProgress(r: Renderer, cx: number, y: number, isSmall: boolean): void {
@@ -86,15 +84,14 @@ export class LevelSelect {
     const h = isSmall ? 30 : 36;
     const x = cx - w / 2;
 
-    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.72)', true, UI.color.stroke, 1);
     r.text(`★ ${stars}/${maxStars}`, x + 16, y + h / 2, UI.color.gold, isSmall ? 11 : 13, 'left', 'bold', 'middle', 'header');
     r.text(`${t('level.level')} ${unlocked}/${total}`, cx, y + h / 2, '#cbd5e1', isSmall ? 11 : 13, 'center', 'bold', 'middle', 'header');
     r.text(`${Math.round(ratio * 100)}%`, x + w - 16, y + h / 2, '#60a5fa', isSmall ? 11 : 13, 'right', 'bold', 'middle', 'header');
 
     const barW = w - 28;
     const barY = y + h + 6;
-    r.roundRect(x + 14, barY, barW, 4, 2, 'rgba(30, 41, 59, 0.9)', true);
-    r.roundRect(x + 14, barY, Math.max(4, barW * ratio), 4, 2, UI.color.blue, true);
+    r.roundRect(x + 14, barY, barW, 3, 2, 'rgba(30, 41, 59, 0.72)', true);
+    r.roundRect(x + 14, barY, Math.max(4, barW * ratio), 3, 2, UI.color.blue, true);
   }
 
   private drawDifficultyPicker(r: Renderer, cx: number, y: number, isSmall: boolean): void {
@@ -135,81 +132,124 @@ export class LevelSelect {
     const accent = completed ? '#10b981' : isRecommended ? theme.accent : unlocked ? theme.accent : '#475569';
     const cardBg = unlocked
       ? r.linearGradient(x, y, x, y + h, [
-        { offset: 0, color: isRecommended ? `${theme.pathGlow}44` : `${theme.buildable}dd` },
-        { offset: 0.55, color: `${theme.background}ee` },
-        { offset: 1, color: 'rgba(15, 23, 42, 0.92)' }
+        { offset: 0, color: isRecommended ? `${theme.pathGlow}4d` : 'rgba(15, 23, 42, 0.86)' },
+        { offset: 1, color: 'rgba(2, 6, 23, 0.82)' }
       ])
-      : 'rgba(15, 23, 42, 0.42)';
-    const border = isRecommended ? theme.accent : completed ? '#10b981' : unlocked ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)';
+      : 'rgba(15, 23, 42, 0.36)';
+    const border = isRecommended ? theme.accent : completed ? '#10b98188' : unlocked ? `${theme.accent}44` : 'rgba(148, 163, 184, 0.05)';
 
     if (isRecommended && unlocked) r.setShadow(`${theme.accent}66`, 14, 0, 0);
-    r.roundRect(x, y, w, h, 14, cardBg, true, border, isRecommended ? 1.6 : 1);
+    this.drawMissionSlab(r, x, y, w, h, isSmall ? 12 : 16, cardBg, border, isRecommended ? 1.5 : 1);
     r.clearShadow();
-    r.roundRect(x, y, 4, h, 2, accent, true);
+    r.ctx.save();
+    r.ctx.fillStyle = accent;
+    r.ctx.globalAlpha = unlocked ? 0.95 : 0.35;
+    r.ctx.fillRect(x, y + 8, 4, h - 16);
+    r.ctx.restore();
 
-    const routeH = isCompact ? 18 : isSmall ? 22 : 26;
-    this.drawMiniRoute(r, x + 12, y + h - routeH - 12, w - 24, routeH, theme.accent, unlocked ? 0.42 : 0.16);
+    const markerR = isSmall ? 13 : 15;
+    r.ctx.save();
+    r.ctx.fillStyle = unlocked ? `${accent}26` : 'rgba(71, 85, 105, 0.18)';
+    r.ctx.strokeStyle = unlocked ? accent : '#475569';
+    r.ctx.lineWidth = 1.2;
+    r.ctx.beginPath();
+    r.ctx.arc(x + 23, y + 24, markerR, 0, Math.PI * 2);
+    r.ctx.fill();
+    r.ctx.stroke();
+    r.ctx.restore();
+    r.text(String(levelNumber).padStart(2, '0'), x + 23, y + 24, unlocked ? '#e0f2fe' : '#64748b', isSmall ? 8 : 9, 'center', 'bold', 'middle', 'header');
 
-    if (isRecommended && unlocked) {
-      const badgeW = isSmall ? 58 : 72;
-      r.roundRect(x + w - badgeW - 10, y + 10, badgeW, 20, 10, `${theme.pathGlow}33`, true, theme.accent, 1);
-      r.text(t('summary.nextLevel'), x + w - badgeW / 2 - 10, y + 20, '#f8fafc', isSmall ? 8 : 9, 'center', 'bold', 'middle', 'header');
-    }
+    r.text(levelName, x + 44, y + 14, unlocked ? '#f8fafc' : '#64748b', isSmall ? 12 : 14, 'left', 'bold', 'top', 'header');
+    r.text(theme.name, x + 44, y + 33, unlocked ? theme.accent : '#475569', isSmall ? 8 : 9, 'left', 'bold', 'top', 'header');
 
-    r.text(`${t('level.level')} ${levelNumber}`, x + 16, y + 12, unlocked ? '#94a3b8' : '#475569', isSmall ? 9 : 10, 'left', 'bold', 'top', 'header');
-    r.text(levelName, x + 16, y + 32, unlocked ? '#f8fafc' : '#64748b', isSmall ? 13 : 15, 'left', 'bold', 'top', 'header');
-    if (!isSmall && h >= 132) r.text(theme.name, x + 16, y + 52, unlocked ? theme.accent : '#475569', 9, 'left', 'bold', 'top', 'header');
-
-    const starY = y + (isCompact ? 52 : isSmall ? 57 : 70);
+    const starY = y + (isCompact ? 50 : isSmall ? 58 : 58);
     r.setShadow('rgba(251, 191, 36, 0.24)', 6, 0, 0);
     for (let s = 0; s < 3; s++) {
-      const starX = x + 17 + s * (isSmall ? 20 : 24);
+      const starX = x + 18 + s * (isSmall ? 18 : 20);
       const active = s < stars;
-      r.text(active ? '★' : '☆', starX, starY, active ? UI.color.gold : '#475569', isSmall ? 17 : 20, 'left', 'normal', 'top', 'header');
+      r.text(active ? '★' : '☆', starX, starY, active ? UI.color.gold : '#475569', isSmall ? 14 : 16, 'left', 'normal', 'top', 'header');
     }
     r.clearShadow();
 
-    const scoreLabel = score > 0 ? `${t('hud.score')} ${score.toLocaleString()}` : `${t('hud.score')} —`;
-    r.text(scoreLabel, x + 16, y + h - 38, unlocked ? '#cbd5e1' : '#475569', isSmall ? 10 : 11, 'left', 'bold', 'top', 'header');
+    if (!isCompact && score > 0) r.text(`${t('hud.score')} ${score.toLocaleString()}`, x + 16, y + h - 24, '#cbd5e1', isSmall ? 8.5 : 9.5, 'left', 'bold', 'top', 'header');
 
     if (unlocked) {
       const actionText = completed ? t('menu.playAgain') : t('level.clickToPlay');
-      r.text(actionText, x + w - 14, y + h - 22, theme.accent, isSmall ? 9 : 10, 'right', 'bold', 'top', 'header');
+      r.text(actionText, x + w - 13, y + h - 23, theme.accent, isSmall ? 8.5 : 9.5, 'right', 'bold', 'top', 'header');
       this.regions.push({ x, y, w, h, action: { kind: 'level', index } });
     } else {
-      r.text(t('level.locked'), x + w - 14, y + h - 22, '#64748b', isSmall ? 9 : 10, 'right', 'bold', 'top', 'header');
+      r.text(t('level.locked'), x + w - 13, y + h - 23, '#64748b', isSmall ? 8.5 : 9.5, 'right', 'bold', 'top', 'header');
     }
   }
 
-  private drawMiniRoute(r: Renderer, x: number, y: number, w: number, h: number, color: string, alpha: number): void {
+  private drawMapBackdrop(r: Renderer): void {
+    const horizonY = Math.floor(r.height * 0.68);
     r.ctx.save();
-    r.ctx.globalAlpha = alpha;
-    r.ctx.strokeStyle = color;
-    r.ctx.lineWidth = 2;
-    r.ctx.lineCap = 'round';
-    r.ctx.beginPath();
-    r.ctx.moveTo(x, y + h * 0.65);
-    r.ctx.bezierCurveTo(x + w * 0.25, y + h * 0.1, x + w * 0.45, y + h * 0.95, x + w * 0.68, y + h * 0.35);
-    r.ctx.bezierCurveTo(x + w * 0.82, y, x + w * 0.92, y + h * 0.3, x + w, y + h * 0.18);
-    r.ctx.stroke();
-    r.ctx.globalAlpha = Math.min(1, alpha + 0.12);
-    r.ctx.fillStyle = color;
-    r.ctx.beginPath();
-    r.ctx.arc(x + w, y + h * 0.18, 3, 0, Math.PI * 2);
-    r.ctx.fill();
+    r.ctx.globalAlpha = 0.10;
+    r.ctx.strokeStyle = '#38bdf8';
+    r.ctx.lineWidth = 1;
+    for (let y = horizonY; y < r.height; y += 34) {
+      r.ctx.beginPath();
+      r.ctx.moveTo(0, y);
+      r.ctx.lineTo(r.width, y);
+      r.ctx.stroke();
+    }
+    for (let x = -r.width; x < r.width * 2; x += 100) {
+      r.ctx.beginPath();
+      r.ctx.moveTo(x, r.height);
+      r.ctx.lineTo(r.width / 2 + (x - r.width / 2) * 0.18, horizonY);
+      r.ctx.stroke();
+    }
     r.ctx.restore();
   }
 
-  private drawBackButton(r: Renderer, cx: number, y: number, compact: boolean): void {
-    const bw = compact ? 156 : 180;
-    const bh = compact ? 32 : 36;
-    const bx = cx - bw / 2;
-    const backBtnGrad = r.linearGradient(bx, y, bx, y + bh, [
-      { offset: 0, color: '#475569' },
-      { offset: 1, color: '#1e293b' }
-    ]);
-    r.roundRect(bx, y, bw, bh, 9, backBtnGrad, true, 'rgba(255, 255, 255, 0.08)', 1);
-    r.text(t('common.menu'), cx, y + bh / 2, '#ffffff', compact ? 12 : 13, 'center', 'bold', 'middle');
+  private drawRouteRail(r: Renderer, startX: number, startY: number, cardW: number, cardH: number, gap: number, cols: number, total: number): void {
+    const rows = Math.ceil(total / cols);
+    if (rows < 2) return;
+    const x1 = startX + cardW / 2;
+    const x2 = startX + (cols - 1) * (cardW + gap) + cardW / 2;
+    const y = startY + cardH + gap / 2;
+    r.ctx.save();
+    r.ctx.strokeStyle = 'rgba(96, 165, 250, 0.14)';
+    r.ctx.lineWidth = 3;
+    r.ctx.lineCap = 'round';
+    r.ctx.lineJoin = 'round';
+    r.ctx.beginPath();
+    r.ctx.moveTo(x1, y);
+    r.ctx.lineTo(x2, y);
+    r.ctx.stroke();
+    r.ctx.fillStyle = 'rgba(96, 165, 250, 0.18)';
+    for (let i = 0; i < cols; i++) {
+      const x = startX + i * (cardW + gap) + cardW / 2;
+      r.ctx.beginPath();
+      r.ctx.arc(x, y, 3, 0, Math.PI * 2);
+      r.ctx.fill();
+    }
+    r.ctx.restore();
+  }
+
+  private drawMissionSlab(r: Renderer, x: number, y: number, w: number, h: number, cut: number, fill: string | CanvasGradient, stroke: string | CanvasGradient, strokeWidth: number): void {
+    r.ctx.beginPath();
+    r.ctx.moveTo(x + cut, y);
+    r.ctx.lineTo(x + w, y);
+    r.ctx.lineTo(x + w - cut, y + h);
+    r.ctx.lineTo(x, y + h);
+    r.ctx.closePath();
+    r.ctx.fillStyle = fill;
+    r.ctx.fill();
+    r.ctx.strokeStyle = stroke;
+    r.ctx.lineWidth = strokeWidth;
+    r.ctx.stroke();
+  }
+
+  private drawBackButton(r: Renderer, _cx: number, y: number, compact: boolean): void {
+    const layout = layoutFor(r);
+    const bw = compact ? 104 : 118;
+    const bh = compact ? 26 : 28;
+    const bx = layout.safe + 8;
+    r.roundRect(bx, y, bw, bh, 8, 'rgba(15, 23, 42, 0.34)', true, 'rgba(148, 163, 184, 0.12)', 1);
+    r.text('‹', bx + 18, y + bh / 2 - 1, '#93c5fd', compact ? 16 : 18, 'center', 'bold', 'middle', 'header');
+    r.text(t('common.menu'), bx + 37, y + bh / 2, '#cbd5e1', compact ? 10 : 11, 'left', 'bold', 'middle');
     this.regions.push({ x: bx, y, w: bw, h: bh, action: { kind: 'back' } });
   }
 

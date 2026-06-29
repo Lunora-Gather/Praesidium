@@ -24,6 +24,7 @@ Praesidium is a polished sci-fi tower defense browser game. Build and upgrade to
 | Shot | Purpose | Suggested state |
 | --- | --- | --- |
 | Main menu | First impression / landing image | Campaign CTA, mode dock, and Daily/Weekly ops brief visible |
+| Campaign route | Progression / campaign depth | Mission-route board with ten level nodes |
 | Campaign select | Progression feature | 10-level campaign visible with several stars unlocked |
 | Level theme collage | Visual identity | Capture early, mid, and late campaign maps |
 | Battle HUD | Core gameplay | Towers firing, wave active, enemy path visible |

@@ -6,11 +6,11 @@ Final release decision record for Praesidium v1.0.0.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| `npm run verify` | Pass | Local run on 2026-06-29: selftest 161 passed, save/restore 36 passed, performance check 8 passed, release audit 156 passed, production build passed. |
+| `npm run verify` | Pass | Local run on 2026-06-29: selftest 161 passed, save/restore 36 passed, performance check 8 passed, release audit 158 passed, production build passed. |
 | `npm run release:gate` | Pass | Ready checks: 8/8. Repository blockers: none detected by release gate. |
 | `npm audit` | Pass | `found 0 vulnerabilities`. |
-| Production build opens | Pass | Local preview served HTML, `assets/index-DjRe8Zcm.js`, manifest, and `sw.js` with HTTP 200 after the final adaptive menu build. |
-| Browser smoke test | Pass | Desktop, mobile landscape, and portrait screenshots verified the redesigned main menu CTA, mode dock, ops brief, and orientation hint; gameplay smoke covered level select, tower placement, and wave start with no browser console errors. |
+| Production build opens | Pass | Local preview served HTML, `assets/index-BGMzoBI5.js`, manifest, and `sw.js` with HTTP 200 after the final command-deck/menu-route build. |
+| Browser smoke test | Pass | Desktop and mobile landscape screenshots verified the redesigned command-deck main menu; desktop route-board smoke verified level select. Gameplay smoke covered tower placement and wave start with no browser console errors. |
 
 ## Deploy Gate
 

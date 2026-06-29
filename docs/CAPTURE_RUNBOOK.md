@@ -11,6 +11,7 @@ Produce a small public-facing media set for README, portal cards, release notes,
 | Asset | Viewport | Scene | Suggested filename |
 | --- | --- | --- | --- |
 | Hero screenshot | 1280 x 720 | Main menu with campaign CTA, mode dock, and Daily/Weekly ops brief visible | `praesidium-hero-menu.png` |
+| Campaign route screenshot | 1280 x 720 | Level select mission-route board with the next level highlighted | `praesidium-campaign-route.png` |
 | Campaign screenshot | 1280 x 720 | Level Select showing the 10-level campaign | `praesidium-campaign-select.png` |
 | Combat screenshot | 1280 x 720 | Mid-run with towers, next-wave preview, and enemies visible | `praesidium-combat.png` |
 | Boss screenshot | 1280 x 720 | Boss warning or active boss encounter label visible | `praesidium-boss-warning.png` |

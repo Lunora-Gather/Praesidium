@@ -149,23 +149,32 @@ export class Screens {
     const layout = layoutFor(r);
     const safe = Math.max(layout.safe, 18);
     const isShort = r.height < 560;
-    const isWide = r.width >= 960 && r.height >= 560;
-    const actionW = Math.min(isWide ? 470 : 560, r.width - safe * 2);
-    const actionX = isWide ? r.width - safe - actionW : (r.width - actionW) / 2;
-    const actionY = isWide ? Math.max(72, r.height * 0.17) : Math.max(safe + 100, r.height * 0.31);
-    const heroX = isWide ? safe + 22 : r.width / 2;
-    const heroY = isWide ? Math.max(84, r.height * 0.18) : safe + 24;
-    const heroAlign: CanvasTextAlign = isWide ? 'left' : 'center';
+    const cx = r.width / 2;
+    const titleY = isShort ? 24 : Math.max(38, r.height * 0.075);
+    this.drawHeroCopy(r, cx, titleY, 'center', compact, isShort);
 
-    this.drawHeroCopy(r, heroX, heroY, heroAlign, compact, isShort);
-    if (isWide && !isShort) this.drawOpsBrief(r, heroX, heroY + 180, 330);
-    this.drawModeDock(r, actionX, actionY, actionW, compact || isShort);
+    const stageW = Math.min(r.width - safe * 2, compact ? 620 : 900);
+    const stageH = isShort ? 0 : Math.min(230, Math.max(155, r.height * 0.24));
+    const stageX = cx - stageW / 2;
+    const stageY = titleY + (compact ? 88 : 118);
+    if (!isShort) {
+      this.drawCommandStage(r, stageX, stageY, stageW, stageH);
+      this.drawOpsBrief(r, stageX + 24, stageY + stageH - 76, Math.min(360, stageW - 48));
+    }
+
+    const dockW = Math.min(r.width - safe * 2, compact || isShort ? 560 : 820);
+    const dockH = compact || isShort ? 156 : 174;
+    const dockX = cx - dockW / 2;
+    const dockY = isShort
+      ? Math.max(112, r.height * 0.30)
+      : Math.min(r.height - dockH - safe, stageY + stageH + 18);
+    this.drawModeDock(r, dockX, dockY, dockW, dockH, compact || isShort);
   }
 
   private drawMenuBackdrop(r: Renderer): void {
-    const horizonY = Math.max(140, Math.floor(r.height * 0.58));
+    const horizonY = Math.max(150, Math.floor(r.height * 0.60));
     const gridGrad = r.linearGradient(0, horizonY, 0, r.height, [
-      { offset: 0, color: 'rgba(14, 165, 233, 0.12)' },
+      { offset: 0, color: 'rgba(14, 165, 233, 0.10)' },
       { offset: 1, color: 'rgba(2, 6, 23, 0)' },
     ]);
     r.rect(0, horizonY, r.width, r.height - horizonY, gridGrad, true);
@@ -187,19 +196,15 @@ export class Screens {
       r.ctx.lineTo(r.width / 2 + (x - r.width / 2) * 0.16, horizonY);
       r.ctx.stroke();
     }
-    if (r.height >= 560) {
-      r.ctx.globalAlpha = 0.24;
-      this.drawPreviewPath(r, Math.max(42, r.width * 0.08), horizonY - 92, Math.min(r.width * 0.7, 680));
-    }
     r.ctx.restore();
     r.ctx.globalAlpha = oldAlpha;
   }
 
   private drawHeroCopy(r: Renderer, x: number, y: number, align: CanvasTextAlign, compact: boolean, isShort: boolean): void {
-    const titleSize = isShort ? 30 : compact ? 38 : 56;
+    const titleSize = isShort ? 32 : compact ? 42 : 58;
     const taglineSize = isShort ? 11 : compact ? 12 : 14;
-    const titleW = align === 'left' ? 430 : Math.min(480, r.width - 36);
-    const titleX1 = align === 'left' ? x : x - titleW / 2;
+    const titleW = Math.min(560, r.width - 36);
+    const titleX1 = x - titleW / 2;
     const titleGrad = r.linearGradient(titleX1, y, titleX1 + titleW, y, [
       { offset: 0, color: '#67e8f9' },
       { offset: 0.5, color: '#93c5fd' },
@@ -212,8 +217,8 @@ export class Screens {
       r.text('10 zones · Daily ops · Weekly modifiers', x, y + titleSize + 28, UI.color.textDim, compact ? 9.5 : 11, align, 'bold', 'top', 'header');
     }
 
-    const railW = align === 'left' ? 300 : Math.min(330, r.width - 48);
-    const railX = align === 'left' ? x : x - railW / 2;
+    const railW = Math.min(isShort ? 320 : 390, r.width - 48);
+    const railX = x - railW / 2;
     const railY = y + titleSize + (isShort ? 31 : 58);
     const items: Array<[string, string, string]> = [
       ['01', 'Campaign', '#60a5fa'],
@@ -224,20 +229,22 @@ export class Screens {
     for (let i = 0; i < items.length; i++) {
       const [kicker, label, color] = items[i];
       const ix = railX + i * (itemW + 6);
-      r.roundRect(ix, railY, itemW, isShort ? 31 : 38, 7, 'rgba(2, 6, 23, 0.34)', true, `${color}55`, 1);
+      this.drawCutPanel(r, ix, railY, itemW, isShort ? 31 : 38, 7, 'rgba(2, 6, 23, 0.30)', `${color}55`);
       r.text(kicker, ix + itemW / 2, railY + (isShort ? 6 : 7), color, isShort ? 10 : 12, 'center', 'bold', 'top', 'header');
       r.text(label, ix + itemW / 2, railY + (isShort ? 19 : 23), '#cbd5e1', isShort ? 7.5 : 8.5, 'center', 'bold', 'top', 'header');
     }
   }
 
-  private drawModeDock(r: Renderer, x: number, y: number, w: number, compact: boolean): void {
+  private drawModeDock(r: Renderer, x: number, y: number, w: number, h: number, compact: boolean): void {
     const gap = compact ? 7 : 9;
-    const primaryH = compact ? 58 : 70;
-    const tileH = compact ? 48 : 56;
-    const utilH = compact ? 34 : 38;
+    const primaryH = compact ? 54 : 64;
+    const tileH = compact ? 44 : 50;
+    const utilH = compact ? 28 : 30;
+
+    this.drawCutPanel(r, x - 18, y - 14, w + 36, h + 20, 16, 'rgba(2, 6, 23, 0.36)', 'rgba(103, 232, 249, 0.10)');
 
     this.drawPrimaryButton(r, x, y, w, primaryH, t('menu.start'), 'start');
-    y += primaryH + gap;
+    y += primaryH + gap + 2;
 
     const cols = w >= 440 ? 3 : 1;
     const tileW = cols === 3 ? (w - gap * 2) / 3 : w;
@@ -258,7 +265,7 @@ export class Screens {
     this.drawUtilityButton(r, x, y, utilW, utilH, '⚙', t('menu.settings'), 'settings');
     this.drawUtilityButton(r, x + utilW + gap, y, utilW, utilH, '▣', t('stats.title'), 'stats');
 
-    if (!compact && r.height >= 650) {
+    if (!compact && r.height >= 720) {
       const hintY = y + utilH + 18;
       r.text(t('menu.shortcuts'), x + w / 2, hintY, UI.color.textDim, 9, 'center', 'bold', 'top');
     }
@@ -274,8 +281,24 @@ export class Screens {
     r.text(this.truncate(week.title, 38), x, y + 73, '#c4b5fd', 10, 'left', 'bold', 'top', 'header');
   }
 
+  private drawCommandStage(r: Renderer, x: number, y: number, w: number, h: number): void {
+    this.drawCutPanel(r, x, y, w, h, 22, 'rgba(2, 6, 23, 0.20)', 'rgba(96, 165, 250, 0.10)');
+    r.ctx.save();
+    r.ctx.globalAlpha = 0.12;
+    r.ctx.strokeStyle = '#67e8f9';
+    r.ctx.lineWidth = 1;
+    for (let gx = x + 34; gx < x + w - 20; gx += 52) {
+      r.ctx.beginPath();
+      r.ctx.moveTo(gx, y + 18);
+      r.ctx.lineTo(gx + 40, y + h - 18);
+      r.ctx.stroke();
+    }
+    r.ctx.restore();
+    this.drawPreviewPath(r, x + 70, y + 38, w - 140);
+  }
+
   private drawPreviewPath(r: Renderer, x: number, y: number, w: number): void {
-    const h = Math.max(86, Math.min(128, r.height * 0.16));
+    const h = 92;
     const points = [
       { x, y: y + h * 0.62 },
       { x: x + w * 0.22, y: y + h * 0.62 },
@@ -285,8 +308,8 @@ export class Screens {
       { x: x + w, y: y + h * 0.78 },
     ];
     r.ctx.save();
-    r.ctx.strokeStyle = 'rgba(96, 165, 250, 0.7)';
-    r.ctx.lineWidth = 10;
+    r.ctx.strokeStyle = 'rgba(96, 165, 250, 0.62)';
+    r.ctx.lineWidth = 12;
     r.ctx.lineCap = 'round';
     r.ctx.lineJoin = 'round';
     r.ctx.beginPath();
@@ -306,6 +329,22 @@ export class Screens {
     r.ctx.restore();
   }
 
+  private drawCutPanel(r: Renderer, x: number, y: number, w: number, h: number, cut: number, fill: string | CanvasGradient, stroke?: string | CanvasGradient): void {
+    r.ctx.beginPath();
+    r.ctx.moveTo(x + cut, y);
+    r.ctx.lineTo(x + w, y);
+    r.ctx.lineTo(x + w - cut, y + h);
+    r.ctx.lineTo(x, y + h);
+    r.ctx.closePath();
+    r.ctx.fillStyle = fill;
+    r.ctx.fill();
+    if (stroke) {
+      r.ctx.strokeStyle = stroke;
+      r.ctx.lineWidth = 1.1;
+      r.ctx.stroke();
+    }
+  }
+
   private drawPrimaryButton(r: Renderer, x: number, y: number, w: number, h: number, label: string, action: MenuClickAction): void {
     const grad = r.linearGradient(x, y, x + w, y + h, [
       { offset: 0, color: '#2563eb' },
@@ -313,7 +352,7 @@ export class Screens {
       { offset: 1, color: '#14b8a6' },
     ]);
     r.setShadow('rgba(14, 165, 233, 0.34)', 22, 0, 7);
-    r.roundRect(x, y, w, h, 8, grad, true, 'rgba(219, 234, 254, 0.36)', 1.4);
+    this.drawCutPanel(r, x, y, w, h, 18, grad, 'rgba(219, 234, 254, 0.36)');
     r.clearShadow();
     r.ctx.save();
     r.ctx.globalAlpha = 0.18;
@@ -326,9 +365,9 @@ export class Screens {
     r.ctx.closePath();
     r.ctx.fill();
     r.ctx.restore();
-    r.text('▶', x + 28, y + h / 2, '#ffffff', h >= 66 ? 18 : 15, 'center', 'bold', 'middle', 'header');
-    r.text(label, x + 54, y + h / 2 - 1, '#ffffff', h >= 66 ? 18 : 15, 'left', 'bold', 'middle', 'header');
-    r.text('CAMPAIGN', x + w - 18, y + h / 2, 'rgba(255,255,255,0.74)', h >= 66 ? 10 : 8.5, 'right', 'bold', 'middle', 'header');
+    r.text('▶', x + 32, y + h / 2, '#ffffff', h >= 62 ? 18 : 15, 'center', 'bold', 'middle', 'header');
+    r.text(label, x + 62, y + h / 2 - 1, '#ffffff', h >= 62 ? 18 : 15, 'left', 'bold', 'middle', 'header');
+    r.text('CAMPAIGN', x + w - 26, y + h / 2, 'rgba(255,255,255,0.74)', h >= 62 ? 10 : 8.5, 'right', 'bold', 'middle', 'header');
     this.regions.push({ x, y, w, h, action });
   }
 
@@ -337,8 +376,12 @@ export class Screens {
       { offset: 0, color: 'rgba(15, 23, 42, 0.84)' },
       { offset: 1, color: 'rgba(2, 6, 23, 0.72)' },
     ]);
-    r.roundRect(x, y, w, h, 8, grad, true, `${color}55`, 1.1);
-    r.roundRect(x, y, 4, h, 2, color, true);
+    this.drawCutPanel(r, x, y, w, h, 10, grad, `${color}55`);
+    r.ctx.save();
+    r.ctx.fillStyle = color;
+    r.ctx.globalAlpha = 0.9;
+    r.ctx.fillRect(x, y + 2, 4, h - 4);
+    r.ctx.restore();
     const iconX = x + (compact ? 22 : 25);
     r.text(icon, iconX, y + h / 2, color, compact ? 13 : 15, 'center', 'bold', 'middle', 'header');
     r.text(label, x + (compact ? 42 : 48), y + (compact ? 10 : 11), '#f8fafc', compact ? 11 : 12.5, 'left', 'bold', 'top', 'header');
@@ -347,7 +390,7 @@ export class Screens {
   }
 
   private drawUtilityButton(r: Renderer, x: number, y: number, w: number, h: number, icon: string, label: string, action: MenuClickAction): void {
-    r.roundRect(x, y, w, h, 8, 'rgba(15, 23, 42, 0.58)', true, 'rgba(148, 163, 184, 0.18)', 1);
+    this.drawCutPanel(r, x, y, w, h, 8, 'rgba(15, 23, 42, 0.42)', 'rgba(148, 163, 184, 0.14)');
     r.text(icon, x + 22, y + h / 2, '#cbd5e1', 12, 'center', 'bold', 'middle', 'header');
     r.text(label, x + 42, y + h / 2, '#cbd5e1', 11, 'left', 'bold', 'middle', 'header');
     this.regions.push({ x, y, w, h, action });

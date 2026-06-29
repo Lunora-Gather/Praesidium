@@ -22,6 +22,7 @@ All notable changes to Praesidium are tracked here.
 
 - Main menu upgraded into a release-style play surface with campaign, endless, daily, challenge, stats, talents, and codex entry points.
 - Main menu layout redesigned into a full-screen command surface with adaptive hero copy, a primary campaign action, compact mode tiles, and a lightweight Daily/Weekly ops brief.
+- Main menu and level select now share a sharper holographic command-deck style with slanted controls, a centered campaign route, and mission-slab level nodes instead of generic boxed menus.
 - Battlefield rendering now uses richer ambient backdrops, path-flow markers, tower glows, enemy shadows, projectile halos, and cleaner health bars.
 - GitHub Pages deployment now runs Node 24, full verification, and production build before publishing.
 - Public launch path no longer depends on blocking external Google Fonts.
@@ -32,7 +33,7 @@ All notable changes to Praesidium are tracked here.
 ### Fixed
 
 - Boss encounter classifier now distinguishes armored escort, phantom siege, and fast escort boss waves.
-- Compact landscape level select now shows all ten campaign levels without vertical overflow.
+- Compact landscape level select now shows all ten campaign levels without vertical overflow while preserving the campaign-route layout.
 - Small landscape main menu no longer lets Daily Objectives or shortcut hints cover primary actions.
 - Versioned service worker registration replaces the temporary legacy service worker unregister path.
 - PWA manifest metadata now consistently describes the ten-level campaign and uses a relative start URL.
