@@ -4,6 +4,7 @@
 
 import { load, save } from './storage';
 import { LEVELS } from '../game/grid/LevelManager';
+import { dailyMissions, evaluateMissions, type MissionRunSnapshot } from './DailyMissions';
 
 export interface SaveData {
   version: number;
@@ -17,6 +18,9 @@ export interface SaveData {
   dailyHighScore: number;
   dailyMaxWave: number;
   dailyDate: string;
+  missionCredits: number;
+  dailyMissionClaims: Record<string, boolean>;
+  weeklyBestWaves: Record<string, number>;
 }
 
 const KEY = 'save';
@@ -35,14 +39,33 @@ const DEFAULTS: SaveData = {
   dailyHighScore: 0,
   dailyMaxWave: 0,
   dailyDate: '',
+  missionCredits: 0,
+  dailyMissionClaims: {},
+  weeklyBestWaves: {},
 };
+
+function defaultData(): SaveData {
+  return {
+    ...DEFAULTS,
+    unlockedTowers: [...DEFAULTS.unlockedTowers],
+    levelStars: {},
+    levelHighScores: {},
+    dailyMissionClaims: {},
+    weeklyBestWaves: {},
+  };
+}
 
 export class SaveSystem {
   private data: SaveData;
 
   constructor() {
     const loaded = load<Partial<SaveData>>(KEY, {});
-    this.data = { ...DEFAULTS, ...loaded };
+    this.data = { ...defaultData(), ...loaded };
+    this.data.unlockedTowers = [...(loaded.unlockedTowers ?? DEFAULTS.unlockedTowers)];
+    this.data.levelStars = { ...(loaded.levelStars ?? {}) };
+    this.data.levelHighScores = { ...(loaded.levelHighScores ?? {}) };
+    this.data.dailyMissionClaims = { ...(loaded.dailyMissionClaims ?? {}) };
+    this.data.weeklyBestWaves = { ...(loaded.weeklyBestWaves ?? {}) };
     if (this.data.version !== CURRENT_VERSION) this.migrate();
     this.clampProgression();
   }
@@ -175,8 +198,34 @@ export class SaveSystem {
     return updated;
   }
 
+  recordDailyMissionProgress(dateStr: string, run: MissionRunSnapshot): number {
+    let earned = 0;
+    const progress = evaluateMissions(dailyMissions(dateStr), run);
+    for (const item of progress) {
+      if (!item.complete || this.data.dailyMissionClaims[item.mission.id]) continue;
+      this.data.dailyMissionClaims[item.mission.id] = true;
+      earned += item.mission.reward;
+    }
+    if (earned > 0) {
+      this.data.missionCredits += earned;
+      this.persist();
+    }
+    return earned;
+  }
+
+  recordWeeklyRun(weekId: string | null | undefined, wave: number, reward: number): number {
+    if (!weekId || wave <= 0) return 0;
+    const previous = this.data.weeklyBestWaves[weekId] ?? 0;
+    if (wave <= previous) return 0;
+    this.data.weeklyBestWaves[weekId] = wave;
+    const earned = previous === 0 ? Math.max(0, reward) : 0;
+    this.data.missionCredits += earned;
+    this.persist();
+    return earned;
+  }
+
   reset(): void {
-    this.data = { ...DEFAULTS };
+    this.data = defaultData();
     this.persist();
   }
 

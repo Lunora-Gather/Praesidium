@@ -15,23 +15,25 @@ Use this document after running `npm run balance:sim` or after outside playtests
 - overall Normal / Hard / Brutal win-rate
 - best result by level and difficulty
 - total tower placement distribution
+- `New-player Pressure Probe` for early campaign readability
 - `Late Campaign Review` for levels 9 and 10
 - late-campaign tower distribution
 - late-campaign red flags if level 9 or 10 collapses too early
 - `Actionable Tuning Notes` for next balance changes
 
-## Simulation summary template
+## Current simulation summary
 
 | Area | Result | Notes |
 | --- | --- | --- |
-| Normal win-rate | TBD | Should not reveal early blockers. |
-| Hard win-rate | TBD | Should be challenging but not impossible. |
-| Brutal win-rate | TBD | Can be punishing. |
-| Level 9 result | TBD | Watch speed-pressure leaks. |
-| Level 10 result | TBD | Watch final-gate boss pressure. |
-| Tower distribution | TBD | Confirm multiple tower types appear. |
-| Late-campaign tower distribution | TBD | Confirm multiple tower types appear on levels 9 and 10. |
-| Actionable tuning notes | TBD | Convert sim flags into concrete map or wave changes. |
+| Normal win-rate | 100% | No early blocker detected by the expert automation profile. |
+| Hard win-rate | 100% | Automation still clears every level; use outside playtests for real difficulty judgment. |
+| Brutal win-rate | 100% | Automation clears every level, so future difficulty tuning should rely on human error data. |
+| New-player probe | Pass | Levels 1-3 Normal reached meaningful play and completed with a slower limited profile. |
+| Level 9 result | Pass | Normal automation clears with 3 stars. |
+| Level 10 result | Pass | Normal automation clears with 3 stars. |
+| Tower distribution | Pass | Multiple tower types appear in automated clears. |
+| Late-campaign tower distribution | Pass | Late campaign does not require a single mandatory tower opening in automation. |
+| Actionable tuning notes | None | Do not tune further from automation alone; wait for outside playtest friction data. |
 
 ## Red flags
 
@@ -45,8 +47,7 @@ Use this document after running `npm run balance:sim` or after outside playtests
 
 ## Follow-up actions
 
-1. Record simulation results after the next successful verify run.
-2. Copy the `Actionable Tuning Notes` section into this file.
-3. Review Product Health risks after outside playtests.
-4. Tune level 9 path pressure before adding optional level 11.
-5. Tune level 10 boss pressure before adding a final boss pattern.
+1. Review Product Health risks after outside playtests.
+2. Tune level 9 path pressure only if human playtests show late-campaign leaks are unclear or unfair.
+3. Tune level 10 boss pressure only if human playtests show the final map is a grind rather than a strategy check.
+4. Avoid adding optional level 11 until the first outside playtest batch is reviewed.

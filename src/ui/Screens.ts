@@ -30,6 +30,8 @@ export interface ScreenStats {
   isStarUpgrade?: boolean;
   isNewEndlessRecord?: boolean;
   isNewDailyRecord?: boolean;
+  missionCredits?: number;
+  weeklyCredits?: number;
 }
 
 interface ReportRow {
@@ -435,6 +437,8 @@ export class Screens {
     if (stats?.isStarUpgrade) badges.push({ label: t('summary.starUpgrade'), color: UI.color.gold });
     if (stats?.isNewEndlessRecord) badges.push({ label: t('summary.endlessRecord'), color: '#a78bfa' });
     if (stats?.isNewDailyRecord) badges.push({ label: t('summary.dailyRecord'), color: '#14b8a6' });
+    if ((stats?.missionCredits ?? 0) > 0) badges.push({ label: t('summary.dailyCredits').replace('{credits}', `${stats?.missionCredits}`), color: '#2dd4bf' });
+    if ((stats?.weeklyCredits ?? 0) > 0) badges.push({ label: t('summary.weeklyCredits').replace('{credits}', `${stats?.weeklyCredits}`), color: '#c084fc' });
     return badges;
   }
 

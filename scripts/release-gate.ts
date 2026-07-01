@@ -61,9 +61,9 @@ const gates: GateItem[] = [
   {
     area: 'Retention',
     item: 'daily and weekly systems are visible',
-    done: exists('src/ui/DailyMissionPanel.ts') && exists('src/ui/WeeklyRunBadge.ts') && includes('src/game/GameState.ts', 'weeklyModeActive'),
-    evidence: 'DailyMissionPanel, WeeklyRunBadge, GameState',
-    next: 'Capture screenshots showing the main-menu ops brief and in-run Weekly Mode badge.',
+    done: exists('src/ui/DailyMissionPanel.ts') && exists('src/ui/WeeklyRunBadge.ts') && includes('src/game/GameState.ts', 'weeklyModeActive') && exists('src/utils/PlaytestReport.ts'),
+    evidence: 'DailyMissionPanel, WeeklyRunBadge, GameState, PlaytestReport',
+    next: 'Use exported playtest reports after outside tests to tune retention and first-run clarity.',
   },
   {
     area: 'QA',
@@ -74,10 +74,15 @@ const gates: GateItem[] = [
   },
   {
     area: 'Media',
-    item: 'capture plan exists',
-    done: includes('docs/CAPTURE_RUNBOOK.md', 'praesidium-gameplay-loop.gif') && includes('docs/MEDIA_KIT.md', '10-level campaign'),
-    evidence: 'docs/CAPTURE_RUNBOOK.md and docs/MEDIA_KIT.md',
-    next: 'Capture required screenshots/GIFs and add them under docs/media/.',
+    item: 'static screenshot set exists',
+    done: exists('docs/media/praesidium-hero-menu.png')
+      && exists('docs/media/praesidium-campaign-route.png')
+      && exists('docs/media/praesidium-combat.png')
+      && exists('docs/media/praesidium-weekly-mode.png')
+      && exists('docs/media/praesidium-mobile-landscape.png')
+      && includes('README.md', 'docs/media/praesidium-hero-menu.png'),
+    evidence: 'docs/media/*.png and README screenshots',
+    next: 'Capture one short gameplay GIF or video before market-grade promotion.',
   },
   {
     area: 'Playtest',
@@ -105,14 +110,17 @@ if (remaining.length > 0) {
 }
 
 console.log('\nExternal confirmation still required:');
-for (const gate of gates) console.log(`- [${gate.area}] ${gate.next}`);
+console.log('- [Deployment] Confirm the latest pushed commit is green in GitHub Actions and Pages shows the newest build.');
+console.log('- [Playtest] Run outside playtests and summarize results before market-grade promotion.');
+console.log('- [Media] Capture one short gameplay GIF or video before market-grade promotion.');
+console.log('- [QA] Execute final checklist passes after any fixes discovered by outside playtests.');
 
 console.log('\nRecommended final order:');
 console.log('1. npm run verify');
 console.log('2. npm run balance:sim');
 console.log('3. Record balance output in docs/BALANCE_REVIEW_NOTES.md');
-console.log('4. Capture screenshots/GIFs from docs/CAPTURE_RUNBOOK.md');
+console.log('4. Confirm static screenshots are current; add GIF/video when an encoder is available');
 console.log('5. Run outside playtests and fill docs/PLAYTEST_RESULTS_SUMMARY.md');
-console.log('6. Make the final release decision in docs/QA_RESULTS_TEMPLATE.md');
+console.log('6. Make the market-grade decision in docs/QA_RESULTS_TEMPLATE.md');
 
 if (remaining.length > 0) process.exit(1);

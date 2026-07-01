@@ -124,7 +124,7 @@ export class StatsScreen {
     const riskY = startY + (scoreCols === 2 ? scoreH + gap : scoreH * 2 + gap * 2);
     const riskH = Math.min(250, r.height - riskY - 76);
     this.drawRiskPanel(r, panelX, riskY, panelW, Math.max(150, riskH), health.risks);
-    this.drawCloseButton(r, Math.min(riskY + riskH + 12, r.height - 52), 'close', t('common.back'));
+    this.drawHealthActions(r, panelX, Math.min(riskY + riskH + 12, r.height - 58), panelW);
   }
 
   private drawScoreCard(r: Renderer, x: number, y: number, w: number, h: number, title: string, score: number, color: string, subtitle: string): void {
@@ -157,6 +157,24 @@ export class StatsScreen {
       r.text(this.truncate(item.detail, w > 520 ? 74 : 44), x + 86, rowY + 19, UI.color.textDim, 8.5, 'left', 'normal', 'top');
       rowY += 38;
     }
+  }
+
+  private drawHealthActions(r: Renderer, x: number, y: number, w: number): void {
+    const layout = layoutFor(r);
+    const gap = Math.max(8, layout.gap);
+    const btnH = Math.max(28, layout.buttonH - 6);
+    const btnW = Math.min(210, (w - gap) / 2);
+    const totalW = btnW * 2 + gap;
+    const startX = x + w / 2 - totalW / 2;
+    this.drawActionButton(r, startX, y, btnW, btnH, t('stats.exportReport'), 'export_report', UI.color.blue, '#1d4ed8');
+    this.drawActionButton(r, startX + btnW + gap, y, btnW, btnH, t('common.back'), 'close', '#475569', '#1e293b');
+  }
+
+  private drawActionButton(r: Renderer, x: number, y: number, w: number, h: number, label: string, action: string, colorA: string, colorB: string): void {
+    const grad = r.linearGradient(x, y, x, y + h, [{ offset: 0, color: colorA }, { offset: 1, color: colorB }]);
+    r.roundRect(x, y, w, h, 8, grad, true, 'rgba(255,255,255,0.10)', 1);
+    r.text(label, x + w / 2, y + h / 2, '#ffffff', w < 150 ? 9 : 10.5, 'center', 'bold', 'middle', 'header');
+    this.regions.push({ x, y, w, h, action });
   }
 
   private drawSessionRows(r: Renderer, x: number, y: number, w: number, h: number, rows: Array<[string, string]>): void {

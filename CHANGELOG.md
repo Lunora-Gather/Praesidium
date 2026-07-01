@@ -4,7 +4,11 @@ All notable changes to Praesidium are tracked here.
 
 ## Unreleased
 
-- No unreleased changes.
+- Added local playtest report export from the Stats health screen.
+- Added persistent Daily/Weekly mission credits and end-screen reward badges.
+- Added a new-player pressure probe to the balance simulation.
+- Added README media captures for menu, campaign route, combat, weekly mode, and mobile landscape.
+- Improved first-run tutorial hints with target highlighting for core controls and placement.
 
 ## 1.0.0 - 2026-06-27
 

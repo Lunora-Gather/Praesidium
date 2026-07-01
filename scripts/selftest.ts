@@ -18,6 +18,7 @@ import { achievementName, enemyName, spellName, towerName, traitName } from '../
 import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 import { dailyMissions, evaluateMissions, missionSummary } from '../src/utils/DailyMissions';
 import { buildProductHealth } from '../src/utils/ProductHealth';
+import { buildPlaytestReport, formatPlaytestReport } from '../src/utils/PlaytestReport';
 import { weekKey, weeklyMode, weeklyModeSummary } from '../src/utils/WeeklyMode';
 import { weeklyRules, weeklyRuleSummary } from '../src/utils/WeeklyRules';
 import { classifyBossEncounter } from '../src/utils/BossEncounter';
@@ -120,7 +121,7 @@ check('boss classifier detects phantom siege', classifyBossEncounter(wave12).id 
 check('boss classifier detects fast escort', classifyBossEncounter(wave18).id === 'fast_escort');
 
 // --- Product health diagnostics ---
-const health = buildProductHealth({
+const reportAnalytics = {
   sessions: 6,
   totalPlaySec: 900,
   lastPlayDate: '2026-06-27',
@@ -138,9 +139,28 @@ const health = buildProductHealth({
   spellUsage: {},
   avgSessionSec: 150,
   longestSessionSec: 300,
-});
+};
+const health = buildProductHealth(reportAnalytics);
 check('product health returns scores', health.retentionScore >= 0 && health.balanceScore >= 0);
 check('product health flags risks', health.risks.length >= 1);
+const report = buildPlaytestReport(reportAnalytics, {
+  version: 1,
+  highScore: 1234,
+  maxLevelReached: 2,
+  unlockedTowers: ['turret'],
+  levelStars: { 1: 2 },
+  levelHighScores: { 1: 1234 },
+  endlessHighScore: 900,
+  endlessMaxWave: 7,
+  dailyHighScore: 700,
+  dailyMaxWave: 5,
+  dailyDate: '2026-06-27',
+  missionCredits: 3,
+  dailyMissionClaims: {},
+  weeklyBestWaves: {},
+});
+check('playtest report exports schema', report.schema === 1 && report.game === 'Praesidium');
+check('playtest report text includes health scores', formatPlaytestReport(report).includes('Retention score'));
 
 // --- Localization sanity ---
 const i18nKeys = [
@@ -160,6 +180,9 @@ const i18nKeys = [
   'achievement.unlocked',
   'trait.resistsIce',
   'hud.auto',
+  'summary.dailyCredits',
+  'summary.weeklyCredits',
+  'stats.exportReport',
 ];
 setLocale('en');
 for (const key of i18nKeys) check(`i18n en ${key}`, tr(key) !== key);
@@ -185,6 +208,9 @@ save.recordStars(2, 3);
 save.recordLevelScore(1, 1234);
 check('getStars returns best stars', save.getStars(1) === 2 && save.getStars(2) === 3);
 check('getLevelScore returns best score', save.getLevelScore(1) === 1234);
+const earnedDailyCredits = save.recordDailyMissionProgress('2026-06-27', { wave: 20, score: 9999, stats: { kills: 999, upgrades: 99, spellsCast: 99, towersPlaced: 99 } });
+check('daily mission credits are awarded once', earnedDailyCredits > 0 && save.recordDailyMissionProgress('2026-06-27', { wave: 20, score: 9999, stats: { kills: 999, upgrades: 99, spellsCast: 99, towersPlaced: 99 } }) === 0);
+check('weekly credits are first-run only', save.recordWeeklyRun('2026-W26:boss_week', 4, 3) === 3 && save.recordWeeklyRun('2026-W26:boss_week', 8, 3) === 0);
 check('campaign total stars', save.getTotalStars() === 5);
 check('campaign max stars follows content count', save.getMaxStars() === LEVELS.length * 3 && save.getMaxStars() >= 30);
 check('campaign ratio', Math.abs(save.getCampaignCompletionRatio() - 5 / (LEVELS.length * 3)) < 1e-9);

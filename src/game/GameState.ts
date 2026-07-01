@@ -88,6 +88,8 @@ export class GameState {
   lastRunStarUpgrade = false;
   lastRunNewEndlessRecord = false;
   lastRunNewDailyRecord = false;
+  lastRunMissionCredits = 0;
+  lastRunWeeklyCredits = 0;
   comboCount = 0;
   comboTimer = 0;
   static readonly COMBO_WINDOW = 2;
@@ -111,6 +113,8 @@ export class GameState {
     this.lastRunStarUpgrade = false;
     this.lastRunNewEndlessRecord = false;
     this.lastRunNewDailyRecord = false;
+    this.lastRunMissionCredits = 0;
+    this.lastRunWeeklyCredits = 0;
   }
 
   private startAnalyticsSession(): void {
@@ -309,6 +313,14 @@ export class GameState {
     for (const sp of this.spells) sp.update(dt);
 
     if (this.lives <= 0) {
+      const runStats = this.stats.get();
+      const today = new Date().toISOString().slice(0, 10);
+      this.lastRunMissionCredits = this.save.recordDailyMissionProgress(today, {
+        wave: this.waves.current,
+        score: this.score,
+        stats: runStats,
+      });
+      this.lastRunWeeklyCredits = this.save.recordWeeklyRun(this.activeWeeklyMode?.id, this.waves.current, this.activeWeeklyMode?.reward ?? 0);
       if (this.endless && this.waves.current > 0) {
         const stars = Math.min(3, Math.floor(this.waves.current / 4));
         this.talents.awardPoints(stars);
@@ -316,7 +328,6 @@ export class GameState {
         this.analytics.recordEndlessRun(this.waves.current);
 
         if (this.endlessSeed === dailySeed()) {
-          const today = new Date().toISOString().slice(0, 10);
           this.lastRunNewDailyRecord = this.save.recordDailyRun(this.score, this.waves.current, today);
         } else {
           this.lastRunNewEndlessRecord = this.save.recordEndlessRun(this.score, this.waves.current);
@@ -330,11 +341,19 @@ export class GameState {
     }
 
     if (this.waves.state === 'done' && this.enemies.length === 0) {
+      const runStats = this.stats.get();
       this.lastStars = computeStars(this.lives);
       this.talents.awardPoints(this.lastStars);
       this.achievements.recordStars(this.lastStars);
       this.achievements.recordLevelComplete();
       this.analytics.recordLevelWin(this.levels.levelNumber - 1);
+      const today = new Date().toISOString().slice(0, 10);
+      this.lastRunMissionCredits = this.save.recordDailyMissionProgress(today, {
+        wave: this.waves.current,
+        score: this.score,
+        stats: runStats,
+      });
+      this.lastRunWeeklyCredits = this.save.recordWeeklyRun(this.activeWeeklyMode?.id, this.waves.current, this.activeWeeklyMode?.reward ?? 0);
       this.bus.emit('levelWon', { level: this.levels.levelNumber, stars: this.lastStars });
       const newly = this.achievements.newlyUnlocked();
       if (newly.length > 0) logger.info('Achievements unlocked', newly.map((a) => a.id));

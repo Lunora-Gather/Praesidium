@@ -17,12 +17,14 @@ import { getTowerDef, TOWER_LIST } from '../src/game/towers/TowerRegistry';
 import type { Tower } from '../src/game/towers/Tower';
 
 type BotPlanId = 'balanced' | 'antiFast' | 'antiBoss';
+type BotProfile = 'expert' | 'newcomer';
 
 interface SimResult {
   level: number;
   levelName: string;
   difficulty: Difficulty;
   plan: BotPlanId;
+  profile: BotProfile;
   won: boolean;
   phase: string;
   stars: number;
@@ -91,9 +93,12 @@ function chooseUpgradeTower(state: GameState): Tower | null {
   return candidates[0] ?? null;
 }
 
-function maintainEconomy(state: GameState, plan: BotPlanId, sites: Array<{ tx: number; ty: number }>, build: Record<string, number>): void {
+function maintainEconomy(state: GameState, plan: BotPlanId, sites: Array<{ tx: number; ty: number }>, build: Record<string, number>, profile: BotProfile): void {
+  if (profile === 'newcomer' && state.towers.length >= 5 && state.gold < 190) return;
   // Early game needs bodies on the map; mid/late game should upgrade high-value towers.
-  const shouldUpgrade = state.towers.length >= 4 && (state.towers.length >= 8 || state.gold >= 160);
+  const shouldUpgrade = profile === 'newcomer'
+    ? state.towers.length >= 3 && state.gold >= 210
+    : state.towers.length >= 4 && (state.towers.length >= 8 || state.gold >= 160);
   if (shouldUpgrade) {
     const upgradeTarget = chooseUpgradeTower(state);
     if (upgradeTarget && state.upgradeTower(upgradeTarget)) return;
@@ -115,7 +120,8 @@ function maintainEconomy(state: GameState, plan: BotPlanId, sites: Array<{ tx: n
   if (upgradeTarget) state.upgradeTower(upgradeTarget);
 }
 
-function castUsefulSpells(state: GameState): void {
+function castUsefulSpells(state: GameState, profile: BotProfile): void {
+  if (profile === 'newcomer' && state.waves.current < 3) return;
   if (state.enemies.length >= 9 && state.gold >= 60) {
     const meteor = state.spells.find(sp => sp.def.id === 'meteor');
     const target = state.enemies[Math.floor(state.enemies.length / 2)]?.pos;
@@ -132,25 +138,26 @@ function castUsefulSpells(state: GameState): void {
   }
 }
 
-function simulate(levelIndex: number, difficulty: Difficulty, plan: BotPlanId): SimResult {
+function simulate(levelIndex: number, difficulty: Difficulty, plan: BotPlanId, profile: BotProfile = 'expert'): SimResult {
   const state = new GameState();
   state.setDifficulty(difficulty);
   state.selectLevel(levelIndex);
-  state.waves.autoSend = true;
+  state.waves.autoSend = profile === 'expert';
 
   const sites = buildableSites(state);
   const build: Record<string, number> = Object.fromEntries(TOWER_LIST.map(t => [t.id, 0]));
 
-  let thinkTimer = 0;
+  let thinkTimer = profile === 'newcomer' ? 1.25 : 0;
+  const thinkInterval = profile === 'newcomer' ? 1.05 : THINK_INTERVAL;
   for (let frame = 0; frame < MAX_SECONDS / DT; frame++) {
     thinkTimer -= DT;
     if (thinkTimer <= 0) {
-      maintainEconomy(state, plan, sites, build);
-      castUsefulSpells(state);
-      thinkTimer = THINK_INTERVAL;
+      maintainEconomy(state, plan, sites, build, profile);
+      castUsefulSpells(state, profile);
+      thinkTimer = thinkInterval;
     }
 
-    if (state.waves.state !== 'running' && state.waves.state !== 'done') state.waves.forceNext();
+    if (state.waves.state !== 'running' && state.waves.state !== 'done' && (profile === 'expert' || state.towers.length > 0)) state.waves.forceNext();
     state.update(DT);
     if (state.phase !== 'playing') break;
   }
@@ -161,6 +168,7 @@ function simulate(levelIndex: number, difficulty: Difficulty, plan: BotPlanId): 
     levelName: LEVELS[levelIndex]?.name ?? `Level ${levelIndex + 1}`,
     difficulty,
     plan,
+    profile,
     won: state.phase === 'won',
     phase: state.phase,
     stars: state.lastStars,
@@ -190,7 +198,8 @@ function bestByLevelAndDifficulty(results: SimResult[]): SimResult[] {
 
 function resultLine(r: SimResult): string {
   const mark = r.won ? 'WIN ' : 'LOSS';
-  return `${mark} L${String(r.level).padStart(2, '0')} ${r.levelName.padEnd(16)} ${r.difficulty.padEnd(6)} via ${r.plan.padEnd(8)} | stars=${r.stars} lives=${r.lives} wave=${r.wave} score=${r.score} kills=${r.kills} towers=${r.towers} upgrades=${r.upgrades}`;
+  const profile = r.profile === 'expert' ? '' : ` ${r.profile}`;
+  return `${mark} L${String(r.level).padStart(2, '0')} ${r.levelName.padEnd(16)} ${r.difficulty.padEnd(6)} via ${r.plan.padEnd(8)}${profile.padEnd(10)} | stars=${r.stars} lives=${r.lives} wave=${r.wave} score=${r.score} kills=${r.kills} towers=${r.towers} upgrades=${r.upgrades}`;
 }
 
 function towerTotalsFor(results: SimResult[]): Map<string, number> {
@@ -240,6 +249,26 @@ function lateCampaignReview(best: SimResult[], allResults: SimResult[]): string[
   if (risks.length === 0) console.log('\n✓ No late-campaign automation red flags detected.');
   else {
     console.log('\n⚠ Late-campaign review flags:');
+    for (const risk of risks) console.log(`- ${risk}`);
+  }
+  return risks;
+}
+
+function newcomerProbe(): string[] {
+  console.log('\n=== New-player Pressure Probe ===');
+  const risks: string[] = [];
+  const results: SimResult[] = [];
+  for (let levelIndex = 0; levelIndex < Math.min(3, LEVELS.length); levelIndex++) {
+    results.push(simulate(levelIndex, 'normal', 'balanced', 'newcomer'));
+  }
+  for (const r of results) {
+    console.log(resultLine(r));
+    if (r.level === 1 && !r.won && r.wave <= 2) risks.push('newcomer level 1 stalls before learning the first loop');
+    if (r.level <= 3 && r.towers === 0) risks.push(`newcomer level ${r.level} placed no towers`);
+  }
+  if (risks.length === 0) console.log('✓ New-player probe reached meaningful play on early levels.');
+  else {
+    console.log('⚠ New-player probe flags:');
     for (const risk of risks) console.log(`- ${risk}`);
   }
   return risks;
@@ -319,12 +348,13 @@ const results: SimResult[] = [];
 for (let levelIndex = 0; levelIndex < LEVELS.length; levelIndex++) {
   for (const diff of DIFFICULTY_LIST) {
     for (const plan of Object.keys(BOT_PLANS) as BotPlanId[]) {
-      results.push(simulate(levelIndex, diff.id, plan));
+      results.push(simulate(levelIndex, diff.id, plan, 'expert'));
     }
   }
 }
 
 const risks = summarize(results);
+const newcomerRisks = newcomerProbe();
 
 const normalBest = bestByLevelAndDifficulty(results).filter(r => r.difficulty === 'normal');
 if (normalBest.some(r => r.wave <= 1 && !r.won)) {
@@ -334,5 +364,10 @@ if (normalBest.some(r => r.wave <= 1 && !r.won)) {
 
 if (risks.some(risk => risk.includes('result missing'))) {
   console.error('\nBalance sim failed: required late-campaign review result is missing.');
+  process.exit(1);
+}
+
+if (newcomerRisks.some(risk => risk.includes('level 1'))) {
+  console.error('\nBalance sim failed: the new-player probe stalls before Level 1 becomes meaningful.');
   process.exit(1);
 }

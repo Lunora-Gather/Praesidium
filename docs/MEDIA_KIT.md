@@ -60,20 +60,20 @@ Build a defensive grid, upgrade specialized towers, cast spells, and react to en
 
 Tower Defense, Strategy, Browser Game, TypeScript, Canvas, Sci-Fi, Tactical, Endless Mode, Weekly Challenge, Mobile Landscape
 
-## README media section recommendation
+## README media section
 
-Add a `Screenshots` section near the top of README once images are available:
+The README now embeds the captured release screenshots:
 
 ```md
 ## Screenshots
 
-| Campaign | Battle | Weekly Mode |
-| --- | --- | --- |
-| ![Campaign select](docs/media/praesidium-campaign-select.png) | ![Battle HUD](docs/media/praesidium-combat.png) | ![Weekly Mode](docs/media/praesidium-weekly-mode.png) |
+| Command Deck | Campaign Route |
+| --- | --- |
+| ![Praesidium main menu](docs/media/praesidium-hero-menu.png) | ![Praesidium campaign route](docs/media/praesidium-campaign-route.png) |
 
-| Boss Warning | Health Tab | Mobile Landscape |
+| Battle HUD | Weekly Mode | Mobile Landscape |
 | --- | --- | --- |
-| ![Boss warning](docs/media/praesidium-boss-warning.png) | ![Health tab](docs/media/praesidium-health-tab.png) | ![Mobile landscape](docs/media/praesidium-mobile-landscape.png) |
+| ![Praesidium battle HUD](docs/media/praesidium-combat.png) | ![Praesidium weekly mode](docs/media/praesidium-weekly-mode.png) | ![Praesidium mobile landscape](docs/media/praesidium-mobile-landscape.png) |
 ```
 
 ## Asset naming convention
@@ -82,11 +82,9 @@ Use the filenames from `docs/CAPTURE_RUNBOOK.md`, including:
 
 ```text
 docs/media/praesidium-hero-menu.png
-docs/media/praesidium-campaign-select.png
+docs/media/praesidium-campaign-route.png
 docs/media/praesidium-combat.png
-docs/media/praesidium-boss-warning.png
 docs/media/praesidium-weekly-mode.png
-docs/media/praesidium-health-tab.png
 docs/media/praesidium-mobile-landscape.png
 docs/media/praesidium-gameplay-loop.gif
 docs/media/praesidium-boss-loop.gif

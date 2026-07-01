@@ -57,6 +57,11 @@ const requiredFiles = [
   'docs/QA_RESULTS_TEMPLATE.md',
   'docs/RELEASE_NOTES_v1.0.0.md',
   'docs/DEPLOYMENT_STATUS.md',
+  'docs/media/praesidium-hero-menu.png',
+  'docs/media/praesidium-campaign-route.png',
+  'docs/media/praesidium-combat.png',
+  'docs/media/praesidium-weekly-mode.png',
+  'docs/media/praesidium-mobile-landscape.png',
   '.github/ISSUE_TEMPLATE/bug_report.md',
   '.github/ISSUE_TEMPLATE/playtest_feedback.md',
   '.github/ISSUE_TEMPLATE/config.yml',
@@ -104,6 +109,7 @@ check('html registers service worker', html.includes("serviceWorker.register('./
 check('README mentions quality verification', contains('README.md', 'npm run verify'));
 check('README mentions balance sim', contains('README.md', 'npm run balance:sim'));
 check('README links release docs', contains('README.md', 'docs/RELEASE_CHECKLIST.md'));
+check('README embeds real media captures', contains('README.md', 'docs/media/praesidium-hero-menu.png') && contains('README.md', 'docs/media/praesidium-combat.png'));
 check('privacy explains localStorage', contains('docs/PRIVACY.md', 'localStorage'));
 check('changelog has Unreleased section', contains('CHANGELOG.md', '## Unreleased'));
 check('final QA defines release candidate criteria', contains('docs/FINAL_RELEASE_QA.md', 'public free-game release candidate'));
@@ -156,6 +162,7 @@ const criticalKeys = [
   'summary.title',
   'summary.nextLevel',
   'stats.title',
+  'stats.exportReport',
   'codex.title',
 ];
 for (const key of criticalKeys) check(`i18n key ${key}`, hasI18nKey(i18n, key));
@@ -174,9 +181,11 @@ check('screens use shared layout tokens', contains('src/ui/Screens.ts', 'layoutF
 check('settings screen uses shared layout tokens', contains('src/ui/SettingsScreen.ts', 'layoutFor'));
 check('stats screen uses shared layout tokens', contains('src/ui/StatsScreen.ts', 'layoutFor'));
 check('stats screen exposes product health tab', contains('src/ui/StatsScreen.ts', "tab_health") && contains('src/ui/StatsScreen.ts', 'buildProductHealth'));
+check('stats screen can export playtest report', fileExists('src/utils/PlaytestReport.ts') && contains('src/ui/StatsScreen.ts', 'export_report') && contains('src/main.ts', 'buildPlaytestReport'));
 check('daily mission panel exists', fileExists('src/ui/DailyMissionPanel.ts'));
 check('daily mission progress can render after runs', contains('src/ui/DailyMissionPanel.ts', 'drawProgress'));
 check('daily mission panel avoids compact menu overlap', contains('src/ui/DailyMissionPanel.ts', 'shouldDrawMenuPanel'));
+check('daily mission rewards persist once', contains('src/utils/SaveSystem.ts', 'recordDailyMissionProgress') && contains('src/utils/SaveSystem.ts', 'dailyMissionClaims'));
 check('weekly mode system exists', fileExists('src/utils/WeeklyMode.ts') && contains('src/utils/WeeklyMode.ts', 'weeklyMode'));
 check('weekly run badge exists', fileExists('src/ui/WeeklyRunBadge.ts') && contains('src/ui/WeeklyRunBadge.ts', 'drawWeeklyRunBadge'));
 check('weekly rules affect seeded runs', contains('src/game/GameState.ts', 'weeklyModeActive') && contains('src/game/waves/WaveManager.ts', 'setWeeklyRules'));
@@ -185,6 +194,7 @@ check('level themes include ten-level campaign themes', contains('src/ui/LevelTh
 check('selftest covers ten-level campaign', contains('scripts/selftest.ts', 'campaign has at least ten levels'));
 check('balance sim has late campaign review', contains('scripts/balance-sim.ts', 'Late Campaign Review') && contains('scripts/balance-sim.ts', 'LATE_CAMPAIGN_START'));
 check('balance sim names late campaign maps', contains('scripts/balance-sim.ts', 'level 9') && contains('scripts/balance-sim.ts', 'level 10'));
+check('balance sim has new-player probe', contains('scripts/balance-sim.ts', 'New-player Pressure Probe') && contains('scripts/balance-sim.ts', 'newcomer'));
 check('run advice supports summary advice', contains('src/utils/RunAdvice.ts', 'buildDefeatAdviceFromSummary'));
 check('defeat screen uses run advice', contains('src/ui/Screens.ts', 'buildDefeatAdviceFromSummary'));
 check('boss encounters are diversified', contains('src/game/waves/WaveManager.ts', 'bossEncounter') && contains('src/game/waves/WaveManager.ts', 'phantom'));
@@ -211,6 +221,7 @@ check('screens avoid compact landscape backdrop collision', contains('src/ui/Scr
 check('level select uses campaign route rail', contains('src/ui/LevelSelect.ts', 'drawRouteRail'));
 check('level select uses mission slab cards', contains('src/ui/LevelSelect.ts', 'drawMissionSlab'));
 check('tutorial has Intel step', contains('src/utils/Tutorial.ts', 'tutorial.intel'));
+check('tutorial highlights target controls', contains('src/main.ts', 'drawTutorialTarget') && contains('src/main.ts', 'findFirstBuildableScreenTile'));
 check('settings persist mute', contains('src/config/Settings.ts', 'muted') && contains('src/config/Settings.ts', 'save(KEY, this.current)'));
 check('audio has compressor', contains('src/engine/Audio.ts', 'DynamicsCompressorNode'));
 check('audio has SFX throttling', contains('src/engine/Audio.ts', 'canPlay'));

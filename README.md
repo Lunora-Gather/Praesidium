@@ -40,6 +40,18 @@ https://lunora-gather.github.io/Praesidium/
 
 ---
 
+## 截图
+
+| Command Deck | Campaign Route |
+| --- | --- |
+| ![Praesidium main menu](docs/media/praesidium-hero-menu.png) | ![Praesidium campaign route](docs/media/praesidium-campaign-route.png) |
+
+| Battle HUD | Weekly Mode | Mobile Landscape |
+| --- | --- | --- |
+| ![Praesidium battle HUD](docs/media/praesidium-combat.png) | ![Praesidium weekly mode](docs/media/praesidium-weekly-mode.png) | ![Praesidium mobile landscape](docs/media/praesidium-mobile-landscape.png) |
+
+---
+
 ## 核心玩法
 
 | 模块 | 内容 |
@@ -53,7 +65,7 @@ https://lunora-gather.github.io/Praesidium/
 | **玩家技能** | Meteor、Freeze、Repair 三种主动技能用于爆发、控场和续航。 |
 | **天赋成长** | 通过星级获得天赋点，永久强化金币、伤害、射程、攻速、生命和技能冷却。 |
 | **成就系统** | 击杀、金币、建塔、升级、技能、通关等长期目标。 |
-| **统计面板** | 记录游玩次数、时长、关卡胜率、塔使用情况和无尽模式表现。 |
+| **统计面板** | 记录游玩次数、时长、关卡胜率、塔使用情况和无尽模式表现，并可导出本地 playtest 报告。 |
 | **排行榜** | 本地离线排行榜与确定性 NPC 分数，用于无服务器的挑战对比。 |
 
 ---

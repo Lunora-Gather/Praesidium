@@ -59,3 +59,15 @@ A market-grade promotion pass should not start until at least:
 - one gameplay GIF exists
 - one boss or weekly-mode capture exists
 - one mobile landscape screenshot exists
+
+## Current captured set
+
+The repository currently includes:
+
+- `docs/media/praesidium-hero-menu.png`
+- `docs/media/praesidium-campaign-route.png`
+- `docs/media/praesidium-combat.png`
+- `docs/media/praesidium-weekly-mode.png`
+- `docs/media/praesidium-mobile-landscape.png`
+
+GIF/video capture is still deferred until a suitable capture/encoding tool is available.

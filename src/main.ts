@@ -28,6 +28,7 @@ import { StatsScreen } from './ui/StatsScreen';
 import { CodexScreen } from './ui/CodexScreen';
 import { loadRun } from './utils/RunSave';
 import { dailySeed } from './utils/DailyChallenge';
+import { buildPlaytestReport, formatPlaytestReport } from './utils/PlaytestReport';
 
 window.addEventListener('error', (e) => {
   console.error('[Praesidium] Unhandled error:', e.error ?? e.message);
@@ -259,8 +260,25 @@ function buildRunSummary(extra: Partial<ScreenStats> = {}): ScreenStats {
     isStarUpgrade: state.lastRunStarUpgrade,
     isNewEndlessRecord: state.lastRunNewEndlessRecord,
     isNewDailyRecord: state.lastRunNewDailyRecord,
+    missionCredits: state.lastRunMissionCredits,
+    weeklyCredits: state.lastRunWeeklyCredits,
     ...extra,
   };
+}
+
+function exportPlaytestReport(): void {
+  const report = buildPlaytestReport(state.analytics.get(), state.save.get());
+  const text = formatPlaytestReport(report);
+  const fileName = `praesidium-playtest-report-${new Date().toISOString().slice(0, 10)}.json`;
+  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+  if (navigator.clipboard) void navigator.clipboard.writeText(text);
+  activeToasts.push({ title: 'Playtest report exported', desc: fileName, timer: 3.2, maxTime: 3.2 });
 }
 
 const update = (dt: number): void => {
@@ -303,6 +321,7 @@ const update = (dt: number): void => {
       if (action) {
         if (action === 'menu') { state.goMenu(); showStats = false; }
         else if (action === 'close') showStats = false;
+        else if (action === 'export_report') exportPlaytestReport();
         else statsScreen.apply(action);
       } else showStats = false;
     }
@@ -433,7 +452,7 @@ const render = (_alpha: number): void => {
     if (towerScreenPos && state.selectedTower && state.phase === 'playing') towerPanel.draw(renderer, state.selectedTower, state.gold, towerScreenPos.x, towerScreenPos.y);
     else towerPanel.clear();
 
-    if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text);
+    if (state.phase === 'playing' && tutorial.active) drawTutorial(renderer, tutorial.active.text, tutorial.active.id);
     if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
     if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
     if (state.phase === 'won') screens.draw(renderer, 'won', state.score, 0, buildRunSummary({ stars: state.lastStars }));
@@ -524,13 +543,49 @@ function drawPlacementHint(r: Renderer): void {
   cancelPlacementRegion = { x: btnX, y: btnY, w: btnW, h: btnH };
 }
 
-function drawTutorial(r: Renderer, text: string): void {
-  const w = 420;
-  const h = 44;
+function drawTutorial(r: Renderer, text: string, stepId: string): void {
+  drawTutorialTarget(r, stepId);
+  const w = Math.min(520, r.width - 32);
+  const h = r.width < 700 ? 54 : 46;
   const x = (r.width - w) / 2;
-  const y = 60;
-  r.rect(x, y, w, h, '#1f6febcc', true);
-  r.text(text, x + w / 2, y + h / 2, '#fff', 14, 'center', 'normal', 'middle');
+  const y = Math.max(58, TOP_H + 8);
+  r.setShadow('rgba(59, 130, 246, 0.35)', 16, 0, 0);
+  r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.94)', true, 'rgba(96, 165, 250, 0.55)', 1.4);
+  r.clearShadow();
+  r.text(text, x + w / 2, y + h / 2, '#dbeafe', r.width < 700 ? 11.5 : 13, 'center', 'bold', 'middle');
+}
+
+function drawTutorialTarget(r: Renderer, stepId: string): void {
+  const pulse = 0.5 + Math.sin(performance.now() / 180) * 0.5;
+  const stroke = `rgba(96, 165, 250, ${0.42 + pulse * 0.34})`;
+  let target: RectRegion | null = null;
+  if (stepId === 'select') target = hudRegions.shop[0] ?? null;
+  else if (stepId === 'wave') target = hudRegions.buttons.find(btn => btn.action === 'send') ?? null;
+  else if (stepId === 'upgrade' || stepId === 'inspect') target = state.selectedTower ? null : hudRegions.shop[0] ?? null;
+  else if (stepId === 'spell') target = spellRegions[0] ?? null;
+  else if (stepId === 'intel') target = hudRegions.buttons.find(btn => btn.action === 'codex') ?? null;
+  else if (stepId === 'talent') target = hudRegions.buttons.find(btn => btn.action === 'talent') ?? null;
+
+  if (target) {
+    r.roundRect(target.x - 5, target.y - 5, target.w + 10, target.h + 10, 12, 'rgba(59, 130, 246, 0.10)', true, stroke, 2);
+    return;
+  }
+
+  if (stepId === 'place') {
+    const firstSite = findFirstBuildableScreenTile();
+    if (firstSite) r.roundRect(firstSite.x - 4, firstSite.y - 4, firstSite.w + 8, firstSite.h + 8, 10, 'rgba(34, 197, 94, 0.10)', true, `rgba(52, 211, 153, ${0.45 + pulse * 0.35})`, 2);
+  }
+}
+
+function findFirstBuildableScreenTile(): RectRegion | null {
+  for (let ty = 0; ty < state.grid.rows; ty++) {
+    for (let tx = 0; tx < state.grid.cols; tx++) {
+      if (!state.grid.isBuildable(tx, ty) || state.towers.some(tower => tower.tx === tx && tower.ty === ty)) continue;
+      const p = renderer.toScreen(state.grid.tileCenter(tx, ty));
+      return { x: p.x - state.grid.tile / 2, y: p.y - state.grid.tile / 2, w: state.grid.tile, h: state.grid.tile };
+    }
+  }
+  return null;
 }
 
 function drawToasts(r: Renderer): void {
