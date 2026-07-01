@@ -4,14 +4,14 @@ Praesidium is close to public release. This plan defines the remaining work need
 
 ## Current gap
 
-- Public free-game release: repository-side gates complete; re-confirm the latest pushed Pages deploy after publishing.
+- Public free-game release: repository-side gates and latest Pages deploy are complete.
 - Market-grade release: still needs outside playtest evidence and one short GIF/video capture.
 
 ## Phase 1: release candidate verification
 
 - [x] Run `npm run verify`.
 - [x] Confirm `npm run balance:sim` has no Normal-mode blocker.
-- [ ] Confirm GitHub Pages serves the latest build.
+- [x] Confirm GitHub Pages serves the latest build.
 - [x] Complete browser smoke test from `docs/FINAL_RELEASE_QA.md`.
 - [x] Complete mobile smoke test from `docs/MOBILE_QA.md`.
 - [x] Add at least three gameplay screenshots or one short GIF to README.
@@ -50,4 +50,4 @@ Treat the game as market-ready only after:
 - no unresolved S1 issue blocks first-time player flow;
 - screenshots or short gameplay media are attached to the README or release page.
 
-Remaining market-grade blockers are now outside playtest evidence, GIF/video capture, the latest post-hardening Pages confirmation, and any P0/P1 fixes discovered by that testing.
+Remaining market-grade blockers are now outside playtest evidence, GIF/video capture, and any P0/P1 fixes discovered by that testing.

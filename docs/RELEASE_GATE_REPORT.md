@@ -16,9 +16,9 @@ Final release decision record for Praesidium v1.0.0.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Latest GitHub Actions run | Pass | `Deploy to GitHub Pages` passed before final hardening; re-confirm the new pushed commit in Actions before promotion. |
-| GitHub Pages latest build | Pass | The prior Pages deploy returned 200; re-smoke the post-hardening deploy after GitHub Actions publishes it. |
-| Hard refresh smoke test | Pass | Final local build no longer depends on Google Fonts, registers a versioned service worker, and serves the main script with HTTP 200. |
+| Latest GitHub Actions run | Pass | `Deploy to GitHub Pages` run `28502999503` passed on commit `8f19c90`. |
+| GitHub Pages latest build | Pass | `pages-build-deployment` run `28503033941` passed; live HTML returned HTTP 200 and references `assets/index-COisGhIr.js`. |
+| Hard refresh smoke test | Pass | Final local and hosted builds no longer depend on Google Fonts, register a versioned service worker, and serve the main script with HTTP 200. |
 
 ## Balance Gate
 
@@ -64,5 +64,5 @@ Decision notes:
 ```text
 Praesidium v1.0.0 is acceptable as the public free-game web release.
 
-Repository gates are green: local verify, release gate, npm audit, GitHub Actions deploy, and GitHub Pages smoke check all passed. Static media capture is complete; outside playtests and GIF/video capture remain required before calling the build market-grade.
+Repository gates are green: local verify, release gate, npm audit, GitHub Actions deploy, and GitHub Pages smoke check all passed for commit `8f19c90`. Static media capture is complete; outside playtests and GIF/video capture remain required before calling the build market-grade.
 ```
