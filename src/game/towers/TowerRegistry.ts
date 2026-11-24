@@ -18,6 +18,7 @@ export interface TowerDef {
   cost: number;
   splash?: number;
   slow?: { factor: number; duration: number };
+  chain?: { jumps: number; range: number; falloff: number };
   radius: number;
   description: string;
   damageType: DamageType;
@@ -58,7 +59,8 @@ export const TOWER_DEFS: Record<string, TowerDef> = {
     id: 'tesla', name: 'Tesla', color: '#fff176',
     range: 130, fireRate: 1.0, damage: 28, projectileSpeed: 900,
     projectileLife: 0.4, cost: 160, radius: 14,
-    description: 'Lightning chain — fast, short life.',
+    chain: { jumps: 2, range: 64, falloff: 0.55 },
+    description: 'Lightning jumps to up to two nearby enemies with reduced damage.',
     damageType: DamageType.Lightning, defaultStrategy: 'closest',
   },
   cannon: {

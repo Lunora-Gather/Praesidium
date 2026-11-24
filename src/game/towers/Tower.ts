@@ -27,6 +27,19 @@ export const UPGRADE_STEPS: UpgradeStep[] = [
 
 export const MAX_LEVEL = UPGRADE_STEPS.length + 1;
 
+export interface TowerSnapshot {
+  id: string;
+  tx: number;
+  ty: number;
+  level: number;
+  strategy: TargetStrategy;
+  dmgMul: number;
+  rangeMul: number;
+  fireRateMul: number;
+  cooldown: number;
+  angle: number;
+}
+
 /** Synergy: bonus per nearby tower within SYNERGY_RANGE tiles. */
 const SYNERGY_RANGE = 2; // tile distance
 const SYNERGY_DMG_BONUS = 0.10; // +10% damage per neighbor
@@ -46,7 +59,7 @@ export class Tower {
   private dmgMul = 1;
   private rangeMul = 1;
   private fireRateMul = 1;
-  /** Number of towers within synergy range (set each frame by GameState). */
+  /** Number of towers within synergy range (updated when the layout changes). */
   synergyNeighbors = 0;
 
   constructor(def: TowerDef, tx: number, ty: number, grid: Grid, talents?: { damage: number; range: number; firerate: number }) {
@@ -78,6 +91,25 @@ export class Tower {
   }
   get synergyRange(): number { return SYNERGY_RANGE; }
 
+  snapshot(): TowerSnapshot {
+    return {
+      id: this.def.id, tx: this.tx, ty: this.ty, level: this.level,
+      strategy: this.strategy, dmgMul: this.dmgMul, rangeMul: this.rangeMul,
+      fireRateMul: this.fireRateMul, cooldown: Math.max(0, this.cooldown), angle: this.angle,
+    };
+  }
+
+  restore(snapshot: TowerSnapshot): void {
+    this.level = snapshot.level;
+    this.strategy = snapshot.strategy;
+    this.dmgMul = snapshot.dmgMul;
+    this.rangeMul = snapshot.rangeMul;
+    this.fireRateMul = snapshot.fireRateMul;
+    this.cooldown = snapshot.cooldown;
+    this.angle = snapshot.angle;
+    this.invested = this.def.cost + UPGRADE_STEPS.slice(0, this.level - 1).reduce((sum, step) => sum + step.cost, 0);
+  }
+
   upgrade(): boolean {
     const step = this.nextUpgrade;
     if (!step) return false;
@@ -101,12 +133,16 @@ export class Tower {
 
   currentTarget: Enemy | null = null;
 
-  update(dt: number, enemies: readonly Enemy[], grid: Grid): { target: Enemy | null } {
-    this.cooldown -= dt;
+  update(dt: number, enemies: readonly Enemy[], grid: Grid): Enemy | null {
+    this.cooldown = Math.max(0, this.cooldown - dt);
+    if (!this.canFire()) {
+      if (this.currentTarget?.dead) this.currentTarget = null;
+      return null;
+    }
     const target = this.acquireTarget(enemies, grid);
     this.currentTarget = target;
-    if (target) this.angle = target.pos.sub(this.pos).angle();
-    return { target };
+    if (target) this.angle = Math.atan2(target.pos.y - this.pos.y, target.pos.x - this.pos.x);
+    return target;
   }
 
   canFire(): boolean { return this.cooldown <= 0; }

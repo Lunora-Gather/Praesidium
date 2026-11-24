@@ -20,6 +20,7 @@ export class MovementSystem {
 
   update(dt: number, enemies: Enemy[], grid: Grid, state: GameState): void {
     for (const e of enemies) {
+      if (e.dead) continue;
       e.update(dt, grid);
       // Spawn subtle trail particles
       if (Math.random() < 12 * dt) {

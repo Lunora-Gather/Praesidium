@@ -2,6 +2,7 @@
 // Rules are applied only when a weekly-enabled challenge run is started.
 
 import type { WeeklyMode } from './WeeklyMode';
+import { t } from './i18n';
 
 export interface WeeklyRuleSet {
   speedMul: number;
@@ -43,11 +44,11 @@ export function weeklyRules(mode: WeeklyMode | null | undefined): WeeklyRuleSet 
 
 export function weeklyRuleSummary(mode: WeeklyMode): string {
   const rules = weeklyRules(mode);
-  if (rules.speedMul > 1) return `Enemy speed x${rules.speedMul.toFixed(2)}`;
-  if (rules.startGoldMul < 1) return `Start gold x${rules.startGoldMul.toFixed(2)}`;
-  if (rules.maxTowers !== null) return `Max ${rules.maxTowers} towers`;
-  if (rules.bossHpMul > 1) return `Boss HP x${rules.bossHpMul.toFixed(2)}`;
-  if (rules.repairDisabled) return 'Repair disabled';
-  if (rules.countMul > 1) return `Enemy count x${rules.countMul.toFixed(2)}`;
-  return 'Standard weekly rules';
+  if (rules.speedMul > 1) return t('weekly.rule.speed').replace('{value}', rules.speedMul.toFixed(2));
+  if (rules.startGoldMul < 1) return t('weekly.rule.gold').replace('{value}', rules.startGoldMul.toFixed(2));
+  if (rules.maxTowers !== null) return t('weekly.rule.towers').replace('{value}', String(rules.maxTowers));
+  if (rules.bossHpMul > 1) return t('weekly.rule.boss').replace('{value}', rules.bossHpMul.toFixed(2));
+  if (rules.repairDisabled) return t('weekly.rule.repair');
+  if (rules.countMul > 1) return t('weekly.rule.count').replace('{value}', rules.countMul.toFixed(2));
+  return t('weekly.rule.standard');
 }

@@ -4,16 +4,9 @@ Praesidium is a static browser game hosted through GitHub Pages. It does not inc
 
 ## What is stored
 
-The game stores local progress in the browser using `localStorage`, including:
+The game stores campaign progression, talents, scores, activity rewards, and battle checkpoints in IndexedDB on this device. Settings, tutorial actions, achievement counters, and opt-in playtest diagnostics remain in `localStorage`. The update reads earlier storage to migrate supported progress, and does not delete the original records.
 
-- campaign progress;
-- best stars and best scores;
-- settings such as sound, language, and display preferences;
-- tutorial completion state;
-- achievement and statistics data;
-- optional mid-run save data.
-
-This data stays on the player's own device/browser profile.
+The two exports are separate. A progress backup includes campaign and activity data plus the current battle, if saved. The playtest export contains local timings and aggregate outcomes; the game does not upload it. Only share a file you intend to send. Clearing the browser's site data can erase locally stored and offline data.
 
 ## What is not collected by the game
 

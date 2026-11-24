@@ -1,7 +1,7 @@
 // Talent tree: persistent meta-upgrades bought with talent points (earned per star).
 // Phase 4 — wired so spending points buffs all future runs.
 
-import { load, save } from '../utils/storage';
+import { SaveSystem } from '../utils/SaveSystem';
 
 export interface TalentDef {
   id: string;
@@ -21,35 +21,43 @@ export const TALENTS: TalentDef[] = [
   { id: 'spellcd', name: 'Arcane', description: '-8% spell cooldown per rank.', maxRank: 3, costPerRank: 3, effect: (r) => 1 - 0.08 * r },
 ];
 
-export class TalentTree {
-  private ranks: Record<string, number> = {};
-  private points = 0;
+export type TalentLoadout = readonly number[];
+export const STANDARD_TALENT_LOADOUT: TalentLoadout = Object.freeze(TALENTS.map(() => 0));
+const talentIndices = new Map(TALENTS.map((talent, index) => [talent.id, index]));
 
-  constructor() {
-    const loaded = load<Partial<{ points: number; ranks: Record<string, number> }>>('talents', {});
-    this.points = loaded.points ?? 0;
-    this.ranks = loaded.ranks ?? {};
+export function isTalentLoadout(value: unknown): value is TalentLoadout {
+  return Array.isArray(value) && value.length === TALENTS.length && TALENTS.every((talent, index) => {
+    const rank = value[index];
+    return Number.isInteger(rank) && rank >= 0 && rank <= talent.maxRank;
+  });
+}
+
+export function talentEffect(ranks: TalentLoadout, id: string): number {
+  const index = talentIndices.get(id);
+  return index === undefined ? 1 : TALENTS[index].effect(ranks[index]);
+}
+
+export class TalentTree {
+  constructor(private readonly profile = new SaveSystem()) {}
+
+  get talentPoints(): number { return this.profile.get().talents.points; }
+
+  rank(id: string): number {
+    const index = talentIndices.get(id);
+    return index === undefined ? 0 : Math.min(TALENTS[index].maxRank, this.profile.get().talents.ranks[id] ?? 0);
   }
 
-  get talentPoints(): number { return this.points; }
-
-  awardPoints(n: number): void { this.points += n; this.persist(); }
-
-  rank(id: string): number { return this.ranks[id] ?? 0; }
+  loadout(): TalentLoadout { return TALENTS.map(talent => this.rank(talent.id)); }
 
   canRankUp(id: string): boolean {
     const def = TALENTS.find((t) => t.id === id);
     if (!def) return false;
-    return this.rank(id) < def.maxRank && this.points >= def.costPerRank;
+    return this.rank(id) < def.maxRank && this.talentPoints >= def.costPerRank;
   }
 
   rankUp(id: string): boolean {
-    if (!this.canRankUp(id)) return false;
-    const def = TALENTS.find((t) => t.id === id)!;
-    this.points -= def.costPerRank;
-    this.ranks[id] = (this.ranks[id] ?? 0) + 1;
-    this.persist();
-    return true;
+    const def = TALENTS.find((t) => t.id === id);
+    return def ? this.profile.buyTalent(id, def.costPerRank, def.maxRank) : false;
   }
 
   /** Active multiplier for a given talent (1.0 if unranked). */
@@ -58,6 +66,4 @@ export class TalentTree {
     if (!def) return 1;
     return def.effect(this.rank(id));
   }
-
-  private persist(): void { save('talents', { points: this.points, ranks: this.ranks }); }
 }

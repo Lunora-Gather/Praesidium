@@ -2,6 +2,8 @@
 // This helps prioritize commercial iteration after playtests.
 
 import type { AnalyticsData } from './Analytics';
+import { t } from './i18n';
+import { towerName } from './displayText';
 
 export type ProductRiskLevel = 'low' | 'medium' | 'high';
 
@@ -13,8 +15,8 @@ export interface ProductRisk {
 }
 
 export interface ProductHealthReport {
-  retentionScore: number;
-  balanceScore: number;
+  retentionScore: number | null;
+  balanceScore: number | null;
   risks: ProductRisk[];
 }
 
@@ -23,7 +25,15 @@ function clamp01(n: number): number {
 }
 
 function risk(id: string, level: ProductRiskLevel, title: string, detail: string): ProductRisk {
-  return { id, level, title, detail };
+  const tower = id.startsWith('tower-dominant-') ? { type: 'dominant', id: id.slice('tower-dominant-'.length) }
+    : id.startsWith('tower-') ? { type: 'rare', id: id.slice('tower-'.length) } : undefined;
+  const prefix = `health.risk.${tower?.type ?? id}`;
+  const localize = (part: string, fallback: string): string => {
+    const key = `${prefix}.${part}`;
+    const translated = t(key);
+    return translated === key ? fallback : tower ? translated.replace('{tower}', towerName(tower.id, tower.id)) : translated;
+  };
+  return { id, level, title: localize('title', title), detail: localize('detail', detail) };
 }
 
 export function buildProductHealth(data: Readonly<AnalyticsData>): ProductHealthReport {
@@ -31,25 +41,23 @@ export function buildProductHealth(data: Readonly<AnalyticsData>): ProductHealth
   const sessions = Math.max(1, data.sessions);
   const returnRate = clamp01(data.returnDays / sessions);
   const avgMin = data.avgSessionSec / 60;
-  const retentionScore = Math.round(clamp01(returnRate * 0.55 + Math.min(avgMin / 12, 1) * 0.45) * 100);
+  const retentionScore = data.timedSessions >= 5 ? Math.round(clamp01(returnRate * 0.55 + Math.min(avgMin / 12, 1) * 0.45) * 100) : null;
 
-  if (data.sessions >= 3 && returnRate < 0.25) {
+  if (retentionScore !== null && returnRate < 0.25) {
     risks.push(risk('return-rate', 'high', 'Weak return signal', 'Players are not returning across distinct days often enough. Strengthen daily missions and visible rewards.'));
   }
-  if (data.sessions >= 3 && avgMin < 4) {
+  if (retentionScore !== null && avgMin < 4) {
     risks.push(risk('short-session', 'medium', 'Short average session', 'Average session length is low. Improve first-run clarity, early pacing, and visible goals.'));
   }
 
-  const attempted = Object.values(data.levelsAttempted).reduce((sum, item) => sum + item, 0);
-  const completed = Object.entries(data.levelsAttempted).reduce((sum, [level, tries]) => {
-    return sum + Math.min(tries, data.levelsCompleted[Number(level)] ?? 0);
-  }, 0);
-  const winRate = attempted > 0 ? completed / attempted : 1;
-  const balanceScore = Math.round(clamp01(1 - Math.abs(0.62 - winRate)) * 100);
+  const campaign = data.byMode.campaign;
+  const finished = campaign?.finished ?? 0;
+  const winRate = finished >= 5 ? clamp01((campaign?.won ?? 0) / finished) : null;
+  const balanceScore = winRate === null ? null : Math.round(clamp01(1 - Math.abs(0.62 - winRate)) * 100);
 
-  if (attempted >= 5 && winRate < 0.35) {
+  if (winRate !== null && winRate < 0.35) {
     risks.push(risk('low-win-rate', 'high', 'Campaign may be too hard', 'Overall win rate is below the target band. Review Level 1-3 and early upgrade economy.'));
-  } else if (attempted >= 5 && winRate > 0.85) {
+  } else if (winRate !== null && winRate > 0.85) {
     risks.push(risk('high-win-rate', 'medium', 'Campaign may be too easy', 'Overall win rate is very high. Add challenge later, not in Level 1.'));
   }
 

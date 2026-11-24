@@ -3,7 +3,7 @@
 # 🛡️ Praesidium / 守望
 
 **一款高完成度的科幻塔防网页游戏。**  
-建造防线、升级炮塔、释放技能、解锁天赋，在战役、无尽、每日挑战与种子挑战中守住最后阵地。
+建造防线、升级炮塔、释放技能、解锁天赋，在战役、无尽、每日、每周与分享挑战中守住最后阵地。
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat-square&logo=typescript&logoColor=white)](#技术栈)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](#技术栈)
@@ -31,12 +31,7 @@
 https://lunora-gather.github.io/Praesidium/
 ```
 
-如果页面刚部署后仍显示旧版本，可以强制刷新浏览器缓存。
-
-| 系统 | 快捷键 |
-| --- | --- |
-| Windows / Linux | `Ctrl + F5` |
-| macOS | `Command + Shift + R` |
+发布更新时，已打开的对局会留在当前版本。看到更新提示后，先保存或结束正在进行的对局，关闭所有守望标签页，再重新打开。完整版本至少在线安装一次后，才可离线启动。
 
 ---
 
@@ -78,15 +73,23 @@ https://lunora-gather.github.io/Praesidium/
 
 ### Endless / 无尽模式
 
-敌潮不会在固定波数后结束，而是持续增长。无尽模式会记录最高分和最高波次，适合重复挑战。
+敌潮不会在固定波数后结束，而是持续增长。最高分行显示该局的对应波次，最远波次另列。同版本纪录参与本地比较，榜上的模拟对手不是其他在线玩家。
 
 ### Daily Challenge / 每日挑战
 
-基于当天日期生成固定种子。同一天进入挑战的玩家会面对同一套波次节奏，适合每日刷新纪录。
+每日挑战在 UTC 00:00（北京时间 08:00）刷新。当天的种子、周规则、普通难度和初始天赋配置统一，战斗从第一波起就会体现种子带来的变化。
 
-### Challenge Seed / 种子挑战
+### Weekly Challenge / 每周挑战
 
-输入指定十六进制种子，复现同一局无尽挑战。失败后可以复制种子，方便分享给别人挑战同一局。
+独立入口使用本周固定种子、规则、普通难度和标准天赋。首次清完第 8 波获得本周积分。原本已开始的对局跨周续玩，仍归开局那一周。每日榜和每周榜分开结算。
+
+### Challenge Seed / 分享挑战
+
+输入完整挑战码，或最多 8 位的非零十六进制种子。`P2` 码记录种子、难度、周规则、天赋、开局和规则/计分版本；`P1` 旧码可兼容游玩，但不会假定它来自当前规则版本。裸种子使用普通难度、标准天赋和无周规则的练习配置。导入局只参加个人成绩比较，不计入官方每日或每周榜，也不发活动奖励。对局内购买的天赋下次开局生效。
+
+### 本地进度
+
+续局只允许一个标签页写入。接管或替换重要存档前会确认，失败与损坏都有提示。设置 → 管理本地进度可导出 JSON 或恢复它，范围包括战役、天赋、纪录和当前续局，不包括偏好与试玩诊断数据。
 
 ---
 
@@ -95,15 +98,17 @@ https://lunora-gather.github.io/Praesidium/
 | 操作 | 输入 |
 | --- | --- |
 | 选择炮塔 | 点击底部炮塔卡片，或按数字键 `1` - `6` |
-| 放置炮塔 | 选择炮塔后点击可建造地块 |
+| 放置炮塔 | 点击可建造地块；触屏较小的地块先预览落点，再点同一格确认 |
 | 选择已有炮塔 | 点击地图上的炮塔 |
 | 升级炮塔 | 点击炮塔面板中的 Upgrade，或按 `U` |
 | 出售炮塔 | 点击炮塔面板中的 Sell，或按 `S` |
-| 切换目标策略 | 选中炮塔后按 `T` |
+| 切换目标策略 | 选中炮塔后点击策略按钮，或按 `T` |
 | 暂停 / 继续 | 空格键，或点击 HUD 按钮 |
-| 释放技能 | `Q` / `W` / `E`，然后点击目标位置或等待技能生效 |
-| 开始下一波 | 点击 `Send Wave` |
+| 释放技能 | 点技能按钮或按 `Q` / `W` / `E`，再点地图目标。`Esc` 取消瞄准 |
+| 开始第一波或提前开始下一波 | 点击波次按钮。第一波会等待玩家准备。 |
 | 加速 | 点击速度按钮切换 `1× / 2× / 3×` |
+
+可用 `Tab` 和 `Shift + Tab` 切换控件，按 `Enter` 激活。聚焦战场后，方向键移动地块光标，`Enter` 放塔、选塔或施放已选中的技能。HUD 的简报按钮可查下一波、活动奖励和成就；设置可减少震屏和其他动效。
 
 ---
 
@@ -162,7 +167,7 @@ src/
 ```bash
 git clone https://github.com/Lunora-Gather/Praesidium.git
 cd Praesidium
-npm install
+npm ci
 npm run dev
 ```
 
@@ -191,11 +196,11 @@ npm run verify
 
 该命令会依次执行：
 
-1. TypeScript 类型检查；
-2. 核心玩法自测；
-3. 中途存档 / 恢复回归检查；
-4. 自动平衡模拟；
-5. 生产构建。
+1. TypeScript 类型检查及生产构建；
+2. 核心玩法、存档事务、计分隔离、教程和统计回归；
+3. 自动平衡模拟、战斗压力测试和发布资产检查。
+
+`npx playwright install chromium webkit` 后运行 `npm run verify:browser`，用两个浏览器核对续局接管、备份、窄屏触控和离线更新。PR 和 Pages 发布流程都会运行浏览器回归。整帧采样单独使用 `npm run perf:browser`。本地候选版的验证、素材和未确认项目见 [优化候选版验收](docs/OPTIMIZATION_VERIFICATION.md)。
 
 也可以单独运行：
 
@@ -204,6 +209,8 @@ npm run typecheck
 npm run selftest
 npm run test:save
 npm run balance:sim
+npm run perf:check
+npm run release:audit
 npm run build
 ```
 
@@ -234,13 +241,14 @@ npm run build
 | `CHANGELOG.md` | 记录主要新增、修改和修复。 |
 | `docs/PRIVACY.md` | 说明游戏只使用浏览器本地存储，不自带远程追踪。 |
 | `docs/RELEASE_CHECKLIST.md` | 发布前检查表和当前市场化差距。 |
-| `docs/RELEASE_NOTES_v1.0.0.md` | 1.0.0 正式发布说明。 |
+| `docs/RELEASE_NOTES_v1.1.0.md` | 1.1.0 发布说明与旧版更新指引。 |
+| `docs/RELEASE_NOTES_v1.0.0.md` | 1.0.0 历史发布说明。 |
 
 ---
 
 ## 当前优化重点
 
-- 保持 `npm run verify` 与 `npm run release:gate` 作为 1.0.0 后续补丁的发布门禁；
+- 保持 `npm run verify`、`npm run verify:browser` 与 `npm run release:gate` 作为后续版本的发布门禁；
 - 持续补充截图/GIF、外部试玩反馈和后续平衡微调记录；
 - 做上线后设备回归：桌面、小屏横屏、移动浏览器、缓存刷新。
 

@@ -7,6 +7,12 @@ export class Rng {
     this.state = seed >>> 0;
   }
 
+  get stateValue(): number { return this.state >>> 0; }
+
+  skip(draws: number): void {
+    this.state = (this.state + Math.imul(draws, 0x6d2b79f5)) | 0;
+  }
+
   next(): number {
     // mulberry32
     this.state |= 0;

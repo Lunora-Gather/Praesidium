@@ -4,6 +4,27 @@ All notable changes to Praesidium are tracked here.
 
 ## Unreleased
 
+## 1.1.0 - 2026-11-25
+
+- Updated build dependencies and tightened the legacy save cutover, including when an existing worker is bypassed by a forced reload.
+- Moved core progress and checkpoints to IndexedDB transactions. Explicit tab takeover and monotonic revisions prevent stale writes; validated backup and restore are available in Settings.
+- Separated campaign, Endless, Daily, Weekly, and practice scoring and reward eligibility. New P2 codes pin rules and score versions; score and wave stay paired by battle, with legacy records separate.
+- Added a split-row compact HUD, small-tile touch confirmation, accessible operations briefing and results, and a reduced-motion preference.
+- Made onboarding action-based and replayable, separated foreground time from simulated time, and withhold health scores when samples are too small.
+- Verify every offline resource before activating a release; wait out older running clients before migrating. PR and Pages jobs exercise Chromium and WebKit.
+
+- Capped each kill's combo bonus at 60% of its base gold, and prevented Repair spending at full lives.
+- Corrected fast projectile impacts, layered slows, wave clears, and Tesla chain hits. Reduced targeting work and batched achievement storage writes during long runs.
+- Added pagination to the Intel codex and kept health report controls clear of the risk list on short screens.
+- Added campaign runs with limited budgets, three half-hour Endless runs, and larger combat loads to the balance and performance checks.
+- Added shareable challenge codes with the original difficulty, weekly rules, opening waves, and talent loadout. Daily challenges now reset at UTC midnight with a standard loadout.
+- Combined campaign records, unlocks, and talent awards into one retryable local settlement. Conqueror counts distinct campaign levels completed.
+- Added Resume to the command deck when returning to the menu mid-run, and kept victory and defeat actions clear of the report on short screens.
+- Added keyboard focus and activation to game controls, including arrow-key navigation for building tiles. All ten levels now appear in statistics and rankings, and the chosen language persists.
+- Preserved active waves, towers, enemies, and shots across a reload. Existing run saves resume at the start of their recorded wave.
+- Fitted the full battlefield beside the combat controls in portrait and landscape, and kept the first wave on hold for preparation.
+- Precached each release's full offline shell and corrected the install manifest URL for GitHub Pages subpaths.
+- Moved tower synergy calculations out of the frame loop and cached remaining route distances for target selection.
 - Added local playtest report export from the Stats health screen.
 - Added persistent Daily/Weekly mission credits and end-screen reward badges.
 - Added a new-player pressure probe to the balance simulation.

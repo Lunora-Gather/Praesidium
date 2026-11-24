@@ -1,117 +1,124 @@
-// Unified input: mouse + touch + keyboard, with click/tap dedup.
+// Canvas input in CSS pixels. One primary pointer owns a press until release or cancellation.
 
 export class Input {
   private readonly keys = new Set<string>();
   private readonly justPressedKeys = new Set<string>();
-  private mouseDown = false;
-  pointerX = 0;
-  pointerY = 0;
-  private readonly queuedClicks: Array<{ x: number; y: number }> = [];
+  private pointerId: number | null = null;
+  private pressX = -1;
+  private pressY = -1;
+  private dragged = false;
+  pointerX = -1;
+  pointerY = -1;
+  private readonly queuedClicks: Array<{ x: number; y: number; board: boolean; touch: boolean }> = [];
 
   constructor(private readonly canvas: HTMLCanvasElement) {
-    canvas.addEventListener('mousemove', this.onMove);
-    canvas.addEventListener('mousedown', this.onDown);
-    window.addEventListener('mouseup', this.onUp);
-    canvas.addEventListener('touchstart', this.onTouch, { passive: false });
-    canvas.addEventListener('touchmove', this.onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', this.onTouchEnd);
+    canvas.addEventListener('pointerdown', this.onDown);
+    canvas.addEventListener('pointermove', this.onMove);
+    canvas.addEventListener('pointerup', this.onUp);
+    canvas.addEventListener('pointercancel', this.onCancel);
+    canvas.addEventListener('lostpointercapture', this.onCancel);
+    canvas.addEventListener('pointerleave', this.onLeave);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('blur', this.reset);
   }
 
-  /** Poll and clear per-frame transient state. Call once per frame before update. */
   endFrame(): void {
     this.justPressedKeys.clear();
     this.queuedClicks.length = 0;
-  }
-
-  isKeyDown(code: string): boolean {
-    return this.keys.has(code);
   }
 
   wasKeyPressed(code: string): boolean {
     return this.justPressedKeys.has(code);
   }
 
-  isMouseDown(): boolean {
-    return this.mouseDown;
-  }
-
-  /** Clicks queued during the frame (mouse + touch unified). */
-  clicks(): readonly { x: number; y: number }[] {
+  clicks(): readonly { x: number; y: number; board: boolean; touch: boolean }[] {
     return this.queuedClicks;
   }
 
-  private addClick(x: number, y: number): void {
-    this.queuedClicks.push({ x, y });
+  activateAt(x: number, y: number, board = false, touch = false): void {
+    this.queuedClicks.push({ x, y, board, touch });
   }
 
-  private readonly onMove = (e: MouseEvent): void => {
-    const r = this.canvas.getBoundingClientRect();
-    this.pointerX = e.clientX - r.left;
-    this.pointerY = e.clientY - r.top;
-  };
-
-  private readonly onDown = (e: MouseEvent): void => {
-    if (e.button !== 0) return; // left-click only
-    this.mouseDown = true;
-    const r = this.canvas.getBoundingClientRect();
-    this.addClick(e.clientX - r.left, e.clientY - r.top);
-  };
-
-  private readonly onUp = (): void => {
-    this.mouseDown = false;
-  };
-
-  private readonly onKeyDown = (e: KeyboardEvent): void => {
-    if (!this.keys.has(e.code)) this.justPressedKeys.add(e.code);
-    this.keys.add(e.code);
-  };
-
-  private readonly onKeyUp = (e: KeyboardEvent): void => {
-    this.keys.delete(e.code);
-  };
-
-  private touchToCanvas(t: Touch): { x: number; y: number } {
-    const r = this.canvas.getBoundingClientRect();
-    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  private updatePosition(event: PointerEvent): DOMRect {
+    const bounds = this.canvas.getBoundingClientRect();
+    this.pointerX = event.clientX - bounds.left;
+    this.pointerY = event.clientY - bounds.top;
+    return bounds;
   }
 
-  private readonly onTouch = (e: TouchEvent): void => {
-    e.preventDefault();
-    if (e.touches.length > 0) {
-      const p = this.touchToCanvas(e.touches[0]);
-      this.pointerX = p.x;
-      this.pointerY = p.y;
-      this.mouseDown = true;
-      // do NOT addClick here — tap fires on touchend (matches desktop click semantics:
-      // down+up). this lets touchmove drive the hover/placement preview.
-    }
+  private readonly onDown = (event: PointerEvent): void => {
+    if (!event.isPrimary || event.button !== 0 || this.pointerId !== null) return;
+    this.pointerId = event.pointerId;
+    this.updatePosition(event);
+    this.pressX = this.pointerX;
+    this.pressY = this.pointerY;
+    this.dragged = false;
+    if (event.isTrusted) this.canvas.setPointerCapture(event.pointerId);
   };
 
-  private readonly onTouchMove = (e: TouchEvent): void => {
-    e.preventDefault();
-    if (e.touches.length > 0) {
-      const p = this.touchToCanvas(e.touches[0]);
-      this.pointerX = p.x;
-      this.pointerY = p.y;
-    }
+  private readonly onMove = (event: PointerEvent): void => {
+    if (!event.isPrimary || (this.pointerId !== null && this.pointerId !== event.pointerId)) return;
+    this.updatePosition(event);
+    if (this.pointerId !== null && Math.hypot(this.pointerX - this.pressX, this.pointerY - this.pressY) > 12) this.dragged = true;
   };
 
-  private readonly onTouchEnd = (): void => {
-    // fire the click now that the tap is complete (pointer already at last move position)
-    this.addClick(this.pointerX, this.pointerY);
-    this.mouseDown = false;
+  private readonly onUp = (event: PointerEvent): void => {
+    if (this.pointerId !== event.pointerId) return;
+    this.pointerId = null;
+    const bounds = this.updatePosition(event);
+    if (!this.dragged && Math.hypot(this.pointerX - this.pressX, this.pointerY - this.pressY) <= 12
+        && this.pointerX >= 0 && this.pointerX < bounds.width && this.pointerY >= 0 && this.pointerY < bounds.height) {
+      this.activateAt(this.pointerX, this.pointerY, false, event.pointerType === 'touch');
+    }
+    if (event.pointerType === 'touch') this.clearPosition();
+  };
+
+  private readonly onCancel = (event: PointerEvent): void => {
+    if (this.pointerId !== event.pointerId) return;
+    this.pointerId = null;
+    this.clearPosition();
+  };
+
+  private readonly onLeave = (): void => {
+    if (this.pointerId === null) this.clearPosition();
+  };
+
+  private clearPosition(): void {
+    this.pointerX = -1;
+    this.pointerY = -1;
+  }
+
+  private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+    if (event.target instanceof HTMLElement) {
+      if (event.target.closest('dialog, input, select, textarea, [contenteditable]')) return;
+      if (event.target.closest('button') && (event.code === 'Enter' || event.code === 'Space')) return;
+    }
+    if (!this.keys.has(event.code) && !event.repeat) this.justPressedKeys.add(event.code);
+    this.keys.add(event.code);
+  };
+
+  private readonly onKeyUp = (event: KeyboardEvent): void => {
+    this.keys.delete(event.code);
+  };
+
+  private readonly reset = (): void => {
+    this.pointerId = null;
+    this.clearPosition();
+    this.keys.clear();
+    this.endFrame();
   };
 
   dispose(): void {
-    this.canvas.removeEventListener('mousemove', this.onMove);
-    this.canvas.removeEventListener('mousedown', this.onDown);
-    window.removeEventListener('mouseup', this.onUp);
-    this.canvas.removeEventListener('touchstart', this.onTouch);
-    this.canvas.removeEventListener('touchmove', this.onTouchMove);
-    this.canvas.removeEventListener('touchend', this.onTouchEnd);
+    this.canvas.removeEventListener('pointerdown', this.onDown);
+    this.canvas.removeEventListener('pointermove', this.onMove);
+    this.canvas.removeEventListener('pointerup', this.onUp);
+    this.canvas.removeEventListener('pointercancel', this.onCancel);
+    this.canvas.removeEventListener('lostpointercapture', this.onCancel);
+    this.canvas.removeEventListener('pointerleave', this.onLeave);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('blur', this.reset);
   }
 }

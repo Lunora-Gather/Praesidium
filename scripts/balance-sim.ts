@@ -15,9 +15,18 @@ import { GameState } from '../src/game/GameState';
 import { LEVELS } from '../src/game/grid/LevelManager';
 import { getTowerDef, TOWER_LIST } from '../src/game/towers/TowerRegistry';
 import type { Tower } from '../src/game/towers/Tower';
+import { STANDARD_TALENT_LOADOUT } from '../src/game/Talents';
 
 type BotPlanId = 'balanced' | 'antiFast' | 'antiBoss';
-type BotProfile = 'expert' | 'newcomer';
+type BotProfile = 'expert' | 'newcomer' | 'limited';
+
+interface DefenseBudget { towers: number; upgrades: number; }
+
+interface SimOptions {
+  profile?: BotProfile;
+  budget?: DefenseBudget;
+  endlessSeed?: number;
+}
 
 interface SimResult {
   level: number;
@@ -37,6 +46,8 @@ interface SimResult {
   spells: number;
   durationSec: number;
   build: Record<string, number>;
+  baseGold: number;
+  comboGold: number;
 }
 
 const BOT_PLANS: Record<BotPlanId, string[]> = {
@@ -45,8 +56,10 @@ const BOT_PLANS: Record<BotPlanId, string[]> = {
   antiBoss: ['turret', 'sniper', 'frost', 'cannon', 'tesla', 'mortar'],
 };
 
-const DT = 1 / 30;
+const DT = 1 / 60;
 const MAX_SECONDS = 420;
+const ENDLESS_SECONDS = 1800;
+const LIMITED_BUDGET: DefenseBudget = { towers: 8, upgrades: 12 };
 const THINK_INTERVAL = 0.35;
 const LATE_CAMPAIGN_START = 9;
 
@@ -93,17 +106,21 @@ function chooseUpgradeTower(state: GameState): Tower | null {
   return candidates[0] ?? null;
 }
 
-function maintainEconomy(state: GameState, plan: BotPlanId, sites: Array<{ tx: number; ty: number }>, build: Record<string, number>, profile: BotProfile): void {
+function maintainEconomy(state: GameState, plan: BotPlanId, sites: Array<{ tx: number; ty: number }>, build: Record<string, number>, profile: BotProfile, budget: DefenseBudget): void {
   if (profile === 'newcomer' && state.towers.length >= 5 && state.gold < 190) return;
+  const limited = profile === 'limited';
+  const allowUpgrade = !limited || state.stats.get().upgrades < budget.upgrades;
+  const allowPlacement = !limited || state.towers.length < budget.towers;
   // Early game needs bodies on the map; mid/late game should upgrade high-value towers.
   const shouldUpgrade = profile === 'newcomer'
     ? state.towers.length >= 3 && state.gold >= 210
     : state.towers.length >= 4 && (state.towers.length >= 8 || state.gold >= 160);
-  if (shouldUpgrade) {
+  if (allowUpgrade && (shouldUpgrade || !allowPlacement)) {
     const upgradeTarget = chooseUpgradeTower(state);
     if (upgradeTarget && state.upgradeTower(upgradeTarget)) return;
   }
 
+  if (!allowPlacement) return;
   const towerId = nextAffordableTower(plan, state.gold, state.towers.length);
   if (!towerId) return;
 
@@ -116,11 +133,12 @@ function maintainEconomy(state: GameState, plan: BotPlanId, sites: Array<{ tx: n
     }
   }
 
-  const upgradeTarget = chooseUpgradeTower(state);
+  const upgradeTarget = allowUpgrade ? chooseUpgradeTower(state) : null;
   if (upgradeTarget) state.upgradeTower(upgradeTarget);
 }
 
 function castUsefulSpells(state: GameState, profile: BotProfile): void {
+  if (profile === 'limited') return;
   if (profile === 'newcomer' && state.waves.current < 3) return;
   if (state.enemies.length >= 9 && state.gold >= 60) {
     const meteor = state.spells.find(sp => sp.def.id === 'meteor');
@@ -138,21 +156,34 @@ function castUsefulSpells(state: GameState, profile: BotProfile): void {
   }
 }
 
-function simulate(levelIndex: number, difficulty: Difficulty, plan: BotPlanId, profile: BotProfile = 'expert'): SimResult {
+function simulate(levelIndex: number, difficulty: Difficulty, plan: BotPlanId, options: SimOptions = {}): SimResult {
+  const { profile = 'expert', budget = LIMITED_BUDGET, endlessSeed } = options;
   const state = new GameState();
-  state.setDifficulty(difficulty);
-  state.selectLevel(levelIndex);
+  if (endlessSeed !== undefined) {
+    state.startSharedChallenge({ seed: endlessSeed, difficulty, weeklyKey: null, talentRanks: STANDARD_TALENT_LOADOUT, variedOpener: true });
+  } else {
+    state.setDifficulty(difficulty);
+    state.selectLevel(levelIndex);
+  }
   state.waves.autoSend = profile === 'expert';
 
   const sites = buildableSites(state);
   const build: Record<string, number> = Object.fromEntries(TOWER_LIST.map(t => [t.id, 0]));
+  let baseGold = 0;
+  let comboGold = 0;
+  state.combat.bus.on('kill', ({ enemy, reward }) => {
+    const base = Math.round(enemy.reward * state.talentMultiplier('gold') * state.diffMul.rewardMul);
+    baseGold += base;
+    comboGold += reward - base;
+  });
 
   let thinkTimer = profile === 'newcomer' ? 1.25 : 0;
-  const thinkInterval = profile === 'newcomer' ? 1.05 : THINK_INTERVAL;
-  for (let frame = 0; frame < MAX_SECONDS / DT; frame++) {
+  const thinkInterval = profile === 'limited' ? 1.25 : profile === 'newcomer' ? 1.05 : THINK_INTERVAL;
+  const maxFrames = (endlessSeed === undefined ? MAX_SECONDS : ENDLESS_SECONDS) / DT;
+  for (let frame = 0; frame < maxFrames; frame++) {
     thinkTimer -= DT;
     if (thinkTimer <= 0) {
-      maintainEconomy(state, plan, sites, build, profile);
+      maintainEconomy(state, plan, sites, build, profile, budget);
       castUsefulSpells(state, profile);
       thinkTimer = thinkInterval;
     }
@@ -181,7 +212,17 @@ function simulate(levelIndex: number, difficulty: Difficulty, plan: BotPlanId, p
     spells: stats.spellsCast,
     durationSec: Math.round(stats.durationSec),
     build,
+    baseGold,
+    comboGold,
   };
+}
+
+function strongerResult(result: SimResult, previous: SimResult): boolean {
+  if (result.won !== previous.won) return result.won;
+  if (result.stars !== previous.stars) return result.stars > previous.stars;
+  if (result.wave !== previous.wave) return result.wave > previous.wave;
+  if (result.lives !== previous.lives) return result.lives > previous.lives;
+  return result.score > previous.score;
 }
 
 function bestByLevelAndDifficulty(results: SimResult[]): SimResult[] {
@@ -189,7 +230,7 @@ function bestByLevelAndDifficulty(results: SimResult[]): SimResult[] {
   for (const result of results) {
     const key = `${result.level}:${result.difficulty}`;
     const prev = groups.get(key);
-    if (!prev || Number(result.won) > Number(prev.won) || result.stars > prev.stars || result.score > prev.score) {
+    if (!prev || strongerResult(result, prev)) {
       groups.set(key, result);
     }
   }
@@ -259,7 +300,7 @@ function newcomerProbe(): string[] {
   const risks: string[] = [];
   const results: SimResult[] = [];
   for (let levelIndex = 0; levelIndex < Math.min(3, LEVELS.length); levelIndex++) {
-    results.push(simulate(levelIndex, 'normal', 'balanced', 'newcomer'));
+    results.push(simulate(levelIndex, 'normal', 'balanced', { profile: 'newcomer' }));
   }
   for (const r of results) {
     console.log(resultLine(r));
@@ -307,6 +348,18 @@ function printActionableTuningNotes(risks: string[]): void {
   for (let i = 0; i < notes.length; i++) console.log(`${i + 1}. ${notes[i]}`);
 }
 
+function summarizePressure(results: SimResult[], label: string): void {
+  console.log(`\n=== ${label} ===`);
+  for (const difficulty of DIFFICULTY_LIST) {
+    const cases = results.filter(result => result.difficulty === difficulty.id);
+    const wins = cases.filter(result => result.won).length;
+    const meanLives = cases.reduce((sum, result) => sum + result.lives, 0) / cases.length;
+    const meanWave = cases.reduce((sum, result) => sum + result.wave, 0) / cases.length;
+    const maxComboRatio = Math.max(...cases.map(result => result.baseGold ? result.comboGold / result.baseGold : 0));
+    console.log(`${difficulty.name.padEnd(6)} ${wins}/${cases.length} wins | mean lives ${meanLives.toFixed(1)} | mean wave ${meanWave.toFixed(1)} | max bonus/base gold ${(maxComboRatio * 100).toFixed(0)}%`);
+  }
+}
+
 function summarize(results: SimResult[]): string[] {
   const best = bestByLevelAndDifficulty(results);
   const normal = best.filter(r => r.difficulty === 'normal');
@@ -348,17 +401,37 @@ const results: SimResult[] = [];
 for (let levelIndex = 0; levelIndex < LEVELS.length; levelIndex++) {
   for (const diff of DIFFICULTY_LIST) {
     for (const plan of Object.keys(BOT_PLANS) as BotPlanId[]) {
-      results.push(simulate(levelIndex, diff.id, plan, 'expert'));
+      results.push(simulate(levelIndex, diff.id, plan));
     }
   }
 }
 
 const risks = summarize(results);
 const newcomerRisks = newcomerProbe();
+summarizePressure(results, 'Pressure Across All Expert Plans');
+function limitedProbe(budget: DefenseBudget): SimResult[] {
+  return LEVELS.flatMap((_, levelIndex) => DIFFICULTY_LIST.map(difficulty => simulate(levelIndex, difficulty.id, 'balanced', { profile: 'limited', budget })));
+}
+const limitedResults = limitedProbe(LIMITED_BUDGET);
+summarizePressure(limitedResults, 'Limited Defense Probe (8 towers, 12 upgrades, no spells)');
+for (const result of limitedResults) console.log(resultLine(result));
+
+summarizePressure(limitedProbe({ towers: 4, upgrades: 6 }), 'Lean Defense Probe (4 towers, 6 upgrades, no spells)');
+
+console.log('\n=== Seeded Endless Endurance (30 simulated minutes) ===');
+const endurance = [0x1a78f402, 0xcafebabe, 0x5eed].map(seed => {
+  const result = simulate(0, 'normal', 'balanced', { profile: 'limited', budget: { towers: 26, upgrades: 78 }, endlessSeed: seed });
+  console.log(`${seed.toString(16).toUpperCase()} | ${result.durationSec}s | wave ${result.wave} | ${result.lives} lives | ${result.kills} kills | ${result.phase}`);
+  return result;
+});
+if (endurance.some(result => result.wave <= 12 || (result.phase !== 'playing' && result.phase !== 'lost'))) {
+  console.error('Endurance probe did not reach generated Endless waves.');
+  process.exitCode = 1;
+}
 
 const normalBest = bestByLevelAndDifficulty(results).filter(r => r.difficulty === 'normal');
-if (normalBest.some(r => r.wave <= 1 && !r.won)) {
-  console.error('\nBalance sim failed: a normal-mode level collapses before completing wave 1.');
+if (normalBest.some(r => !r.won)) {
+  console.error('\nBalance sim failed: a normal-mode level has no successful plan.');
   process.exit(1);
 }
 

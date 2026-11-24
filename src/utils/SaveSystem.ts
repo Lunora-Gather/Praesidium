@@ -5,6 +5,8 @@
 import { load, save } from './storage';
 import { LEVELS } from '../game/grid/LevelManager';
 import { dailyMissions, evaluateMissions, type MissionRunSnapshot } from './DailyMissions';
+import { CURRENT_SCORE, isScoreRecord, runRecordKey, type RunOrigin, type ScoreRecord } from './RunRecords';
+import { WEEKLY_REWARD_WAVE, weeklyMode } from './WeeklyMode';
 
 export interface SaveData {
   version: number;
@@ -21,11 +23,45 @@ export interface SaveData {
   missionCredits: number;
   dailyMissionClaims: Record<string, boolean>;
   weeklyBestWaves: Record<string, number>;
+  talents: { points: number; ranks: Record<string, number> };
+  settledRuns: string[];
+  records: Record<string, ScoreRecord>;
+  lastPracticeKey: string | null;
+  weeklyRewardClaims: Record<string, boolean>;
+}
+
+export interface RunResult {
+  id: string;
+  score: number;
+  wave: number;
+  missions: MissionRunSnapshot;
+  missionDate: string;
+  campaign: { level: number; stars: number } | null;
+  endless: boolean;
+  dailyDate: string | null;
+  weekly: { id: string; reward: number } | null;
+  origin?: RunOrigin;
+  scoreVersion?: number;
+  clearedWave?: number;
+}
+
+export interface RunSettlement {
+  applied: boolean;
+  persisted: boolean;
+  highScore: boolean;
+  levelScore: boolean;
+  stars: boolean;
+  dailyRecord: boolean;
+  endlessRecord: boolean;
+  modeRecord?: boolean;
+  missionCredits: number;
+  weeklyCredits: number;
 }
 
 const KEY = 'save';
 const CURRENT_VERSION = 1;
 const MAX_LEVEL = LEVELS.length;
+const SETTLED_RUN_LIMIT = 256;
 
 const DEFAULTS: SaveData = {
   version: CURRENT_VERSION,
@@ -42,46 +78,164 @@ const DEFAULTS: SaveData = {
   missionCredits: 0,
   dailyMissionClaims: {},
   weeklyBestWaves: {},
+  talents: { points: 0, ranks: {} },
+  settledRuns: [],
+  records: {},
+  lastPracticeKey: null,
+  weeklyRewardClaims: {},
 };
 
-function defaultData(): SaveData {
-  return {
-    ...DEFAULTS,
-    unlockedTowers: [...DEFAULTS.unlockedTowers],
-    levelStars: {},
-    levelHighScores: {},
-    dailyMissionClaims: {},
-    weeklyBestWaves: {},
-  };
+function validatedRecord<T extends number | boolean>(data: Record<string, unknown> | undefined, valid: (value: unknown) => value is T): Record<string, T> {
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) return {};
+  return Object.fromEntries(Object.entries(data).filter((entry): entry is [string, T] => valid(entry[1])));
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function isIntegerCount(value: unknown): value is number {
+  return isCount(value) && Number.isSafeInteger(value);
+}
+
+export function readProfile(loaded: Partial<SaveData>, legacyTalents: Partial<SaveData['talents']> = {}): SaveData {
+  const data = { ...DEFAULTS, ...loaded };
+  data.version = CURRENT_VERSION;
+  data.unlockedTowers = Array.isArray(loaded.unlockedTowers)
+    ? loaded.unlockedTowers.filter(tower => typeof tower === 'string')
+    : [...DEFAULTS.unlockedTowers];
+  data.levelStars = validatedRecord(loaded.levelStars, (value): value is number => isIntegerCount(value) && value <= 3);
+  data.levelHighScores = validatedRecord(loaded.levelHighScores, isCount);
+  data.dailyMissionClaims = validatedRecord(loaded.dailyMissionClaims, (value): value is boolean => typeof value === 'boolean');
+  data.weeklyBestWaves = validatedRecord(loaded.weeklyBestWaves, isCount);
+  data.weeklyRewardClaims = validatedRecord(loaded.weeklyRewardClaims, (value): value is boolean => typeof value === 'boolean');
+  data.records = loaded.records && typeof loaded.records === 'object' && !Array.isArray(loaded.records)
+    ? Object.fromEntries(Object.entries(loaded.records).filter(([key, entry]) => /^\d+:(campaign|endless|daily|weekly|custom|legacy)(:|$)/.test(key) && isScoreRecord(entry))) : {};
+  data.lastPracticeKey = typeof loaded.lastPracticeKey === 'string' && Object.prototype.hasOwnProperty.call(data.records, loaded.lastPracticeKey)
+    ? loaded.lastPracticeKey : null;
+  for (const key of ['highScore', 'maxLevelReached', 'endlessHighScore', 'endlessMaxWave', 'dailyHighScore', 'dailyMaxWave', 'missionCredits'] as const) {
+    if (!isCount(data[key])) data[key] = DEFAULTS[key];
+  }
+  if (typeof data.dailyDate !== 'string') data.dailyDate = DEFAULTS.dailyDate;
+  data.maxLevelReached = Math.max(1, Math.min(MAX_LEVEL, Math.floor(data.maxLevelReached)));
+
+  const talents = loaded.talents ?? legacyTalents;
+  data.talents = { points: isIntegerCount(talents.points) ? talents.points : 0, ranks: validatedRecord(talents.ranks, isIntegerCount) };
+  data.settledRuns = Array.isArray(loaded.settledRuns)
+    ? loaded.settledRuns.filter(id => typeof id === 'string').slice(-SETTLED_RUN_LIMIT)
+    : [];
+  return data;
+}
+
+export function loadLegacyProfile(): SaveData {
+  return readProfile(load<Partial<SaveData>>(KEY, {}), load<Partial<SaveData['talents']>>('talents', {}));
 }
 
 export class SaveSystem {
   private data: SaveData;
+  private batching = false;
+  private pendingWrite = false;
 
-  constructor() {
-    const loaded = load<Partial<SaveData>>(KEY, {});
-    this.data = { ...defaultData(), ...loaded };
-    this.data.unlockedTowers = [...(loaded.unlockedTowers ?? DEFAULTS.unlockedTowers)];
-    this.data.levelStars = { ...(loaded.levelStars ?? {}) };
-    this.data.levelHighScores = { ...(loaded.levelHighScores ?? {}) };
-    this.data.dailyMissionClaims = { ...(loaded.dailyMissionClaims ?? {}) };
-    this.data.weeklyBestWaves = { ...(loaded.weeklyBestWaves ?? {}) };
-    if (this.data.version !== CURRENT_VERSION) this.migrate();
-    this.clampProgression();
+  constructor(private readonly detached: boolean = false) {
+    this.data = detached ? readProfile({}) : loadLegacyProfile();
   }
 
-  private migrate(): void {
-    // forward-only migrations would go here
-    this.data.version = CURRENT_VERSION;
-    this.persist();
-  }
+  /** Adopt a committed profile for a synchronous UI view, or for a transaction-local reducer. */
+  adopt(data: SaveData): void { this.data = data; }
 
-  private clampProgression(): void {
-    const clamped = Math.max(1, Math.min(MAX_LEVEL, this.data.maxLevelReached));
-    if (clamped !== this.data.maxLevelReached) {
-      this.data.maxLevelReached = clamped;
-      this.persist();
+  private refresh(reconcileRun?: string): void {
+    if (this.detached || (this.pendingWrite && !reconcileRun)) return;
+    const latest = load<Partial<SaveData> | null>(KEY, null);
+    if (latest && typeof latest === 'object' && !Array.isArray(latest)) {
+      const data = readProfile(latest, load<Partial<SaveData['talents']>>('talents', {}));
+      if (!this.pendingWrite || (reconcileRun && data.settledRuns.includes(reconcileRun))) {
+        this.data = data;
+        this.pendingWrite = false;
+      }
     }
+  }
+
+  hasSettledRun(id: string): boolean {
+    this.refresh(id);
+    return !this.pendingWrite && this.data.settledRuns.includes(id);
+  }
+
+  settleRun(run: RunResult): RunSettlement {
+    this.refresh(run.id);
+    const result: RunSettlement = {
+      applied: false, persisted: false, highScore: false, levelScore: false, stars: false,
+      dailyRecord: false, endlessRecord: false, missionCredits: 0, weeklyCredits: 0,
+    };
+    if (this.data.settledRuns.includes(run.id)) {
+      result.persisted = !this.pendingWrite || this.persist();
+      return result;
+    }
+
+    this.batching = true;
+    try {
+      const origin = run.origin;
+      const official = origin ? origin.kind !== 'custom' && origin.kind !== 'legacy' : !run.endless || run.dailyDate !== null;
+      if (!origin) result.highScore = this.recordScore(run.score); // Legacy pending result.
+      if (official) result.missionCredits = this.recordDailyMissionProgress(run.missionDate, run.missions);
+      if (origin?.kind === 'weekly' && (run.clearedWave ?? 0) >= WEEKLY_REWARD_WAVE) {
+        const mode = weeklyMode(origin.period);
+        if (!this.data.weeklyRewardClaims[mode.id] && !this.data.weeklyBestWaves[mode.id]) {
+          this.data.weeklyRewardClaims[mode.id] = true;
+          this.data.missionCredits += mode.reward;
+          result.weeklyCredits = mode.reward;
+        }
+      }
+      if (origin && ((run.endless && run.wave > 0) || run.campaign)) {
+        const key = runRecordKey(origin, run.scoreVersion ?? 0);
+        result.modeRecord = this.recordStanding(key, run);
+        if (origin.kind === 'custom') this.data.lastPracticeKey = key;
+        result.levelScore = origin.kind === 'campaign' && result.modeRecord;
+        result.endlessRecord = origin.kind === 'endless' && result.modeRecord;
+        result.dailyRecord = origin.kind === 'daily' && result.modeRecord;
+      }
+      if (run.campaign) {
+        const { level, stars } = run.campaign;
+        this.recordLevelReached(level + 1);
+        result.stars = this.recordStars(level, stars);
+        if (!origin) result.levelScore = this.recordLevelScore(level, run.score);
+        this.data.talents.points += stars;
+      } else if (run.endless && run.wave > 0 && official) {
+        this.data.talents.points += Math.min(3, Math.floor(run.wave / 4));
+        if (!origin && run.dailyDate) result.dailyRecord = this.recordDailyRun(run.score, run.wave, run.dailyDate);
+      }
+      this.data.settledRuns.push(run.id);
+      if (this.data.settledRuns.length > SETTLED_RUN_LIMIT) this.data.settledRuns.shift();
+    } finally {
+      this.batching = false;
+    }
+    result.applied = true;
+    result.persisted = this.persist();
+    return result;
+  }
+
+  getRecord(origin: RunOrigin, version = CURRENT_SCORE): ScoreRecord | undefined {
+    return this.data.records[runRecordKey(origin, version)];
+  }
+
+  private recordStanding(key: string, run: RunResult): boolean {
+    const previous = this.data.records[key];
+    const best = previous?.best;
+    const improves = !best || run.score > best.score || (run.score === best.score && run.wave > best.wave);
+    this.data.records[key] = {
+      best: improves ? { id: run.id, score: run.score, wave: run.wave } : best,
+      furthestWave: Math.max(run.wave, previous?.furthestWave ?? 0),
+    };
+    return improves;
+  }
+
+  buyTalent(id: string, cost: number, maxRank: number): boolean {
+    this.refresh();
+    const rank = this.data.talents.ranks[id] ?? 0;
+    if (rank >= maxRank || this.data.talents.points < cost) return false;
+    this.data.talents.ranks[id] = rank + 1;
+    this.data.talents.points -= cost;
+    this.persist();
+    return true;
   }
 
   get(): Readonly<SaveData> {
@@ -179,6 +333,7 @@ export class SaveSystem {
   }
 
   recordDailyRun(score: number, wave: number, dateStr: string): boolean {
+    if (this.data.dailyDate > dateStr) return false;
     let updated = false;
     if (this.data.dailyDate !== dateStr) {
       this.data.dailyDate = dateStr;
@@ -225,11 +380,14 @@ export class SaveSystem {
   }
 
   reset(): void {
-    this.data = defaultData();
+    this.data = readProfile({ talents: DEFAULTS.talents });
     this.persist();
   }
 
-  private persist(): void {
-    save(KEY, this.data);
+  private persist(): boolean {
+    if (this.detached || this.batching) return true;
+    const stored = save(KEY, this.data);
+    this.pendingWrite = !stored;
+    return stored;
   }
 }

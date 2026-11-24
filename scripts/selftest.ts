@@ -23,6 +23,12 @@ import { weekKey, weeklyMode, weeklyModeSummary } from '../src/utils/WeeklyMode'
 import { weeklyRules, weeklyRuleSummary } from '../src/utils/WeeklyRules';
 import { classifyBossEncounter } from '../src/utils/BossEncounter';
 import { drawWeeklyRunBadge } from '../src/ui/WeeklyRunBadge';
+import { battleLayout } from '../src/ui/BattleLayout';
+import { battleHudLayout, BOT_H } from '../src/ui/BattleHudLayout';
+import { Enemy } from '../src/game/enemies/Enemy';
+import { getEnemyDef } from '../src/game/enemies/EnemyRegistry';
+import { Projectile } from '../src/game/projectiles/Projectile';
+import { BALANCE } from '../src/config/balance';
 
 let pass = 0;
 let fail = 0;
@@ -48,6 +54,89 @@ for (const [i, level] of LEVELS.entries()) {
   check(`level ${i + 1} has path tiles`, level.tiles.includes(TileType.Path));
   check(`level ${i + 1} has buildable tiles`, level.tiles.includes(TileType.Buildable));
 }
+
+for (const [width, height] of [[320, 568], [390, 844], [568, 320], [640, 360], [780, 390], [900, 600], [1024, 768], [1280, 720], [1920, 1080]]) {
+  const fits = LEVELS.every(level => {
+    const grid = new Grid(level);
+    const { camera, tools, infoHeight, shopRight, topHeight } = battleLayout(width, height, grid.widthPx, grid.heightPx);
+    const mapRight = camera.x + grid.widthPx * camera.zoom;
+    const mapBottom = camera.y + grid.heightPx * camera.zoom;
+    const toolRight = tools.x + tools.width + tools.dx * 3;
+    const toolBottom = tools.y + tools.height + tools.dy * 3;
+    const separatesMapAndTools = tools.x >= mapRight || tools.y >= mapBottom;
+    const separatesShopAndTools = toolBottom <= height - BOT_H || tools.x >= shopRight;
+    return camera.x >= 0 && camera.y >= topHeight + infoHeight && mapRight <= width && mapBottom <= height - BOT_H
+      && tools.x >= 0 && toolRight <= width && toolBottom <= height && tools.height >= 34
+      && separatesMapAndTools && separatesShopAndTools;
+  });
+  check(`battle map and controls fit all campaign levels at ${width}×${height}`, fits);
+  const hud = battleHudLayout(width);
+  const items = [...hud.metrics, ...hud.controls];
+  const epsilon = 0.00001;
+  check(`HUD metrics and 44px controls do not overlap at ${width}×${height}`,
+    hud.controls.every(region => region.w >= 44 - epsilon && region.h >= 44) && items.every((a, index) =>
+      a.x >= 0 && a.y >= 0 && a.x + a.w <= width + epsilon && a.y + a.h <= hud.topHeight
+      && items.slice(index + 1).every(b => a.x + a.w <= b.x + epsilon || b.x + b.w <= a.x + epsilon
+        || a.y + a.h <= b.y + epsilon || b.y + b.h <= a.y + epsilon)));
+}
+
+const prep = new GameState();
+prep.selectLevel(0);
+prep.update(20);
+check('first wave waits for the player', prep.waves.current === 0);
+check('player can launch the first wave after preparing', prep.waves.forceNext() && prep.waves.current === 1);
+
+const combatGrid = prep.grid;
+const grunt = getEnemyDef('grunt');
+const coarse = new Enemy(grunt, combatGrid.waypoints[0], 1);
+const fine = new Enemy(grunt, combatGrid.waypoints[0], 1);
+coarse.update(11, combatGrid);
+for (let tick = 0; tick < 660; tick++) fine.update(1 / 60, combatGrid);
+check('movement keeps unused travel across corners', coarse.pos.dist(fine.pos) < 1e-8 && coarse.snapshot().wpIndex >= 2);
+
+const slowed = new Enemy(grunt, combatGrid.waypoints[0], 1);
+slowed.applySlow(0.45, 4);
+slowed.applySlow(0.2, 1);
+slowed.applySlow(0.45, 0.5);
+const restoredSlow = Enemy.restore(grunt, slowed.snapshot());
+slowed.update(2, combatGrid);
+restoredSlow.update(2, combatGrid);
+check('slow effects retain independent durations and strongest effect wins', slowed.snapshot().slowFactor === 0.45
+  && Math.abs(slowed.pos.dist(combatGrid.waypoints[0]) - grunt.speed * 0.65) < 1e-8);
+check('overlapping slows survive a snapshot', slowed.pos.equals(restoredSlow.pos) && restoredSlow.snapshot().slowTimer === 2);
+
+const shockTargets = [15, 50, 105, 115].map(x => new Enemy(grunt, new Vec2(x, 0), 4));
+const bolt = new Projectile(Vec2.zero, shockTargets[0], getTowerDef('tesla'));
+bolt.update(1 / 30);
+check('fast projectiles stop on target instead of overshooting', bolt.pos.equals(shockTargets[0].pos));
+let arcs = 0;
+prep.combat.bus.on('arc', () => { arcs++; });
+prep.combat.resolve([bolt], shockTargets, prep);
+const damage = shockTargets.map(enemy => grunt.hp * 4 - enemy.hp);
+check('Tesla follows two distinct nearby targets with falloff', arcs === 2 && bolt.dead && damage[0] === 28
+  && Math.abs(damage[1] - 28 * 0.55) < 1e-8 && Math.abs(damage[2] - 28 * 0.55 ** 2) < 1e-8 && damage[3] === 0);
+
+let highestReward = 0;
+prep.combat.bus.on('kill', ({ reward }) => { highestReward = Math.max(highestReward, reward); });
+for (let i = 0; i < 10; i++) prep.combat.damage(new Enemy(grunt, Vec2.zero, 1), 100, DamageType.Physical, prep);
+check('a long chain observes the 60% reward ceiling', prep.comboCount === 10
+  && highestReward === grunt.reward + Math.floor(grunt.reward * BALANCE.comboMaxBonusPercent / 100));
+
+const goldBeforeRepair = prep.gold;
+check('repair at full health spends nothing', !prep.castSpell('repair', Vec2.zero) && prep.gold === goldBeforeRepair);
+prep.lives--;
+check('repair only restores missing lives', prep.castSpell('repair', Vec2.zero) && prep.lives === prep.maxLives);
+
+const waveTest = new GameState();
+waveTest.selectLevel(0);
+waveTest.waves.forceNext();
+waveTest.waves.update(10, waveTest.grid, waveTest.enemies);
+waveTest.waves.forceNext();
+waveTest.update(1 / 60);
+check('sending the next wave does not count enemies still on the board as cleared', waveTest.snapshot().wavesClearedThrough === 0);
+for (const enemy of waveTest.enemies) if (enemy.waveNumber === 1) enemy.dead = true;
+waveTest.update(1 / 60);
+check('cleared wave counts once after its final enemy is gone', waveTest.snapshot().wavesClearedThrough === 1);
 
 // --- Damage resistance ---
 check('no resist = full damage', applyResistance(100, DamageType.Fire, {}) === 100);
@@ -139,9 +228,14 @@ const reportAnalytics = {
   spellUsage: {},
   avgSessionSec: 150,
   longestSessionSec: 300,
+  timedSessions: 6,
+  simulatedSec: 2400,
+  byMode: { campaign: { started: 6, finished: 6, won: 1, bestWave: 12, activeSec: 600, simulatedSec: 1200 } },
+  byDifficulty: { normal: { started: 6, finished: 6, won: 1 } },
+  onboarding: null,
 };
 const health = buildProductHealth(reportAnalytics);
-check('product health returns scores', health.retentionScore >= 0 && health.balanceScore >= 0);
+check('product health returns scores', health.retentionScore !== null && health.balanceScore !== null);
 check('product health flags risks', health.risks.length >= 1);
 const report = buildPlaytestReport(reportAnalytics, {
   version: 1,
@@ -158,8 +252,13 @@ const report = buildPlaytestReport(reportAnalytics, {
   missionCredits: 3,
   dailyMissionClaims: {},
   weeklyBestWaves: {},
+  talents: { points: 0, ranks: {} },
+  settledRuns: [],
+  records: {},
+  weeklyRewardClaims: {},
+  lastPracticeKey: null,
 });
-check('playtest report exports schema', report.schema === 1 && report.game === 'Praesidium');
+check('playtest report exports schema', report.schema === 2 && report.game === 'Praesidium');
 check('playtest report text includes health scores', formatPlaytestReport(report).includes('Retention score'));
 
 // --- Localization sanity ---
@@ -180,6 +279,10 @@ const i18nKeys = [
   'achievement.unlocked',
   'trait.resistsIce',
   'hud.auto',
+  'tutorial.select',
+  'tutorial.inspect',
+  'tutorial.intel',
+  'tutorial.talent',
   'summary.dailyCredits',
   'summary.weeklyCredits',
   'stats.exportReport',
@@ -277,13 +380,12 @@ check('endless never reaches won', gs2.phase !== 'won');
 
 // --- Challenge seed reproducibility ---
 const gs3 = new GameState();
-gs3.endless = true;
-gs3.endlessSeed = 0xDEADBEEF;
-gs3.selectLevel(0);
+gs3.startEndless(0xDEADBEEF);
 check('challenge seed preserved', gs3.endlessSeed === 0xDEADBEEF);
 check('challenge wave seed set', gs3.waves.endlessSeed === 0xDEADBEEF);
-check('seeded challenge auto-enables weekly mode', gs3.weeklyModeActive === true && gs3.activeWeeklyMode !== null);
-check('weekly mode persists in run snapshot', gs3.snapshot().weeklyModeActive === true);
+check('raw seed is practice, not an official week', gs3.runOrigin.kind === 'custom' && !gs3.weeklyModeActive);
+gs3.startWeekly();
+check('weekly period persists in run snapshot', gs3.runOrigin.kind === 'weekly' && gs3.snapshot().weeklyKey === gs3.activeWeeklyMode?.weekKey);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

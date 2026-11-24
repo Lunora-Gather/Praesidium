@@ -31,15 +31,11 @@ Commercial-grade batch: 10-15 players.
 
 Ask each tester to play without help.
 
-1. Open the GitHub Pages build.
-2. Start Campaign.
-3. Play Level 1 until victory or defeat.
-4. Open Intel Codex at least once.
-5. Use at least one spell.
-6. Continue to Level 2 if Level 1 is cleared.
-7. Try Endless or Daily Challenge for at least 3 minutes.
-8. Switch language once if comfortable.
-9. For mobile testers, repeat Level 1 in landscape orientation.
+1. Open the named candidate build in a fresh browser profile. Record the build and input device.
+2. Ask the player to start Campaign and play Level 1 until victory or defeat, without naming the tower shop, Send Wave, Intel, or spells. Note any prompts they need. Continue to Level 2 if the player clears the first map.
+3. End the unprompted segment before asking the player to find Intel or cast a spell. Label every later discovery as prompted; do not count it toward the discovery rates.
+4. For guided QA, try Endless, Daily and Weekly individually, switch language, and on physical phones repeat building, rotation, reload and offline start.
+5. Export the local report from Stats → Health only with the tester's consent. Compare active (not simulated) seconds and annotate interruptions or coaching. Use a separate summary for observed facts and proposed balance changes.
 
 ## What to record
 

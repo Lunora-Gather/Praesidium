@@ -6,17 +6,35 @@ import type { Grid } from '../grid/Grid';
 import type { EnemyDef } from './EnemyRegistry';
 import { applyResistance, DamageType } from '../DamageType';
 
+export interface EnemySnapshot {
+  id: string;
+  waveNumber?: number;
+  pos: { x: number; y: number };
+  wpIndex: number;
+  hp: number;
+  maxHp: number;
+  shieldHp: number;
+  baseSpeed: number;
+  slowTimer: number;
+  slowFactor: number;
+  slows?: SlowEffect[];
+}
+
+interface SlowEffect {
+  factor: number;
+  remaining: number;
+}
+
 export class Enemy {
   dead = false;
   reachedGoal = false;
   pos: Vec2;
   private wpIndex = 0;
   hp: number;
-  private readonly maxHp: number;
+  private maxHp: number;
   private shieldHp = 0;
-  private readonly baseSpeed: number;
-  private slowTimer = 0;
-  private slowFactor = 1;
+  private baseSpeed: number;
+  private slows: SlowEffect[] = [];
   readonly reward: number;
   readonly radius: number;
   readonly color: string;
@@ -24,7 +42,7 @@ export class Enemy {
   readonly resist: Partial<Record<DamageType, number>> | undefined;
   readonly isBoss: boolean;
 
-  constructor(def: EnemyDef, startPos: Vec2, waveHpMul: number, speedMul = 1) {
+  constructor(def: EnemyDef, startPos: Vec2, waveHpMul: number, speedMul = 1, readonly waveNumber = 0) {
     this.id = def.id;
     this.color = def.color;
     this.radius = def.radius;
@@ -37,41 +55,77 @@ export class Enemy {
     this.isBoss = !!def.isBoss;
   }
 
-  applySlow(factor: number, duration: number): void {
-    if (factor <= this.slowFactor) {
-      this.slowFactor = factor;
-      this.slowTimer = duration;
-    } else {
-      this.slowTimer = Math.max(this.slowTimer, duration);
+  snapshot(): EnemySnapshot {
+    const strongest = this.slows[0];
+    return {
+      id: this.id, waveNumber: this.waveNumber, pos: this.pos, wpIndex: this.wpIndex, hp: this.hp, maxHp: this.maxHp,
+      shieldHp: this.shieldHp, baseSpeed: this.baseSpeed,
+      slowTimer: strongest?.remaining ?? 0, slowFactor: strongest?.factor ?? 1,
+      ...(this.slows.length > 1 ? { slows: this.slows.map(slow => ({ ...slow })) } : {}),
+    };
+  }
+
+  static restore(def: EnemyDef, snapshot: EnemySnapshot, fallbackWave = 0): Enemy {
+    const enemy = new Enemy(def, Vec2.from(snapshot.pos), 1, 1, snapshot.waveNumber ?? fallbackWave);
+    enemy.wpIndex = snapshot.wpIndex;
+    enemy.hp = snapshot.hp;
+    enemy.maxHp = snapshot.maxHp;
+    enemy.shieldHp = snapshot.shieldHp;
+    enemy.baseSpeed = snapshot.baseSpeed;
+    for (const slow of snapshot.slows ?? [{ factor: snapshot.slowFactor, remaining: snapshot.slowTimer }]) {
+      enemy.applySlow(slow.factor, slow.remaining);
     }
+    return enemy;
+  }
+
+  applySlow(factor: number, duration: number): void {
+    if (duration <= 0 || factor >= 1) return;
+    const existing = this.slows.find(slow => slow.factor === factor);
+    if (existing) existing.remaining = Math.max(existing.remaining, duration);
+    else {
+      this.slows.push({ factor, remaining: duration });
+      this.slows.sort((a, b) => a.factor - b.factor);
+    }
+  }
+
+  private movementSeconds(dt: number): number {
+    let effective = dt;
+    let covered = 0;
+    let active = 0;
+    for (const slow of this.slows) {
+      const seconds = Math.min(dt, slow.remaining);
+      if (seconds > covered) {
+        effective -= (1 - slow.factor) * (seconds - covered);
+        covered = seconds;
+      }
+      slow.remaining -= dt;
+      if (slow.remaining > 1e-9) this.slows[active++] = slow;
+    }
+    this.slows.length = active;
+    return Math.max(0, effective);
   }
 
   update(dt: number, grid: Grid): void {
     if (this.dead || this.reachedGoal) return;
-    if (this.slowTimer > 0) {
-      this.slowTimer -= dt;
-      if (this.slowTimer <= 0) this.slowFactor = 1;
-    }
-    const speed = this.baseSpeed * this.slowFactor;
-    if (this.wpIndex >= grid.waypoints.length) {
-      this.reachedGoal = true;
-      this.dead = true;
-      return;
-    }
-    const target = grid.waypoints[this.wpIndex];
-    const dir = target.sub(this.pos);
-    const dist = dir.len();
-    const step = speed * dt;
-    if (dist <= step) {
-      this.pos = Vec2.from(target);
-      this.wpIndex++;
-      if (this.wpIndex >= grid.waypoints.length) {
-        this.reachedGoal = true;
-        this.dead = true;
+    let remaining = this.baseSpeed * (this.slows.length ? this.movementSeconds(dt) : dt);
+    while (this.wpIndex < grid.waypoints.length) {
+      const target = grid.waypoints[this.wpIndex];
+      const dx = target.x - this.pos.x;
+      const dy = target.y - this.pos.y;
+      const distance = dx === 0 ? Math.abs(dy) : dy === 0 ? Math.abs(dx) : Math.hypot(dx, dy);
+      if (distance > remaining) {
+        if (remaining > 0) {
+          const ratio = remaining / distance;
+          this.pos = new Vec2(this.pos.x + dx * ratio, this.pos.y + dy * ratio);
+        }
+        return;
       }
-    } else {
-      this.pos = this.pos.add(dir.normalize().mul(step));
+      remaining -= distance;
+      this.pos = target;
+      this.wpIndex++;
     }
+    this.reachedGoal = true;
+    this.dead = true;
   }
 
   takeDamage(d: number, type: DamageType = DamageType.Physical): number {
@@ -108,14 +162,11 @@ export class Enemy {
   }
 
   get isSlowed(): boolean {
-    return this.slowTimer > 0;
+    return this.slows.length > 0;
   }
 
   progressRemaining(grid: Grid): number {
-    let total = this.pos.dist(grid.waypoints[this.wpIndex] ?? this.pos);
-    for (let i = this.wpIndex; i + 1 < grid.waypoints.length; i++) {
-      total += grid.waypoints[i].dist(grid.waypoints[i + 1]);
-    }
-    return total;
+    const waypoint = grid.waypoints[this.wpIndex];
+    return waypoint ? this.pos.dist(waypoint) + grid.distanceToGoal[this.wpIndex] : 0;
   }
 }
