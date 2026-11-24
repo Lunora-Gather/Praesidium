@@ -1,5 +1,6 @@
 // Codex / Intel overlay: readable strategy reference for towers and enemies.
 
+import type { FocusRegion } from './ControlFocus';
 import { Renderer } from '../engine/Renderer';
 import { Vec2 } from '../engine/math/Vec2';
 import { TOWER_LIST, getTowerDef } from '../game/towers/TowerRegistry';
@@ -10,11 +11,25 @@ import { enemyDescription, enemyName, strategyName, towerDescription, towerName,
 import { drawGlassPanel, layoutFor, UI } from './Layout';
 
 type CodexTab = 'towers' | 'enemies';
-type CodexAction = 'close' | 'tab_towers' | 'tab_enemies';
+type CodexAction = 'close' | 'tab_towers' | 'tab_enemies' | 'previous' | 'next';
+const enemies = Object.values(ENEMY_DEFS);
 
 export class CodexScreen {
-  private regions: Array<{ x: number; y: number; w: number; h: number; action: CodexAction }> = [];
+  private regions: Array<FocusRegion & { action: CodexAction }> = [];
+
+  get focusRegions(): readonly FocusRegion[] { return this.regions; }
   private tab: CodexTab = 'towers';
+  private page = 0;
+  private pageCount = 1;
+  private visible = { start: 0, count: 1 };
+
+  get reading(): string {
+    const { start, count } = this.visible;
+    const rows = this.tab === 'towers'
+      ? TOWER_LIST.slice(start, start + count).map(tower => `${towerName(tower.id, tower.name)}. ${towerDescription(tower.id, tower.description)}`)
+      : enemies.slice(start, start + count).map(enemy => `${enemyName(enemy.id, enemy.name)}. ${enemyDescription(enemy.id, enemy.description)} ${t('codex.resist')} ${this.resistanceSummary(enemy.resist)}.`);
+    return rows.join(' ');
+  }
 
   draw(r: Renderer): void {
     this.regions = [];
@@ -48,12 +63,29 @@ export class CodexScreen {
     const listY = tabY + tabH + layout.gap;
     const listW = cardW - (layout.safe + 4) * 2;
     const listH = closeY - listY - layout.gap;
-    if (this.tab === 'towers') this.drawTowers(r, listX, listY, listW, listH);
-    else this.drawEnemies(r, listX, listY, listW, listH);
+    const towers = this.tab === 'towers';
+    const cols = towers && listW >= 560 ? 2 : 1;
+    const gap = 8;
+    const towerRowH = layout.isCompact ? 76 : 84;
+    const rowH = towers ? towerRowH : 110;
+    const capacity = Math.max(1, Math.floor((listH + gap) / (rowH + gap))) * cols;
+    this.pageCount = Math.ceil((towers ? TOWER_LIST.length : enemies.length) / capacity);
+    this.page = Math.min(this.page, this.pageCount - 1);
+    const from = this.page * capacity;
+    this.visible = { start: from, count: capacity };
+    if (towers) this.drawTowers(r, listX, listY, listW, Math.min(rowH, listH), gap, cols, from, capacity);
+    else this.drawEnemies(r, listX, listY, listW, Math.min(rowH, listH), gap, from, capacity);
+
+    if (this.pageCount > 1) {
+      const pageButtonWidth = Math.min(92, (listW - closeW - 16) / 2);
+      this.drawPageButton(r, listX, closeY, pageButtonWidth, closeH, 'previous', this.page <= 0);
+      this.drawPageButton(r, listX + listW - pageButtonWidth, closeY, pageButtonWidth, closeH, 'next', this.page >= this.pageCount - 1);
+    }
 
     r.roundRect(closeX, closeY, closeW, closeH, 9, 'rgba(30, 41, 59, 0.92)', true, 'rgba(255,255,255,0.08)', 1);
-    r.text(t('common.close'), cx, closeY + closeH / 2, '#ffffff', 12, 'center', 'bold', 'middle');
-    this.regions.push({ x: closeX, y: closeY, w: closeW, h: closeH, action: 'close' });
+    const closeLabel = this.pageCount > 1 ? `${t('common.close')} · ${this.page + 1}/${this.pageCount}` : t('common.close');
+    r.text(closeLabel, cx, closeY + closeH / 2, '#ffffff', 12, 'center', 'bold', 'middle');
+    this.regions.push({ x: closeX, y: closeY, w: closeW, h: closeH, action: 'close', label: t('common.close') });
   }
 
   private drawTab(r: Renderer, x: number, y: number, w: number, h: number, label: string, selected: boolean, action: CodexAction): void {
@@ -63,46 +95,41 @@ export class CodexScreen {
     const border = selected ? '#60a5fa' : 'rgba(255,255,255,0.08)';
     r.roundRect(x, y, w, h, h / 2, bg, true, border, 1);
     r.text(label.toUpperCase(), x + w / 2, y + h / 2, '#ffffff', 10, 'center', 'bold', 'middle', 'header');
-    this.regions.push({ x, y, w, h, action });
+    this.regions.push({ x, y, w, h, action, label, pressed: selected });
   }
 
-  private drawTowers(r: Renderer, x: number, y: number, w: number, h: number): void {
+  private drawPageButton(r: Renderer, x: number, y: number, w: number, h: number, action: 'previous' | 'next', disabled: boolean): void {
+    const label = t(action === 'previous' ? 'codex.previous' : 'codex.next');
+    r.roundRect(x, y, w, h, 8, disabled ? '#0f172a' : '#1e293b', true, '#475569', 1);
+    r.text(label, x + w / 2, y + h / 2, disabled ? UI.color.textDim : UI.color.text, 11, 'center', 'bold', 'middle', 'ui', w - 8);
+    this.regions.push({ x, y, w, h, action, label, disabled });
+  }
+
+  private drawTowers(r: Renderer, x: number, y: number, w: number, rowH: number, gap: number, cols: number, from: number, count: number): void {
     const compact = w < 560;
-    const cols = compact ? 1 : 2;
-    const gap = compact ? 8 : 10;
-    const rows = Math.ceil(TOWER_LIST.length / cols);
-    const rowH = Math.max(compact ? 58 : 72, Math.min(compact ? 70 : 84, Math.floor((h - gap * (rows - 1)) / rows)));
     const cardW = (w - gap * (cols - 1)) / cols;
 
-    for (let i = 0; i < TOWER_LIST.length; i++) {
-      const tower = TOWER_LIST[i];
+    for (const [i, tower] of TOWER_LIST.slice(from, from + count).entries()) {
       const col = i % cols;
       const row = Math.floor(i / cols);
       const tx = x + col * (cardW + gap);
       const ty = y + row * (rowH + gap);
-      if (ty + rowH > y + h) continue;
-
       r.roundRect(tx, ty, cardW, rowH, 12, 'rgba(2, 6, 23, 0.46)', true, 'rgba(148, 163, 184, 0.12)', 1);
       r.setShadow(tower.color, 8, 0, 0);
       r.circle(new Vec2(tx + 16, ty + 20), 6, tower.color);
       r.clearShadow();
       r.text(towerName(tower.id, tower.name), tx + 30, ty + 10, UI.color.text, 13, 'left', 'bold', 'top', 'header');
       r.text(`${this.damageTypeName(tower.damageType)} · ${tower.cost}g · R${Math.round(tower.range)}`, tx + cardW - 12, ty + 11, UI.color.textMuted, compact ? 9 : 10, 'right', 'bold', 'top', 'header');
-      if (rowH >= 68) r.text(towerDescription(tower.id, tower.description), tx + 14, ty + 34, '#cbd5e1', compact ? 9.5 : 10.5, 'left', 'normal');
+      if (rowH >= 68) this.drawDescription(r, towerDescription(tower.id, tower.description), tx + 14, ty + 31, cardW - 28, 2);
       r.text(`${t('codex.strategy')}: ${strategyName(tower.defaultStrategy, tower.defaultStrategy)}`, tx + 14, ty + rowH - 19, UI.color.textDim, 10, 'left', 'bold', 'top');
     }
   }
 
-  private drawEnemies(r: Renderer, x: number, y: number, w: number, h: number): void {
-    const enemies = Object.values(ENEMY_DEFS);
+  private drawEnemies(r: Renderer, x: number, y: number, w: number, rowH: number, gap: number, from: number, count: number): void {
     const compact = w < 560;
-    const gap = compact ? 5 : 7;
-    const rowH = Math.max(compact ? 58 : 64, Math.min(compact ? 72 : 76, Math.floor((h - gap * (enemies.length - 1)) / enemies.length)));
 
-    for (let i = 0; i < enemies.length; i++) {
-      const enemy = enemies[i];
+    for (const [i, enemy] of enemies.slice(from, from + count).entries()) {
       const ey = y + i * (rowH + gap);
-      if (ey + rowH > y + h) continue;
 
       r.roundRect(x, ey, w, rowH, 12, 'rgba(2, 6, 23, 0.46)', true, 'rgba(148, 163, 184, 0.12)', 1);
       r.setShadow(enemy.color, 8, 0, 0);
@@ -111,17 +138,36 @@ export class CodexScreen {
 
       r.text(enemyName(enemy.id, enemy.name), x + 34, ey + 10, UI.color.text, 13, 'left', 'bold', 'top', 'header');
       const traitText = enemy.traits.slice(0, compact ? 2 : 3).map(trait => traitName(trait)).join(' · ');
-      r.text(traitText, x + w - 12, ey + 11, UI.color.textMuted, compact ? 8.5 : 10, 'right', 'bold', 'top');
-      if (rowH >= 66) r.text(enemyDescription(enemy.id, enemy.description), x + 14, ey + 33, '#cbd5e1', compact ? 9 : 10, 'left', 'normal');
+      r.text(traitText, x + w - 12, ey + 11, UI.color.textMuted, compact ? 8.5 : 10, 'right', 'bold', 'top', 'ui', w - 128);
+      if (rowH >= 84) this.drawDescription(r, enemyDescription(enemy.id, enemy.description), x + 14, ey + 30, w - 28, rowH >= 106 ? 3 : 2);
 
       const resist = this.resistanceSummary(enemy.resist);
       const counters = enemy.recommendedTowerIds.map(id => {
         const def = getTowerDef(id);
         return towerName(def.id, def.name);
       }).join(' + ');
-      r.text(`${t('codex.resist')}: ${resist}`, x + 14, ey + rowH - 19, UI.color.textDim, compact ? 8.5 : 10, 'left', 'bold', 'top');
-      r.text(`${t('codex.counters')}: ${counters}`, x + w - 14, ey + rowH - 19, UI.color.gold, compact ? 8.5 : 10, 'right', 'bold', 'top');
+      r.text(`${t('codex.resist')} ${resist}`, x + 14, ey + rowH - 31, UI.color.textMuted, compact ? 8.5 : 10, 'left', 'bold', 'top', 'ui', w - 28);
+      r.text(`${t('codex.counters')} ${counters}`, x + 14, ey + rowH - 17, UI.color.gold, compact ? 8.5 : 10, 'left', 'bold', 'top', 'ui', w - 28);
     }
+  }
+
+  private drawDescription(r: Renderer, text: string, x: number, y: number, width: number, limit: number): void {
+    const separator = text.includes(' ') ? ' ' : '';
+    const units = separator ? text.split(separator) : Array.from(text);
+    r.ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    const lines: string[] = [''];
+    for (const unit of units) {
+      const index = lines.length - 1;
+      const candidate = lines[index] ? lines[index] + separator + unit : unit;
+      if (lines[index] && r.ctx.measureText(candidate).width > width) {
+        if (lines.length === limit) {
+          lines[index] += '…';
+          break;
+        }
+        lines.push(unit);
+      } else lines[index] = candidate;
+    }
+    for (const [index, line] of lines.entries()) r.text(line, x, y + index * 12, '#cbd5e1', 10, 'left', 'normal', 'top', 'ui', width);
   }
 
   private resistanceSummary(resist: Partial<Record<DamageType, number>> | undefined): string {
@@ -152,8 +198,13 @@ export class CodexScreen {
 
   apply(action: CodexAction): 'close' | 'stay' {
     if (action === 'close') return 'close';
-    if (action === 'tab_towers') this.tab = 'towers';
-    if (action === 'tab_enemies') this.tab = 'enemies';
+    if (action === 'previous') this.page = Math.max(0, this.page - 1);
+    else if (action === 'next') this.page = Math.min(this.pageCount - 1, this.page + 1);
+    else {
+      const tab = action === 'tab_towers' ? 'towers' : 'enemies';
+      if (this.tab !== tab) this.page = 0;
+      this.tab = tab;
+    }
     return 'stay';
   }
 }

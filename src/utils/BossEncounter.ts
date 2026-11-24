@@ -1,5 +1,7 @@
 // Boss encounter labels: turns enemy groups into readable strategy cues.
 
+import { t } from './i18n';
+
 export type EncounterGroup = { id: string; count?: number };
 
 export interface BossEncounterInfo {
@@ -23,26 +25,26 @@ export function classifyBossEncounter(groups: EncounterGroup[]): BossEncounterIn
     .some(group => group.id === 'scout' && (group.count ?? 1) > 0);
   if (hasFastBossEscort) return {
     id: 'fast_escort',
-    label: 'FAST ESCORT',
-    advice: 'Slow and rapid fire stop leaks around the boss',
+    label: t('boss.fast.title'),
+    advice: t('boss.fast.advice'),
     color: '#38bdf8',
   };
   if (ids.has('phantom') || ids.has('titan')) return {
     id: 'phantom_siege',
-    label: 'PHANTOM SIEGE',
-    advice: 'Elemental counters and focused fire required',
+    label: t('boss.phantom.title'),
+    advice: t('boss.phantom.advice'),
     color: '#a78bfa',
   };
   if (ids.has('brute') || ids.has('zealot')) return {
     id: 'armored_escort',
-    label: 'ARMORED ESCORT',
-    advice: 'Use sustained damage and avoid single-type overcommit',
+    label: t('boss.armor.title'),
+    advice: t('boss.armor.advice'),
     color: '#f59e0b',
   };
   return {
     id: 'standard_boss',
-    label: 'BOSS PRESSURE',
-    advice: 'Stack single-target damage and control',
+    label: t('boss.standard.title'),
+    advice: t('boss.standard.advice'),
     color: '#ef4444',
   };
 }

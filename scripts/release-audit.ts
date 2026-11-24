@@ -66,7 +66,7 @@ const requiredFiles = [
   '.github/ISSUE_TEMPLATE/playtest_feedback.md',
   '.github/ISSUE_TEMPLATE/config.yml',
   '.github/workflows/deploy.yml',
-  'manifest.json',
+  'public/manifest.json',
   'index.html',
 ];
 for (const path of requiredFiles) check(`required file ${path}`, fileExists(path));
@@ -89,6 +89,9 @@ check('deploy workflow runs npm ci', contains('.github/workflows/deploy.yml', 'n
 check('deploy workflow runs verify before publish', contains('.github/workflows/deploy.yml', 'npm run verify'));
 check('deploy workflow publishes dist', contains('.github/workflows/deploy.yml', 'publish_dir: ./dist'));
 check('deploy workflow uses Node 24', contains('.github/workflows/deploy.yml', 'node-version: 24'));
+check('PR workflow exercises both installed engines', contains('.github/workflows/verify.yml', 'pull_request:')
+  && contains('.github/workflows/verify.yml', 'chromium webkit') && contains('.github/workflows/verify.yml', 'npm run verify:browser'));
+check('deploy verifies real browsers before publishing', contains('.github/workflows/deploy.yml', 'npm run verify:browser'));
 
 // HTML metadata
 const html = read('index.html');
@@ -100,10 +103,10 @@ check('html has Open Graph description', html.includes('og:description'));
 check('html metadata mentions ten campaign zones', html.includes('ten themed campaign zones'));
 check('html has Twitter title', html.includes('twitter:title'));
 check('html has dark color scheme', html.includes('color-scheme'));
-check('html loads manifest', html.includes('href="./manifest.json"'));
-check('html has portrait orientation hint', html.includes('orientation-hint'));
+check('html loads the public manifest', html.includes('href="/manifest.json"'));
+check('html declares a responsive viewport and permits zoom', html.includes('width=device-width, initial-scale=1.0') && !html.includes('user-scalable=no'));
 check('html avoids blocking Google Fonts', !html.includes('fonts.googleapis.com') && !html.includes('fonts.gstatic.com'));
-check('html registers service worker', html.includes("serviceWorker.register('./sw.js')"));
+check('html registers versioned service worker', html.includes("serviceWorker.register('./sw.js', { updateViaCache: 'none' })"));
 
 // README and docs
 check('README mentions quality verification', contains('README.md', 'npm run verify'));
@@ -115,7 +118,8 @@ check('changelog has Unreleased section', contains('CHANGELOG.md', '## Unrelease
 check('final QA defines release candidate criteria', contains('docs/FINAL_RELEASE_QA.md', 'public free-game release candidate'));
 check('mobile QA covers tower drawer', contains('docs/MOBILE_QA.md', 'Tower drawer'));
 check('layout QA covers HUD and level select', contains('docs/LAYOUT_QA.md', 'HUD') && contains('docs/LAYOUT_QA.md', 'Level select'));
-check('weekly QA covers seeded runs', contains('docs/WEEKLY_MODE_QA.md', 'Seeded challenge starts with weekly mode active'));
+check('weekly QA covers official and imported runs', contains('docs/WEEKLY_MODE_QA.md', 'official Weekly Challenge')
+  && contains('docs/WEEKLY_MODE_QA.md', 'Pasted codes launch personal practice'));
 check('campaign expansion QA covers levels 7 to 10', contains('docs/CAMPAIGN_EXPANSION_QA.md', 'Overdrive Gate') && contains('docs/CAMPAIGN_EXPANSION_QA.md', 'Apex Bastion'));
 check('campaign expansion QA expects late review', contains('docs/CAMPAIGN_EXPANSION_QA.md', 'Late Campaign Review'));
 check('balance review notes cover ten-level campaign', contains('docs/BALANCE_REVIEW_NOTES.md', 'Campaign levels: 10'));
@@ -126,9 +130,13 @@ check('playtest plan defines release gate', contains('docs/PLAYTEST_PLAN.md', 'C
 check('playtest plan references issue templates', contains('docs/PLAYTEST_PLAN.md', '.github/ISSUE_TEMPLATE/playtest_feedback.md'));
 check('playtest summary defines market-ready decision', contains('docs/PLAYTEST_RESULTS_SUMMARY.md', 'Market-ready decision'));
 check('market ready plan defines market gate', contains('docs/MARKET_READY_PLAN.md', 'Market-ready gate'));
-check('package version is 1.0.0', pkg.version === '1.0.0');
-check('release notes define v1.0.0', contains('docs/RELEASE_NOTES_v1.0.0.md', 'v1.0.0'));
-check('release notes mention verification', contains('docs/RELEASE_NOTES_v1.0.0.md', 'npm run verify'));
+const version = pkg.version ?? '';
+const versionedNotes = `docs/RELEASE_NOTES_v${version}.md`;
+check('stable package version', /^\d+\.\d+\.\d+$/.test(version));
+check('lockfile matches the package version', JSON.parse(read('package-lock.json')).packages?.['']?.version === version);
+check('changelog has a current release section', contains('CHANGELOG.md', `## ${version} - `));
+check(`release notes define v${version}`, fileExists(versionedNotes) && contains(versionedNotes, `v${version}`));
+check('current release notes mention verification', fileExists(versionedNotes) && contains(versionedNotes, 'npm run verify'));
 check('deployment status explains empty combined status', contains('docs/DEPLOYMENT_STATUS.md', 'statuses: []'));
 check('deployment status names pages URL', contains('docs/DEPLOYMENT_STATUS.md', 'https://lunora-gather.github.io/Praesidium/'));
 check('bug template has severity labels', contains('.github/ISSUE_TEMPLATE/bug_report.md', 'S0 Blocker'));
@@ -136,7 +144,7 @@ check('playtest template records first wave timing', contains('.github/ISSUE_TEM
 check('issue template config links live game', contains('.github/ISSUE_TEMPLATE/config.yml', 'https://lunora-gather.github.io/Praesidium/'));
 
 // Manifest
-const manifest = read('manifest.json');
+const manifest = read('public/manifest.json');
 check('manifest names Praesidium', manifest.includes('Praesidium'));
 check('public manifest aligns campaign count', contains('public/manifest.json', 'ten themed campaign zones'));
 check('public manifest start URL is relative', contains('public/manifest.json', '"start_url": "./"'));
@@ -212,7 +220,7 @@ check('world renderer draws path flow markers', contains('src/ui/WorldRenderer.t
 check('world renderer draws tower glow', contains('src/ui/WorldRenderer.ts', 'drawTowerGlow'));
 check('world renderer draws enemy shadow', contains('src/ui/WorldRenderer.ts', 'drawEnemyShadow'));
 check('world renderer has boss warning', contains('src/ui/WorldRenderer.ts', 'drawBossWarning'));
-check('HUD has tiny screen branch', contains('src/ui/HUD.ts', 'isUltraTiny'));
+check('HUD uses shared compact geometry', contains('src/ui/HUD.ts', 'battleHudLayout') && contains('src/ui/BattleLayout.ts', 'battleTopHeight'));
 check('tower panel has mobile drawer', contains('src/ui/TowerPanel.ts', 'drawMobileDrawer'));
 check('screens have compact layout', contains('src/ui/Screens.ts', 'compact'));
 check('screens use adaptive full-screen menu dock', contains('src/ui/Screens.ts', 'drawModeDock'));
@@ -220,7 +228,8 @@ check('screens preserve daily weekly ops brief', contains('src/ui/Screens.ts', '
 check('screens avoid compact landscape backdrop collision', contains('src/ui/Screens.ts', 'isShort'));
 check('level select uses campaign route rail', contains('src/ui/LevelSelect.ts', 'drawRouteRail'));
 check('level select uses mission slab cards', contains('src/ui/LevelSelect.ts', 'drawMissionSlab'));
-check('tutorial has Intel step', contains('src/utils/Tutorial.ts', 'tutorial.intel'));
+check('tutorial has a real Intel discovery action', contains('src/utils/Tutorial.ts', "'intel'")
+  && contains('src/main.ts', "tutorialAction('intel')") && contains('src/utils/i18n.ts', 'tutorial.intel'));
 check('tutorial highlights target controls', contains('src/main.ts', 'drawTutorialTarget') && contains('src/main.ts', 'findFirstBuildableScreenTile'));
 check('settings persist mute', contains('src/config/Settings.ts', 'muted') && contains('src/config/Settings.ts', 'save(KEY, this.current)'));
 check('audio has compressor', contains('src/engine/Audio.ts', 'DynamicsCompressorNode'));
@@ -231,7 +240,8 @@ check('particle system has boss death effect', contains('src/game/effects/Partic
 check('particle system caps pooled effects', contains('src/game/effects/ParticleSystem.ts', 'MAX_PARTICLES'));
 check('main wires enhanced spell effects', contains('src/main.ts', 'meteorImpact'));
 check('renderer caps device pixel ratio', contains('src/engine/Renderer.ts', 'Math.min(2, window.devicePixelRatio'));
-check('service worker uses versioned cache', contains('public/sw.js', "praesidium-v1.0.0"));
+check('service worker builds a versioned cache', contains('public/sw.js', '${RELEASE}-${REVISION}')
+  && contains('vite.config.ts', 'praesidium-v${version}'));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

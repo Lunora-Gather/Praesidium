@@ -47,7 +47,7 @@ export const SPELL_DEFS: Record<string, SpellDef> = {
     cooldown: 45,
     cost: 120,
     heal: 3,
-    description: 'Restore 3 lives.',
+    description: 'Restore up to 3 missing lives.',
   },
 };
 
@@ -63,15 +63,19 @@ export class PlayerSpell {
     return this.cooldown <= 0;
   }
 
+  canCast(state: GameState): boolean {
+    return this.ready && state.gold >= this.def.cost && (!this.def.heal || (state.repairAllowed && state.lives < state.maxLives));
+  }
+
   update(dt: number): void {
-    if (this.cooldown > 0) this.cooldown -= dt;
+    this.cooldown = Math.max(0, this.cooldown - dt);
   }
 
   /** Try to cast. Returns true if cast. target is world pos (for AoE). */
   cast(target: Vec2, state: GameState): boolean {
-    if (!this.ready || state.gold < this.def.cost) return false;
+    if (!this.canCast(state)) return false;
     state.gold -= this.def.cost;
-    this.cooldown = this.def.cooldown * state.talents.multiplier('spellcd');
+    this.cooldown = this.def.cooldown * state.talentMultiplier('spellcd');
 
     if (this.def.damage && this.def.radius) {
       const r2 = this.def.radius * this.def.radius;
@@ -79,19 +83,7 @@ export class PlayerSpell {
       for (const e of state.enemies) {
         if (e.dead) continue;
         if (target.distSq(e.pos) > r2) continue;
-        const actual = e.takeDamage(this.def.damage, type);
-        state.stats.recordDamage(actual);
-        state.combat.bus.emit('hit', { enemy: e, damage: actual, x: e.pos.x, y: e.pos.y });
-        if (e.hp <= 0) {
-          const reward = Math.round(e.reward * state.talents.multiplier('gold') * state.diffMul.rewardMul);
-          state.gold += reward;
-          state.score += reward;
-          state.stats.recordKill();
-          state.stats.recordGold(reward);
-          state.achievements.recordKill();
-          state.achievements.recordGold(reward);
-          state.combat.bus.emit('kill', { enemy: e, x: e.pos.x, y: e.pos.y });
-        }
+        state.combat.damage(e, this.def.damage, type, state, false);
       }
     }
     if (this.def.slow) {
@@ -101,7 +93,7 @@ export class PlayerSpell {
       }
     }
     if (this.def.heal) {
-      state.lives += this.def.heal;
+      state.lives = Math.min(state.maxLives, state.lives + this.def.heal);
     }
     return true;
   }

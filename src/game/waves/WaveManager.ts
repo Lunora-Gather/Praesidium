@@ -21,6 +21,18 @@ export interface WavePreview {
   enemies: Array<{ id: string; count: number }>;
 }
 
+export interface WaveSnapshot {
+  current: number;
+  state: WaveManager['state'];
+  timer: number;
+  betweenTimer: number;
+  spawnAt: number;
+  spawnGroups: WaveDef['enemies'];
+  enemiesThisWave: number;
+  rngState: number;
+  autoSend: boolean;
+}
+
 function bossEncounter(waveNumber: number): Array<{ id: string; count: number }> {
   const cycle = Math.floor(waveNumber / 6) % 3;
   if (cycle === 0) return [
@@ -92,7 +104,8 @@ function endlessWave(i: number, rng: Rng): WaveDef {
 export class WaveManager {
   readonly waves: WaveDef[];
   current = 0;
-  private spawnQueue: Array<{ id: string; at: number }> = [];
+  private spawnGroups: WaveDef['enemies'] = [];
+  private spawnAt = 0;
   private timer = 0;
   state: 'idle' | 'running' | 'between' | 'done' = 'idle';
   private betweenTimer = 0;
@@ -100,16 +113,18 @@ export class WaveManager {
   endless = false;
   endlessHpBonus = 0;
   endlessSeed = 0;
+  variedOpener = false;
   private endlessRng: Rng = new Rng(0);
   private weeklyRules: WeeklyRuleSet = DEFAULT_WEEKLY_RULES;
 
-  constructor(count = BALANCE.waveCount) {
+  constructor(count: number = BALANCE.waveCount) {
     this.waves = buildWaves(count);
   }
 
   reset(): void {
     this.current = 0;
-    this.spawnQueue.length = 0;
+    this.spawnGroups.length = 0;
+    this.spawnAt = 0;
     this.timer = 0;
     this.betweenTimer = 0;
     this.state = 'idle';
@@ -128,8 +143,7 @@ export class WaveManager {
     if (this.state === 'done') return;
     this.timer += dt;
     if (this.state === 'idle') {
-      this.betweenTimer += dt;
-      if (this.betweenTimer >= 1.5) this.startNext();
+      if (this.autoSend) this.startNext();
       return;
     }
 
@@ -139,14 +153,16 @@ export class WaveManager {
       return;
     }
 
-    while (this.spawnQueue.length > 0 && this.timer >= this.spawnQueue[0].at) {
-      const spec = this.spawnQueue.shift()!;
+    while (this.spawnGroups.length > 0 && this.timer >= this.spawnAt) {
+      const spec = this.spawnGroups.shift()!;
       const def = getEnemyDef(spec.id);
       const bossMul = def.isBoss ? this.weeklyRules.bossHpMul : 1;
       const hpMul = (1 + (this.current - 1) * (BALANCE.enemyHpGrowth - 1)) * this.diffHpMul * this.weeklyRules.hpMul * bossMul * (1 + this.endlessHpBonus);
-      out.push(new EnemyClass(def, grid.waypoints[0], hpMul, this.weeklyRules.speedMul));
+      out.push(new EnemyClass(def, grid.waypoints[0], hpMul, this.weeklyRules.speedMul, this.current));
+      if (--spec.count > 0) this.spawnGroups.push(spec);
+      this.spawnAt += BALANCE.enemySpawnGap;
     }
-    if (this.spawnQueue.length === 0) {
+    if (this.spawnGroups.length === 0) {
       this.state = 'between';
       this.betweenTimer = 0;
       if (!this.endless && this.current >= this.waves.length) this.state = 'done';
@@ -170,7 +186,7 @@ export class WaveManager {
     const nextWaveNumber = this.current + 1;
     if (!this.endless && nextWaveNumber > this.waves.length) return null;
 
-    const wave = this.previewWaveFor(nextWaveNumber);
+    const wave = this.waveFor(nextWaveNumber, new Rng(this.endlessRng.stateValue));
     const enemies = this.scaleEnemyGroups(wave);
     const totalCount = enemies.reduce((sum, group) => sum + group.count, 0);
 
@@ -182,15 +198,21 @@ export class WaveManager {
     };
   }
 
-  private previewWaveFor(waveNumber: number): WaveDef {
-    if (waveNumber <= this.waves.length) return this.waves[waveNumber - 1];
+  private waveFor(waveNumber: number, endlessRng: Rng): WaveDef {
+    const base = this.waves[waveNumber - 1];
+    if (!base) return endlessWave(waveNumber - 1, endlessRng);
+    if (!this.variedOpener) return base;
 
-    const rng = new Rng(this.endlessSeed || 1);
-    let wave = this.waves[this.waves.length - 1];
-    for (let i = this.waves.length; i < waveNumber; i++) {
-      wave = endlessWave(i, rng);
+    // An independent draw per opening wave leaves the later, continuous endless stream intact.
+    const rng = new Rng(this.endlessSeed ^ Math.imul(waveNumber, 0x9e3779b9));
+    const enemies = base.enemies.filter(group => group.count > 0).map(({ id, count }) => ({
+      id, count: id === 'boss' ? count : Math.max(1, count + rng.int(-1, 2)),
+    }));
+    for (let i = enemies.length - 1; i > 0; i--) {
+      const j = rng.int(0, i + 1);
+      [enemies[i], enemies[j]] = [enemies[j], enemies[i]];
     }
-    return wave;
+    return { enemies };
   }
 
   private scaleEnemyGroups(wave: WaveDef): Array<{ id: string; count: number }> {
@@ -210,46 +232,50 @@ export class WaveManager {
       return;
     }
 
-    const wave = this.current <= this.waves.length
-      ? this.waves[this.current - 1]
-      : endlessWave(this.current - 1, this.endlessRng);
+    const wave = this.waveFor(this.current, this.endlessRng);
 
-    if (this.endless && this.current > this.waves.length) {
-      this.endlessHpBonus += 0.15;
-    }
-
-    this.spawnQueue = [];
-    let t = 0;
-    let total = 0;
-    const ids: string[] = [];
-    for (const g of wave.enemies) {
-      if (g.count <= 0) continue;
-      const scaled = Math.max(1, Math.round(g.count * this.diffCountMul * this.weeklyRules.countMul));
-      for (let i = 0; i < scaled; i++) ids.push(g.id);
-      total += scaled;
-    }
-
+    this.endlessHpBonus = Math.max(0, this.current - this.waves.length) * 0.15;
     const groups = new Map<string, number>();
-    for (const id of ids) groups.set(id, (groups.get(id) ?? 0) + 1);
-    const groupIds = [...groups.keys()];
-    const interleaved: string[] = [];
-    while (interleaved.length < total) {
-      for (const gid of groupIds) {
-        const remaining = groups.get(gid)!;
-        if (remaining > 0) {
-          interleaved.push(gid);
-          groups.set(gid, remaining - 1);
-        }
-      }
+    for (const { id, count } of this.scaleEnemyGroups(wave)) {
+      groups.set(id, (groups.get(id) ?? 0) + count);
     }
-    for (const id of interleaved) {
-      this.spawnQueue.push({ id, at: t });
-      t += BALANCE.enemySpawnGap;
-    }
-    this.enemiesThisWave = total;
+    this.spawnGroups = Array.from(groups, ([id, count]) => ({ id, count }));
+    this.spawnAt = 0;
+    this.enemiesThisWave = this.spawnGroups.reduce((total, group) => total + group.count, 0);
     this.timer = 0;
     this.betweenTimer = 0;
     this.state = 'running';
+  }
+
+  snapshot(): WaveSnapshot {
+    return {
+      current: this.current, state: this.state, timer: this.timer,
+      betweenTimer: this.betweenTimer, spawnAt: this.spawnAt,
+      spawnGroups: this.spawnGroups.map(group => ({ ...group })),
+      enemiesThisWave: this.enemiesThisWave, rngState: this.endlessRng.stateValue,
+      autoSend: this.autoSend,
+    };
+  }
+
+  restore(snapshot: WaveSnapshot): void {
+    this.current = snapshot.current;
+    this.state = snapshot.state;
+    this.timer = snapshot.timer;
+    this.betweenTimer = snapshot.betweenTimer;
+    this.spawnAt = snapshot.spawnAt;
+    this.spawnGroups = snapshot.spawnGroups.map(group => ({ ...group }));
+    this.enemiesThisWave = snapshot.enemiesThisWave;
+    this.endlessRng = new Rng(snapshot.rngState);
+    this.endlessHpBonus = Math.max(0, this.current - this.waves.length) * 0.15;
+    this.autoSend = snapshot.autoSend;
+  }
+
+  restartSavedWave(wave: number): void {
+    if (wave === 0) return;
+    // Each generated wave consumes one draw for each of its six enemy types.
+    this.endlessRng.skip(Math.max(0, wave - 1 - this.waves.length) * 6);
+    this.current = wave - 1;
+    this.startNext();
   }
 
   forceNext(): boolean {
@@ -265,7 +291,7 @@ export class WaveManager {
   }
 
   get betweenProgress(): number {
-    if (this.state !== 'between' && this.state !== 'idle') return 0;
-    return Math.min(1, this.betweenTimer / (this.state === 'idle' ? 1.5 : BALANCE.waveInterDelay));
+    if (this.state !== 'between') return 0;
+    return Math.min(1, this.betweenTimer / BALANCE.waveInterDelay);
   }
 }

@@ -6,10 +6,13 @@ export class Renderer {
   readonly ctx: CanvasRenderingContext2D;
   width = 0;
   height = 0;
+  pixelRatio = 1;
   // camera offset (world->screen). Identity by default.
   camX = 0;
   camY = 0;
   zoom = 1;
+  reducedMotion = false;
+  get motionClock(): number { return this.reducedMotion ? 0 : performance.now(); }
   // screen shake: decays over time, applied as random offset each frame
   private shakeIntensity = 0;
   private shakeDecay = 0.9;
@@ -24,12 +27,12 @@ export class Renderer {
 
   /** Trigger screen shake (intensity 1-20). Boss death = 12, spell = 8, wave start = 4. */
   shake(intensity: number): void {
-    this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
+    if (!this.reducedMotion) this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
   }
 
   /** Call once per frame to decay shake. */
   updateShake(): void {
-    this.shakeIntensity *= this.shakeDecay;
+    this.shakeIntensity = this.reducedMotion ? 0 : this.shakeIntensity * this.shakeDecay;
     if (this.shakeIntensity < 0.3) {
       this.shakeIntensity = 0;
       this.currentShake.x = 0;
@@ -47,6 +50,7 @@ export class Renderer {
 
   resize(): void {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.pixelRatio = dpr;
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.canvas.width = Math.floor(this.width * dpr);
@@ -57,14 +61,12 @@ export class Renderer {
   }
 
   clear(color = '#0a0e14'): void {
-    const { x: sx, y: sy } = this.shakeOffset;
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(sx, sy, this.width, this.height);
+    this.ctx.fillRect(0, 0, this.width, this.height);
   }
 
   toScreen(p: Vec2): Vec2 {
-    const { x: sx, y: sy } = this.shakeOffset;
-    return new Vec2(p.x * this.zoom + this.camX + sx, p.y * this.zoom + this.camY + sy);
+    return new Vec2(p.x * this.zoom + this.camX, p.y * this.zoom + this.camY);
   }
 
   circle(p: Vec2, r: number, color: string, fill = true): void {
@@ -163,7 +165,8 @@ export class Renderer {
     align: CanvasTextAlign = 'left',
     weight = 'normal',
     baseline: CanvasTextBaseline = 'top',
-    family: 'ui' | 'header' = 'ui'
+    family: 'ui' | 'header' = 'ui',
+    maxWidth?: number,
   ): void {
     this.ctx.fillStyle = color;
     const fontName = family === 'header'
@@ -172,7 +175,10 @@ export class Renderer {
     this.ctx.font = `${weight} ${size}px ${fontName}`;
     this.ctx.textAlign = align;
     this.ctx.textBaseline = baseline;
-    this.ctx.fillText(str, x * this.zoom + this.camX, y * this.zoom + this.camY);
+    const screenX = x * this.zoom + this.camX;
+    const screenY = y * this.zoom + this.camY;
+    if (maxWidth === undefined) this.ctx.fillText(str, screenX, screenY);
+    else this.ctx.fillText(str, screenX, screenY, maxWidth);
   }
 
   path(points: readonly Vec2[], color: string, width = 2): void {

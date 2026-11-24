@@ -12,41 +12,30 @@ import { getTowerDef } from '../game/towers/TowerRegistry';
 import type { Settings } from '../config/Settings';
 import { DamageType } from '../game/DamageType';
 import { classifyBossEncounter } from '../utils/BossEncounter';
-import { TOP_H, BOT_H } from './HUD';
+import { battleTopHeight, BOT_H } from './BattleHudLayout';
+import { t } from '../utils/i18n';
 import { getLevelTheme, LevelTheme } from './LevelThemes';
-import { drawWeeklyRunBadge } from './WeeklyRunBadge';
 
 export class WorldRenderer {
   private staticCanvas: HTMLCanvasElement | null = null;
   private staticCtx: CanvasRenderingContext2D | null = null;
-  private cacheKey = ''; // identifies which level/theme is cached
+  private cachedGrid: GameState['grid'] | null = null;
+  private cachedPixelRatio = 0;
 
   draw(r: Renderer, s: GameState, settings: Readonly<Settings>): void {
     const g = s.grid;
     const theme = getLevelTheme(s.levels.levelNumber);
 
-    // center the grid horizontally in available space (between top bar and shop)
-    const availW = r.width;
-    const availH = r.height - TOP_H - BOT_H;
-    r.camX = (availW - g.widthPx) / 2;
-    r.camY = TOP_H + Math.max(0, (availH - g.heightPx) / 2);
-    r.zoom = 1;
-
-    const key = `${theme.id}|${g.cols}x${g.rows}x${g.tile}|${g.waypoints.map((w) => `${w.x.toFixed(0)},${w.y.toFixed(0)}`).join(';')}`;
-    if (key !== this.cacheKey || !this.staticCanvas) {
-      this.renderStatic(g, theme);
-      this.cacheKey = key;
+    if (g !== this.cachedGrid || r.pixelRatio !== this.cachedPixelRatio) {
+      this.renderStatic(g, theme, r.pixelRatio);
+      this.cachedGrid = g;
+      this.cachedPixelRatio = r.pixelRatio;
     }
 
     this.drawBattleBackdrop(r, theme);
 
     if (this.staticCanvas) {
-      const ctx = r.ctx;
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(this.staticCanvas, r.camX * dpr, r.camY * dpr);
-      ctx.restore();
+      r.ctx.drawImage(this.staticCanvas, r.camX, r.camY, g.widthPx * r.zoom, g.heightPx * r.zoom);
     }
 
     this.drawAmbientSweep(r, s, theme);
@@ -142,7 +131,7 @@ export class WorldRenderer {
       ctx.save();
       ctx.translate(sp.x, sp.y);
       if (e.isBoss) {
-        const pulse = 0.55 + Math.sin(Date.now() / 110) * 0.15;
+        const pulse = 0.55 + Math.sin(r.motionClock / 110) * 0.15;
         ctx.globalAlpha = pulse;
         ctx.strokeStyle = '#fca5a5';
         ctx.lineWidth = 3 * z;
@@ -212,16 +201,13 @@ export class WorldRenderer {
     if (s.hoverTile && s.selectedTowerId && !s.selectedTower) {
       const def = getTowerDef(s.selectedTowerId);
       const center = g.tileCenter(s.hoverTile.tx, s.hoverTile.ty);
-      const ok = g.isBuildable(s.hoverTile.tx, s.hoverTile.ty) &&
-        !s.towers.some((t) => t.tx === s.hoverTile!.tx && t.ty === s.hoverTile!.ty) &&
-        s.gold >= def.cost;
+      const ok = s.canPlaceTower(s.hoverTile.tx, s.hoverTile.ty, def);
       r.circle(center, def.range, ok ? `${theme.accent}44` : '#e5737344', true);
       r.circle(center, def.range, ok ? theme.accent : '#e57373', false);
       r.rect(s.hoverTile.tx * g.tile, s.hoverTile.ty * g.tile, g.tile, g.tile, ok ? `${theme.accent}55` : '#e5737355', true);
     }
 
     this.drawBossWarning(r, s);
-    drawWeeklyRunBadge(r, s);
     this.drawLowLifeOverlay(r, s);
   }
 
@@ -230,27 +216,27 @@ export class WorldRenderer {
     const oldCamY = r.camY;
     const oldZoom = r.zoom;
     r.camX = 0; r.camY = 0; r.zoom = 1;
-    const bg = r.linearGradient(0, TOP_H, 0, r.height - BOT_H, [
+    const bg = r.linearGradient(0, battleTopHeight(r.width), 0, r.height - BOT_H, [
       { offset: 0, color: theme.background },
       { offset: 0.55, color: '#020617' },
       { offset: 1, color: '#01040a' },
     ]);
-    r.rect(0, TOP_H, r.width, r.height - TOP_H - BOT_H, bg, true);
+    r.rect(0, battleTopHeight(r.width), r.width, r.height - battleTopHeight(r.width) - BOT_H, bg, true);
     r.ctx.save();
-    const halo = r.ctx.createRadialGradient(r.width * 0.5, TOP_H + 120, 20, r.width * 0.5, TOP_H + 120, Math.max(r.width, r.height) * 0.65);
+    const halo = r.ctx.createRadialGradient(r.width * 0.5, battleTopHeight(r.width) + 120, 20, r.width * 0.5, battleTopHeight(r.width) + 120, Math.max(r.width, r.height) * 0.65);
     halo.addColorStop(0, theme.ambient);
     halo.addColorStop(1, 'rgba(2, 6, 23, 0)');
     r.ctx.fillStyle = halo;
-    r.ctx.fillRect(0, TOP_H, r.width, r.height - TOP_H - BOT_H);
+    r.ctx.fillRect(0, battleTopHeight(r.width), r.width, r.height - battleTopHeight(r.width) - BOT_H);
     r.ctx.globalAlpha = 0.08;
-    for (let y = TOP_H + 18; y < r.height - BOT_H; y += 18) r.ctx.fillRect(0, y, r.width, 1);
+    for (let y = battleTopHeight(r.width) + 18; y < r.height - BOT_H; y += 18) r.ctx.fillRect(0, y, r.width, 1);
     r.ctx.restore();
     r.camX = oldCamX; r.camY = oldCamY; r.zoom = oldZoom;
   }
 
   private drawTowerGlow(r: Renderer, tower: GameState['towers'][number]): void {
     const p = r.toScreen(tower.pos);
-    const radius = tower.def.radius * 2.4;
+    const radius = tower.def.radius * 2.4 * r.zoom;
     const g = r.ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, radius);
     g.addColorStop(0, `${tower.def.color}55`);
     g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -264,11 +250,12 @@ export class WorldRenderer {
 
   private drawEnemyShadow(r: Renderer, enemy: GameState['enemies'][number]): void {
     const p = r.toScreen(enemy.pos);
+    const radius = enemy.radius * r.zoom;
     r.ctx.save();
     r.ctx.globalAlpha = enemy.isBoss ? 0.34 : 0.24;
     r.ctx.fillStyle = '#000';
     r.ctx.beginPath();
-    r.ctx.ellipse(p.x, p.y + enemy.radius * 0.66, enemy.radius * 1.15, enemy.radius * 0.42, 0, 0, Math.PI * 2);
+    r.ctx.ellipse(p.x, p.y + radius * 0.66, radius * 1.15, radius * 0.42, 0, 0, Math.PI * 2);
     r.ctx.fill();
     r.ctx.restore();
   }
@@ -304,7 +291,7 @@ export class WorldRenderer {
   }
 
   private drawAmbientSweep(r: Renderer, s: GameState, theme: LevelTheme): void {
-    const pulse = 0.07 + Math.sin(Date.now() / 900 + s.levels.levelNumber) * 0.025;
+    const pulse = 0.07 + Math.sin(r.motionClock / 900 + s.levels.levelNumber) * 0.025;
     r.ctx.save();
     r.ctx.globalAlpha = pulse;
     r.rect(0, 0, s.grid.widthPx, s.grid.heightPx, theme.ambient, true);
@@ -318,10 +305,10 @@ export class WorldRenderer {
     r.camX = 0; r.camY = 0; r.zoom = 1;
     const w = Math.min(620, r.width * 0.62);
     const x = (r.width - w) / 2;
-    const y = TOP_H + 6;
+    const y = battleTopHeight(r.width) + 6;
     r.roundRect(x, y, w, 10, 5, 'rgba(20, 20, 24, 0.88)', true, '#7f1d1d', 1);
     r.roundRect(x + 2, y + 2, Math.max(4, (w - 4) * hpRatio), 6, 3, hpRatio < 0.3 ? '#f87171' : '#dc2626', true);
-    r.text('BOSS', x + w / 2, y + 18, '#fecaca', 10, 'center', 'bold', 'top', 'header');
+    r.text(t('boss.title'), x + w / 2, y + 18, '#fecaca', 10, 'center', 'bold', 'top', 'header');
     r.camX = oldCamX; r.camY = oldCamY; r.zoom = oldZoom;
   }
 
@@ -333,15 +320,16 @@ export class WorldRenderer {
     const oldCamY = r.camY;
     const oldZoom = r.zoom;
     r.camX = 0; r.camY = 0; r.zoom = 1;
-    const alpha = 0.12 + Math.sin(Date.now() / 150) * 0.05;
+    const alpha = 0.12 + Math.sin(r.motionClock / 150) * 0.05;
     const color = encounter.id === 'none' ? '#ef4444' : encounter.color;
     r.ctx.save();
     r.ctx.globalAlpha = alpha;
-    r.rect(0, TOP_H, r.width, 52, color, true);
+    r.rect(0, battleTopHeight(r.width), r.width, 52, color, true);
     r.ctx.restore();
-    r.roundRect(r.width / 2 - 170, TOP_H + 9, 340, 34, 12, 'rgba(15, 23, 42, 0.72)', true, `${color}aa`, 1);
-    r.text(`⚠ ${encounter.label || 'BOSS WAVE'}`, r.width / 2, TOP_H + 18, color, 15, 'center', 'bold', 'middle', 'header');
-    r.text(encounter.advice || 'Stack single-target damage and control', r.width / 2, TOP_H + 34, '#fecaca', 9, 'center', 'bold', 'middle');
+    const bannerW = Math.min(340, r.width - 24);
+    r.roundRect((r.width - bannerW) / 2, battleTopHeight(r.width) + 9, bannerW, 34, 12, 'rgba(15, 23, 42, 0.72)', true, `${color}aa`, 1);
+    r.text(`⚠ ${encounter.label || t('boss.standard.title')}`, r.width / 2, battleTopHeight(r.width) + 18, color, 15, 'center', 'bold', 'middle', 'header');
+    r.text(encounter.advice || t('boss.standard.advice'), r.width / 2, battleTopHeight(r.width) + 34, '#fecaca', 9, 'center', 'bold', 'middle');
     r.camX = oldCamX; r.camY = oldCamY; r.zoom = oldZoom;
   }
 
@@ -351,7 +339,7 @@ export class WorldRenderer {
     const oldCamY = r.camY;
     const oldZoom = r.zoom;
     r.camX = 0; r.camY = 0; r.zoom = 1;
-    const alpha = Math.min(0.22, 0.06 + (6 - s.lives) * 0.035 + Math.sin(Date.now() / 180) * 0.025);
+    const alpha = Math.min(0.22, 0.06 + (6 - s.lives) * 0.035 + Math.sin(r.motionClock / 180) * 0.025);
     r.ctx.save();
     r.ctx.globalAlpha = alpha;
     r.rect(0, 0, r.width, r.height, '#ef4444', true);
@@ -360,13 +348,12 @@ export class WorldRenderer {
   }
 
   /** Render the static layer (tiles + path + spawn/goal) to an offscreen canvas. */
-  private renderStatic(g: GameState['grid'], theme: LevelTheme): void {
+  private renderStatic(g: GameState['grid'], theme: LevelTheme, dpr: number): void {
     if (!this.staticCanvas) {
       this.staticCanvas = document.createElement('canvas');
       this.staticCtx = this.staticCanvas.getContext('2d');
     }
     const ctx = this.staticCtx!;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = g.widthPx;
     const h = g.heightPx;
     this.staticCanvas.width = Math.floor(w * dpr);

@@ -49,7 +49,7 @@ export class Starfield {
 
   draw(r: Renderer): void {
     const ctx = r.ctx;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = r.pixelRatio;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const pWidth = r.width * dpr;

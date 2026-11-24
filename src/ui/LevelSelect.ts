@@ -1,5 +1,6 @@
 // Level select screen: campaign map with progress, best stars, best score, and difficulty picker.
 
+import type { FocusRegion } from './ControlFocus';
 import { Renderer } from '../engine/Renderer';
 import { LevelManager } from '../game/grid/LevelManager';
 import { SaveSystem } from '../utils/SaveSystem';
@@ -11,7 +12,9 @@ import { layoutFor, UI } from './Layout';
 export type LevelSelectAction = { kind: 'level'; index: number } | { kind: 'back' } | { kind: 'diff'; diff: Difficulty };
 
 export class LevelSelect {
-  private regions: Array<{ x: number; y: number; w: number; h: number; action: LevelSelectAction }> = [];
+  private regions: Array<FocusRegion & { action: LevelSelectAction }> = [];
+
+  get focusRegions(): readonly FocusRegion[] { return this.regions; }
   selectedDiff: Difficulty = 'normal';
 
   constructor(
@@ -54,7 +57,9 @@ export class LevelSelect {
     const gap = isCompactLandscape ? 8 : isSmall ? layout.gap : 14;
     const cols = isCompactLandscape ? 5 : isSmall ? 2 : 5;
     const startY = progressY + (isCompactLandscape ? 74 : isSmall ? 90 : 132);
-    const cardH = isCompactLandscape ? 68 : isSmall ? 104 : 118;
+    const rows = Math.ceil(total / cols);
+    const availableCardHeight = Math.floor((r.height - startY - layout.safe - (rows - 1) * gap) / rows);
+    const cardH = Math.min(isCompactLandscape ? 68 : isSmall ? 104 : 118, availableCardHeight);
     const cardW = Math.min(isCompactLandscape ? 166 : isSmall ? 166 : 206, Math.floor((r.width - layout.safe * 2 - gap * (cols - 1)) / cols));
     const totalW = cols * cardW + (cols - 1) * gap;
     const startX = cx - totalW / 2;
@@ -112,7 +117,7 @@ export class LevelSelect {
       r.roundRect(dx, y, diffBtnW, diffH, 14, btnBg, true, btnBorder, 1.2);
       r.clearShadow();
       r.text(this.difficultyName(d.id), dx + diffBtnW / 2, y + diffH / 2, '#ffffff', isSmall ? 10 : 11, 'center', 'bold', 'middle', 'header');
-      this.regions.push({ x: dx, y, w: diffBtnW, h: diffH, action: { kind: 'diff', diff: d.id } });
+      this.regions.push({ x: dx, y, w: diffBtnW, h: diffH, action: { kind: 'diff', diff: d.id }, label: this.difficultyName(d.id), pressed: sel });
       dx += diffBtnW + diffGap;
     }
 
@@ -125,7 +130,7 @@ export class LevelSelect {
     const theme = getLevelTheme(levelNumber);
     const unlocked = this.save.isLevelUnlocked(levelNumber);
     const stars = this.save.getStars(levelNumber);
-    const score = this.save.getLevelScore(levelNumber);
+    const score = this.save.getRecord({ kind: 'campaign', level: levelNumber, difficulty: this.selectedDiff })?.best.score ?? 0;
     const levelName = this.levels.levelAt(index).name;
     const completed = stars > 0;
 
@@ -147,7 +152,8 @@ export class LevelSelect {
     r.ctx.fillRect(x, y + 8, 4, h - 16);
     r.ctx.restore();
 
-    const markerR = isSmall ? 13 : 15;
+    const tight = h < 95;
+    const markerR = tight ? 11 : isSmall ? 13 : 15;
     r.ctx.save();
     r.ctx.fillStyle = unlocked ? `${accent}26` : 'rgba(71, 85, 105, 0.18)';
     r.ctx.strokeStyle = unlocked ? accent : '#475569';
@@ -159,10 +165,10 @@ export class LevelSelect {
     r.ctx.restore();
     r.text(String(levelNumber).padStart(2, '0'), x + 23, y + 24, unlocked ? '#e0f2fe' : '#64748b', isSmall ? 8 : 9, 'center', 'bold', 'middle', 'header');
 
-    r.text(levelName, x + 44, y + 14, unlocked ? '#f8fafc' : '#64748b', isSmall ? 12 : 14, 'left', 'bold', 'top', 'header');
+    r.text(levelName, x + 42, y + 14, unlocked ? '#f8fafc' : '#64748b', tight ? 11 : isSmall ? 12 : 14, 'left', 'bold', 'top', 'header', w - 50);
     r.text(theme.name, x + 44, y + 33, unlocked ? theme.accent : '#475569', isSmall ? 8 : 9, 'left', 'bold', 'top', 'header');
 
-    const starY = y + (isCompact ? 50 : isSmall ? 58 : 58);
+    const starY = y + (tight ? h - 20 : isCompact ? 50 : 58);
     r.setShadow('rgba(251, 191, 36, 0.24)', 6, 0, 0);
     for (let s = 0; s < 3; s++) {
       const starX = x + 18 + s * (isSmall ? 18 : 20);
@@ -176,7 +182,7 @@ export class LevelSelect {
     if (unlocked) {
       const actionText = completed ? t('menu.playAgain') : t('level.clickToPlay');
       r.text(actionText, x + w - 13, y + h - 23, theme.accent, isSmall ? 8.5 : 9.5, 'right', 'bold', 'top', 'header');
-      this.regions.push({ x, y, w, h, action: { kind: 'level', index } });
+      this.regions.push({ x, y, w, h, action: { kind: 'level', index }, label: levelName });
     } else {
       r.text(t('level.locked'), x + w - 13, y + h - 23, '#64748b', isSmall ? 8.5 : 9.5, 'right', 'bold', 'top', 'header');
     }
@@ -244,13 +250,13 @@ export class LevelSelect {
 
   private drawBackButton(r: Renderer, _cx: number, y: number, compact: boolean): void {
     const layout = layoutFor(r);
-    const bw = compact ? 104 : 118;
+    const bw = r.width < 430 ? 64 : compact ? 104 : 118;
     const bh = compact ? 26 : 28;
     const bx = layout.safe + 8;
     r.roundRect(bx, y, bw, bh, 8, 'rgba(15, 23, 42, 0.34)', true, 'rgba(148, 163, 184, 0.12)', 1);
     r.text('‹', bx + 18, y + bh / 2 - 1, '#93c5fd', compact ? 16 : 18, 'center', 'bold', 'middle', 'header');
-    r.text(t('common.menu'), bx + 37, y + bh / 2, '#cbd5e1', compact ? 10 : 11, 'left', 'bold', 'middle');
-    this.regions.push({ x: bx, y, w: bw, h: bh, action: { kind: 'back' } });
+    r.text(t('common.menu'), bx + (bw === 64 ? 28 : 37), y + bh / 2, '#cbd5e1', compact ? 10 : 11, 'left', 'bold', 'middle');
+    this.regions.push({ x: bx, y, w: bw, h: bh, action: { kind: 'back' }, label: t('common.menu') });
   }
 
   private difficultyName(id: Difficulty): string {

@@ -9,112 +9,66 @@ import { t } from '../utils/i18n';
 import { classifyBossEncounter } from '../utils/BossEncounter';
 import { enemyName, towerName, traitName as localizedTraitName } from '../utils/displayText';
 import { layoutFor, UI } from './Layout';
+import type { FocusRegion } from './ControlFocus';
+import { battleHudLayout, TOP_H, BOT_H } from './BattleHudLayout';
+export { TOP_H, BOT_H } from './BattleHudLayout';
 
 export interface HudRegions {
-  shop: Array<{ x: number; y: number; w: number; h: number; towerId: string }>;
-  buttons: Array<{ x: number; y: number; w: number; h: number; action: string }>;
+  topHeight: number;
+  shop: Array<FocusRegion & { towerId: string }>;
+  buttons: Array<FocusRegion & { action: string }>;
 }
 
-export const TOP_H = 52;
-export const BOT_H = 72;
-
 export class HUD {
-  draw(r: Renderer, s: GameState, speed = 1, autoSend = false): HudRegions {
-    const regions: HudRegions = { shop: [], buttons: [] };
-    const layout = layoutFor(r);
-
-    const topGrad = r.linearGradient(0, 0, 0, TOP_H, [
+  draw(r: Renderer, s: GameState, speed = 1, autoSend = false, shopRight = r.width, showWavePreview = true): HudRegions {
+    const regions: HudRegions = { topHeight: TOP_H, shop: [], buttons: [] };
+    const geometry = battleHudLayout(r.width);
+    const top = geometry.topHeight;
+    regions.topHeight = top;
+    const topGrad = r.linearGradient(0, 0, 0, top, [
       { offset: 0, color: 'rgba(6, 10, 15, 0.98)' },
-      { offset: 0.72, color: 'rgba(10, 16, 28, 0.96)' },
-      { offset: 1, color: 'rgba(15, 23, 42, 0.92)' },
+      { offset: 1, color: 'rgba(15, 23, 42, 0.98)' },
     ]);
-    r.rect(0, 0, r.width, TOP_H, topGrad);
-    r.rect(0, TOP_H - 1, r.width, 1, 'rgba(96,165,250,0.22)');
+    r.rect(0, 0, r.width, top, topGrad);
+    r.rect(0, top - 1, r.width, 1, 'rgba(96,165,250,0.22)');
 
-    const isSmall = r.width < 850;
-    const isTiny = r.width < 700;
-    const isUltraTiny = r.width < 560;
-
-    const pill = (icon: string, val: string, color: string, x: number): number => {
-      const icoW = isSmall ? 16 : 28;
-      const valW = Math.max(isSmall ? 22 : 36, val.length * (isSmall ? 7.5 : 10));
-      const total = icoW + valW + 4;
-      const displayIcon = isSmall ? icon[0] : icon;
-      r.text(displayIcon, x + icoW / 2, TOP_H / 2, UI.color.textDim, 10, 'center', 'bold', 'middle');
-      r.text(val, x + icoW + 2, TOP_H / 2, color, isSmall ? 13 : 16, 'left', 'bold', 'middle', 'header');
-      return x + total + (isSmall ? 6 : 12);
-    };
-
-    let lx = layout.safe;
-    lx = pill(t('hud.gold'), `${s.gold}`, UI.color.gold, lx);
-    const livesCol = s.lives <= 5
-      ? (Math.floor(Date.now() / 400) % 2 === 0 ? UI.color.red : '#f87171')
-      : '#34d399';
-    lx = pill(t('hud.lives'), `${s.lives}`, livesCol, lx);
-    lx = pill(t('hud.wave'), `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399', lx);
-    if (!isUltraTiny) pill(t('hud.score'), `${s.score}`, '#e2e8f0', lx);
-
-    if (s.comboCount >= 3 && !isTiny) {
-      r.setShadow('rgba(239,68,68,0.5)', 8);
-      r.text(`🔥 ${t('hud.combo')} ×${s.comboCount}`, r.width / 2, TOP_H / 2, '#f87171', 14, 'center', 'bold', 'middle', 'header');
-      r.clearShadow();
+    const compact = r.width < 1080;
+    const metrics = [
+      [t('hud.gold'), String(s.gold), UI.color.gold],
+      [t('hud.lives'), String(s.lives), s.lives <= 5 ? '#f87171' : '#34d399'],
+      [t('hud.wave'), `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399'],
+      [s.comboCount >= 3 ? `${t('hud.score')} ×${s.comboCount}` : t('hud.score'), String(s.score), '#e2e8f0'],
+    ];
+    for (const [i, { x, y, w, h }] of geometry.metrics.entries()) {
+      const [label, value, color] = metrics[i];
+      const middle = y + h / 2;
+      r.text(label, x + w / 2, middle - 7, UI.color.textMuted, compact ? 9 : 10, 'center', 'bold', 'middle', 'ui', w - 4);
+      r.text(value, x + w / 2, middle + 7, color, compact ? 13 : 15, 'center', 'bold', 'middle', 'header', w - 4);
     }
-
-    if (speed > 1 && !isSmall) {
-      r.text(`${speed}×`, r.width / 2 + (s.comboCount >= 3 ? 110 : 0), TOP_H / 2, '#fef08a', 14, 'center', 'bold', 'middle', 'header');
-    }
-
-    const btnH = 30;
-    const btnY = (TOP_H - btnH) / 2;
-    let bx = r.width - layout.safe;
-
-    const topBtn = (label: string, active: boolean, color: string, action: string, w = 68): void => {
-      bx -= w;
-      const bg = active
-        ? r.linearGradient(bx, btnY, bx, btnY + btnH, [{ offset: 0, color }, { offset: 1, color: '#1e293b' }])
-        : r.linearGradient(bx, btnY, bx, btnY + btnH, [
-          { offset: 0, color: 'rgba(30, 41, 59, 0.88)' },
-          { offset: 1, color: 'rgba(15, 23, 42, 0.82)' },
-        ]);
-      const border = active ? color : 'rgba(148,163,184,0.12)';
-      if (active) r.setShadow(color, 6);
-      r.roundRect(bx, btnY, w, btnH, 8, bg, true, border, 1);
-      r.clearShadow();
-      r.text(label, bx + w / 2, btnY + btnH / 2, '#e2e8f0', 11, 'center', 'bold', 'middle');
-      regions.buttons.push({ x: bx, y: btnY, w, h: btnH, action });
-      bx -= isTiny ? 4 : 6;
+    const actionLabels = {
+      codex: t('hud.intel'), talent: t('hud.talent'), settings: t('menu.settings'), stats: t('hud.stats'),
+      menu: t('hud.menu'), autoSend: t('hud.autoLabel'), speed: t('controls.speed').replace('{speed}', String(speed)),
+      pause: t('hud.pause'), send: t('hud.send'), brief: t('ops.title'),
     };
-
     const waveInProg = s.waves.inProgress;
-    const waveLabel = waveInProg
-      ? (isSmall ? '▶ …' : `▶ ${t('hud.running')}…`)
-      : s.waves.current >= s.waves.totalWaves && !s.endless
-        ? (isSmall ? `✓ ${t('hud.last')}` : `✓ ${t('hud.lastWave')}`)
-        : (isSmall ? `⚡ W${s.waves.current + 1}` : `⚡ ${t('hud.wave')} ${s.waves.current + 1}`);
-
-    if (!isTiny) {
-      topBtn(isSmall ? 'ⓘ' : `ⓘ ${t('hud.intel')}`, false, '#475569', 'codex', isSmall ? 32 : 68);
-      topBtn(isSmall ? '✦' : `✦ ${t('hud.talent')}`, false, '#475569', 'talent', isSmall ? 32 : 72);
-      topBtn(isSmall ? '⚙' : `⚙ ${t('hud.set')}`, false, '#475569', 'settings', isSmall ? 32 : 60);
-      topBtn(isSmall ? '🏆' : `🏆 ${t('hud.stats')}`, false, '#475569', 'stats', isSmall ? 32 : 68);
+    const next = !s.endless && s.waves.current >= s.waves.totalWaves ? t('hud.last') : `${t('hud.wave')} ${s.waves.current + 1}`;
+    const labels = {
+      ...actionLabels, send: waveInProg ? '▶ …' : next, pause: compact ? '⏸' : actionLabels.pause, speed: `${speed}×`,
+      autoSend: `${t('hud.auto')}${autoSend ? ' ✓' : ''}`, brief: compact ? 'ⓘ' : t('ops.short'),
+    };
+    for (const { action, x, y, w, h } of geometry.controls) {
+      const active = (action === 'send' && !waveInProg) || (action === 'autoSend' && autoSend) || (action === 'speed' && speed > 1);
+      const color = action === 'send' ? '#2563eb' : action === 'autoSend' ? '#059669' : '#6d28d9';
+      r.roundRect(x, y, w, h, 8, active ? color : '#16243a', true, active ? '#93c5fd' : 'rgba(148,163,184,0.20)', 1);
+      r.text(labels[action], x + w / 2, y + h / 2, '#f1f5f9', 11, 'center', 'bold', 'middle', 'ui', w - 6);
+      regions.buttons.push({ x, y, w, h, action, label: actionLabels[action], pressed: action === 'autoSend' ? autoSend : undefined });
     }
-    topBtn(isSmall ? '☰' : `☰ ${t('hud.menu')}`, false, '#475569', 'menu', isSmall ? 32 : 68);
-    const autoLabel = autoSend
-      ? (isSmall ? '⟳ A ✓' : `⟳ ${t('hud.auto')} ✓`)
-      : (isSmall ? '⟳ A' : `⟳ ${t('hud.auto')}`);
-    if (!isUltraTiny) topBtn(autoLabel, autoSend, '#10b981', 'autoSend', isSmall ? 48 : 76);
-    topBtn(isSmall ? `${speed}×` : `⚡ ${speed}×`, speed > 1, '#8b5cf6', 'speed', isSmall ? 36 : 68);
-    topBtn(isSmall ? '⏸' : `⏸ ${t('hud.pause')}`, false, '#475569', 'pause', isSmall ? 32 : 68);
-    topBtn(waveLabel, !waveInProg, '#3b82f6', 'send', isSmall ? (isTiny ? 56 : 64) : 90);
-
     if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
-      const bw = Math.min(240, r.width * 0.42); const bwY = TOP_H - 2;
-      const bwX = (r.width - bw) / 2;
-      r.roundRect(bwX, bwY, bw, 2, 1, 'rgba(255,255,255,0.06)', true);
-      r.roundRect(bwX, bwY, bw * s.waves.betweenProgress, 2, 1, UI.color.blue, true);
+      const w = r.width * 0.42;
+      r.roundRect((r.width - w) / 2, top - 2, w * s.waves.betweenProgress, 2, 1, UI.color.blue, true);
     }
-
-    this.drawWavePreview(r, s, waveInProg, isSmall);
+    if (showWavePreview) this.drawWavePreview(r, s, waveInProg, r.width < 850);
+    const layout = layoutFor(r);
 
     const botY = r.height - BOT_H;
     const botGrad = r.linearGradient(0, botY, 0, r.height, [
@@ -126,14 +80,13 @@ export class HUD {
 
     const gap = r.width < 520 ? 6 : layout.gap;
     const padding = r.width < 520 ? 8 : layout.safe;
-    const availShop = r.width - padding * 2;
+    const availShop = shopRight - padding * 2;
     const rawCardW = (availShop - gap * (TOWER_LIST.length - 1)) / TOWER_LIST.length;
-    const minCardW = r.width < 520 ? 44 : 80;
     const maxCardW = r.width < 520 ? 66 : 120;
-    const cardW = Math.max(minCardW, Math.min(maxCardW, rawCardW));
+    const cardW = Math.min(maxCardW, rawCardW);
     const shopW = cardW * TOWER_LIST.length + gap * (TOWER_LIST.length - 1);
 
-    let sx = Math.max(padding, (r.width - shopW) / 2);
+    let sx = Math.max(padding, (shopRight - shopW) / 2);
     for (const def of TOWER_LIST) {
       const selected = s.selectedTowerId === def.id;
       const affordable = s.gold >= def.cost;
@@ -184,7 +137,7 @@ export class HUD {
         r.text(`${def.cost}`, textX, cardY + 40, affordable ? UI.color.gold : '#374151', 8, 'center', 'bold', 'top', 'header');
       }
 
-      regions.shop.push({ x: sx, y: cardY, w: cardW, h: cardH, towerId: def.id });
+      regions.shop.push({ x: sx, y: cardY, w: cardW, h: cardH, towerId: def.id, label: `${displayName}, ${def.cost}g`, pressed: selected });
       sx += cardW + gap;
     }
 

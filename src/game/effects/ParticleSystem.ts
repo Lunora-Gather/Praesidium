@@ -36,9 +36,16 @@ export class ParticleSystem {
   private static readonly MAX_PARTICLES = 420;
   private static readonly MAX_FLOATS = 48;
   private static readonly MAX_SHOCKWAVES = 24;
+  private static readonly MAX_ARCS = 24;
   private readonly particles: Particle[] = [];
   private readonly floats: FloatText[] = [];
   private readonly shockwaves: Shockwave[] = [];
+  private readonly arcs: Array<{ from: Vec2; to: Vec2; color: string; life: number }> = [];
+
+  arc(from: Vec2, to: Vec2, color: string): void {
+    if (this.arcs.length >= ParticleSystem.MAX_ARCS) this.arcs.shift();
+    this.arcs.push({ from, to, color, life: 0.18 });
+  }
 
   /** Burst `count` particles from `origin` with given color/speed. */
   burst(origin: Vec2, count: number, color: string, speed = 120, life = 0.5, size = 3): void {
@@ -202,9 +209,22 @@ export class ParticleSystem {
       }
     }
     this.shockwaves.length = sw;
+
+    let activeArcs = 0;
+    for (const arc of this.arcs) {
+      arc.life -= dt;
+      if (arc.life > 0) this.arcs[activeArcs++] = arc;
+    }
+    this.arcs.length = activeArcs;
   }
 
   draw(r: Renderer): void {
+    for (const arc of this.arcs) {
+      r.ctx.globalAlpha = arc.life / 0.18;
+      r.line(arc.from, arc.to, arc.color, 4);
+      r.line(arc.from, arc.to, '#ffffff', 1);
+    }
+    r.ctx.globalAlpha = 1;
     // draw shockwaves
     for (const s of this.shockwaves) {
       const alpha = Math.max(0, s.life / s.maxLife);
@@ -234,5 +254,6 @@ export class ParticleSystem {
     this.particles.length = 0;
     this.floats.length = 0;
     this.shockwaves.length = 0;
+    this.arcs.length = 0;
   }
 }

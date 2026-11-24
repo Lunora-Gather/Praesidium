@@ -6,6 +6,8 @@ export const BALANCE = {
   startGold: 200,
   startLives: 20,
   goldPerKill: 12,
+  comboBonusStepPercent: 20,
+  comboMaxBonusPercent: 60,
 
   // Waves
   waveCount: 12,

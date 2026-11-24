@@ -16,6 +16,8 @@ Use this document after running `npm run balance:sim` or after outside playtests
 - best result by level and difficulty
 - total tower placement distribution
 - `New-player Pressure Probe` for early campaign readability
+- `Limited Defense Probe` and `Lean Defense Probe` for runs without spells and fewer builds and upgrades
+- `Seeded Endless Endurance` for three 30-minute simulations
 - `Late Campaign Review` for levels 9 and 10
 - late-campaign tower distribution
 - late-campaign red flags if level 9 or 10 collapses too early
@@ -25,9 +27,11 @@ Use this document after running `npm run balance:sim` or after outside playtests
 
 | Area | Result | Notes |
 | --- | --- | --- |
-| Normal win-rate | 100% | No early blocker detected by the expert automation profile. |
-| Hard win-rate | 100% | Automation still clears every level; use outside playtests for real difficulty judgment. |
-| Brutal win-rate | 100% | Automation clears every level, so future difficulty tuning should rely on human error data. |
+| Expert strategies | 30/30 Normal, 30/30 Hard, 28/30 Brutal | At least one of three strategies wins each level at every difficulty. |
+| Limited campaign | 10/10 Normal, 10/10 Hard, 9/10 Brutal | Up to eight towers and twelve upgrades, with no spells. |
+| Lean campaign | 10/10 Normal, 10/10 Hard, 4/10 Brutal | Up to four towers and six upgrades, with no spells. Average lives remaining were 20.0, 18.7, and 8.0. |
+| Combo gold | 58% maximum in expert runs | Measured against total base kill gold over a run. The per-kill cap is 60%. |
+| Seeded Endless | Three seeds reached wave 26 at 30 minutes | All three were still active with 15–18 lives. |
 | New-player probe | Pass | Levels 1-3 Normal reached meaningful play and completed with a slower limited profile. |
 | Level 9 result | Pass | Normal automation clears with 3 stars. |
 | Level 10 result | Pass | Normal automation clears with 3 stars. |

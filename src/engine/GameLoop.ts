@@ -15,6 +15,7 @@ export class GameLoop {
     private readonly update: (dt: number) => void,
     private readonly render: (alpha: number) => void,
     tickRate = 60,
+    private readonly onWallFrame?: (seconds: number) => void,
   ) {
     this.tickDt = 1 / tickRate;
   }
@@ -30,9 +31,10 @@ export class GameLoop {
       this.lastTime = now;
       // clamp to avoid spiral-of-death after tab switches
       if (frameTime > 0.25) frameTime = 0.25;
-      this.accumulator += frameTime * this.timeScale;
+      this.onWallFrame?.(frameTime);
       // allow more steps at higher speed to keep up
       const maxSteps = 5 * this.timeScale;
+      this.accumulator = Math.min(this.accumulator + frameTime * this.timeScale, maxSteps * this.tickDt);
       let steps = 0;
       while (this.accumulator >= this.tickDt && steps < maxSteps) {
         this.update(this.tickDt);

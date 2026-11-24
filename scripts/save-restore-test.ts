@@ -1,111 +1,258 @@
-// Verify mid-run save/restore round-trip: save a game, load it back, prove state matches.
-// This is the #1 retention feature — if it's broken, closing the tab loses all progress.
-
-// Node.js doesn't have localStorage — minimal polyfill
-const store: Record<string, string> = {};
-(globalThis as any).localStorage = {
-  getItem: (k: string) => store[k] ?? null,
-  setItem: (k: string, v: string) => { store[k] = v; },
-  removeItem: (k: string) => { delete store[k]; },
-};
-
+import assert from 'node:assert/strict';
 import { GameState } from '../src/game/GameState';
-import { getTowerDef } from '../src/game/towers/TowerRegistry';
-import { saveRun, loadRun, clearRun } from '../src/utils/RunSave';
+import { Vec2 } from '../src/engine/math/Vec2';
+import { clearRun, loadRun, loadRunSettlements, saveRun } from '../src/utils/RunSave';
+import { save } from '../src/utils/storage';
+import { decodeChallenge, encodeChallenge } from '../src/utils/ChallengeCode';
+import { dailyDateStr } from '../src/utils/DailyChallenge';
 
-let pass = 0;
-let fail = 0;
-function check(name: string, cond: boolean, detail = ''): void {
-  if (cond) { pass++; console.log(`  ok  ${name}`); }
-  else { fail++; console.log(`  FAIL ${name} ${detail}`); }
+const storage = new Map<string, string>();
+let blockProfileWrite = false;
+Object.defineProperty(globalThis, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      if (blockProfileWrite && key === 'praesidium:save') throw new Error('profile write unavailable');
+      storage.set(key, value);
+    },
+    removeItem: (key: string) => storage.delete(key),
+  },
+});
+
+const DT = 1 / 60;
+const KEY = 'run:snapshot';
+const json = <T>(data: T): T => JSON.parse(JSON.stringify(data));
+
+const live = new GameState();
+live.setDifficulty('hard');
+live.selectLevel(0);
+live.gold = 1_000;
+assert(live.tryPlace(2, 10));
+assert(live.tryPlace(2, 9));
+assert(live.upgradeTower(live.towers[0]));
+assert(live.upgradeTower(live.towers[0]));
+live.towers[0].cycleStrategy();
+live.waves.autoSend = true;
+assert(live.waves.forceNext());
+
+for (let i = 0; i < 900; i++) {
+  live.update(DT);
+  if (live.waves.current >= 2 && live.enemies.length && live.projectiles.some(shot => shot.target && !shot.target.dead)) break;
+}
+assert(live.waves.current >= 2, 'fixture advances past the first wave');
+assert(live.enemies.length > 0, 'fixture includes live enemies');
+assert(live.projectiles.some(shot => shot.target && !shot.target.dead), 'fixture includes an in-flight shot');
+live.enemies[0].applySlow(0.5, 2);
+live.enemies[0].shield(10);
+live.lives--;
+assert(live.castSpell('repair', Vec2.zero));
+live.autoSave();
+
+const checkpoint = loadRun();
+assert(checkpoint?.v === 2);
+const restored = new GameState();
+restored.restore(checkpoint);
+assert.equal(restored.analytics.get().sessions, live.analytics.get().sessions);
+assert.deepEqual(restored.analytics.get().levelsAttempted, live.analytics.get().levelsAttempted);
+assert.equal(restored.towers[0].sellValue, live.towers[0].sellValue);
+assert.equal(restored.towers[0].damage, live.towers[0].damage);
+assert.equal(restored.towers[0].fireRate, live.towers[0].fireRate);
+assert.deepEqual(json(restored.snapshot()), checkpoint);
+for (let i = 0; i < 3_600; i++) {
+  live.update(DT);
+  restored.update(DT);
+  if (i % 60 === 0) assert.deepEqual(json(restored.snapshot()), json(live.snapshot()), `simulation drift at tick ${i}`);
+}
+assert.equal(restored.phase, live.phase);
+console.log('PASS  active battle round-trip and 60 seconds of identical simulation');
+
+const legacy = {
+  ...checkpoint,
+  v: 1,
+  waveCurrent: 6,
+  weeklyModeActive: false,
+  spellCooldowns: [-0.01, 0, 0],
+};
+save(KEY, legacy);
+const legacyCheckpoint = loadRun();
+assert(legacyCheckpoint?.v === 1);
+const migrated = new GameState();
+migrated.restore(legacyCheckpoint);
+assert.equal(migrated.waves.current, 6);
+assert.equal(migrated.waves.state, 'running');
+assert.equal(migrated.towers[0].damage, restored.towers[0].damage);
+assert.equal(migrated.spells[0].cooldown, 0);
+migrated.update(DT);
+assert.equal(migrated.enemies.length, 1);
+console.log('PASS  legacy wave 6 resumes without multiplying upgrades');
+
+const seeded = new GameState();
+seeded.startWeekly();
+function advanceEmptyWave(state: GameState): void {
+  assert(state.waves.forceNext());
+  state.waves.update(1_000_000, state.grid, []);
+}
+for (let i = 0; i < 16; i++) advanceEmptyWave(seeded);
+const next = seeded.waves.previewNext();
+assert(next);
+saveRun(seeded.snapshot());
+assert(seeded.waves.forceNext());
+const nextGroups = seeded.waves.snapshot().spawnGroups;
+const savedChallenge = loadRun();
+assert(savedChallenge?.v === 2);
+assert.equal(savedChallenge.dailyDate, null);
+const resumedChallenge = new GameState();
+resumedChallenge.restore(savedChallenge);
+assert.equal(resumedChallenge.activeWeeklyMode?.weekKey, seeded.activeWeeklyMode?.weekKey);
+assert.deepEqual(resumedChallenge.waves.previewNext(), next);
+const spawned: GameState['enemies'] = [];
+assert(resumedChallenge.waves.forceNext());
+resumedChallenge.waves.update(1_000_000, resumedChallenge.grid, spawned);
+assert.equal(spawned.length, next.totalCount);
+save(KEY, { ...savedChallenge, v: 1, waveCurrent: next.waveNumber });
+const legacyEndless = loadRun();
+assert(legacyEndless?.v === 1);
+const resumedLegacyEndless = new GameState();
+resumedLegacyEndless.restore(legacyEndless);
+assert.deepEqual(resumedLegacyEndless.waves.snapshot().spawnGroups, nextGroups);
+assert(resumedChallenge.save.recordDailyRun(800, 9, '2026-06-28'));
+assert(!resumedChallenge.save.recordDailyRun(1_000, 12, '2026-06-27'));
+assert.equal(resumedChallenge.save.get().dailyHighScore, 800);
+const random = new GameState();
+random.startEndless();
+const randomSeed = random.endlessSeed;
+random.restart();
+assert.equal(random.endlessSeed, randomSeed);
+assert.equal(random.weeklyModeActive, false);
+console.log('PASS  seeded wave forecasts, legacy RNG position, and restart preserve run context');
+
+for (const broken of [
+  { ...checkpoint, difficulty: 'constructor' },
+  { ...checkpoint, levelIndex: -1 },
+  { ...checkpoint, towers: [checkpoint.towers[0], checkpoint.towers[0]] },
+  { ...checkpoint, projectiles: [{ ...checkpoint.projectiles[0], targetIndex: 9_999 }] },
+  { ...checkpoint, waves: { ...checkpoint.waves, state: 'running', spawnGroups: [] } },
+]) {
+  save(KEY, broken);
+  assert.equal(loadRun(), null);
+}
+clearRun();
+assert.equal(loadRun(), null);
+console.log('PASS  corrupt saves rejected and save slot clears');
+
+storage.clear();
+save('talents', { points: 12, ranks: { damage: 2 } });
+const original = new GameState();
+original.startSharedChallenge({ seed: 0xa1784f01, weeklyKey: '2025-W26', difficulty: 'hard', talentRanks: [1, 2, 2, 3, 4, 0], variedOpener: true });
+const code = encodeChallenge(original.challengeRules);
+assert.deepEqual(decodeChallenge(code), original.challengeRules);
+assert.deepEqual(decodeChallenge('0xcafe'), { seed: 0xcafe });
+for (const invalid of ['0', '123456789', 'P1-A1784F01-H-2025-W00-122340', 'P1-A1784F01-H-2025-W26-122346']) {
+  assert.equal(decodeChallenge(invalid), null);
+}
+assert(original.talents.rankUp('damage'));
+assert.equal(original.talents.rank('damage'), 3);
+assert.equal(original.talentMultiplier('damage'), 1.16);
+const replay = new GameState();
+const decoded = decodeChallenge(code);
+assert(decoded && 'difficulty' in decoded);
+replay.startSharedChallenge(decoded);
+assert.equal(replay.activeWeeklyMode?.weekKey, '2025-W26');
+assert.equal(replay.gold, original.gold);
+assert.equal(replay.lives, original.lives);
+assert.equal(replay.difficulty, original.difficulty);
+assert.equal(replay.talentMultiplier('damage'), original.talentMultiplier('damage'));
+const anotherSeed = new GameState();
+anotherSeed.startSharedChallenge({ ...original.challengeRules, seed: 3 });
+let openingDifferences = 0;
+for (let i = 0; i < 16; i++) {
+  assert.deepEqual(replay.waves.previewNext(), original.waves.previewNext());
+  if (i < 12 && JSON.stringify(original.waves.previewNext()) !== JSON.stringify(anotherSeed.waves.previewNext())) openingDifferences++;
+  advanceEmptyWave(original);
+  advanceEmptyWave(replay);
+  advanceEmptyWave(anotherSeed);
+}
+assert(openingDifferences >= 2);
+original.autoSave(true);
+const originalSaved = loadRun();
+assert(originalSaved?.v === 2);
+const loadedReplay = new GameState();
+assert(loadedReplay.restore(originalSaved));
+assert.equal(encodeChallenge(loadedReplay.challengeRules), code);
+loadedReplay.restart();
+assert.equal(encodeChallenge(loadedReplay.challengeRules), code);
+
+const utcBoundary = new Date('2026-06-27T04:00:00+08:00');
+const date = dailyDateStr(utcBoundary);
+assert.equal(date, '2026-06-26');
+loadedReplay.startDaily(date);
+assert.equal(loadedReplay.difficulty, 'normal');
+assert.deepEqual(loadedReplay.challengeRules.talentRanks, [0, 0, 0, 0, 0, 0]);
+assert.equal(loadedReplay.snapshot().dailyDate, date);
+assert.equal(loadedReplay.activeWeeklyMode?.weekKey, '2026-W26');
+console.log('PASS  cross-week challenge code round-trip, locked loadout, and UTC daily rules');
+
+storage.clear();
+save('talents', { points: 8, ranks: { damage: 2 } });
+const player = new GameState();
+player.selectLevel(0);
+player.autoSave();
+const sameRun = loadRun();
+assert(sameRun?.v === 2);
+const duplicate = new GameState();
+assert(duplicate.restore(sameRun));
+
+function win(state: GameState): void {
+  state.score = 1_200;
+  state.waves.current = state.waves.totalWaves;
+  state.waves.state = 'done';
+  state.enemies.length = 0;
+  state.update(DT);
+  assert.equal(state.phase, 'won');
 }
 
-console.log('\n=== Mid-Run Save/Restore Round-Trip ===');
+blockProfileWrite = true;
+win(player);
+assert.equal(player.talents.talentPoints, 11);
+assert.equal(loadRun()?.v, 2);
+assert.equal(loadRunSettlements().length, 1);
+assert.equal(storage.get('praesidium:save'), undefined);
+const blocked = new GameState();
+assert.equal(blocked.restore(sameRun), false);
+assert.equal(loadRun()?.v, 2);
+blockProfileWrite = false;
+const persisted = new GameState();
+assert.equal(loadRun(), null);
+assert.equal(loadRunSettlements().length, 0);
+assert.equal(persisted.talents.talentPoints, 11);
+assert.equal(persisted.talents.rank('damage'), 2);
+assert.equal(persisted.save.getStars(1), 3);
+assert(persisted.save.isLevelUnlocked(2));
+assert.equal(persisted.save.getRecord({ kind: 'campaign', level: 1, difficulty: 'normal' })?.best.score, 1_200);
+assert.equal(persisted.restore(sameRun), false);
+player.autoSave();
+win(duplicate);
+assert.equal(duplicate.talents.talentPoints, 11);
 
-clearRun();
-check('no save initially', loadRun() === null);
-
-const gs = new GameState();
-gs.setDifficulty('hard');
-gs.selectLevel(2);
-for (let ty = 2; ty < 10; ty++) {
-  for (let tx = 2; tx < 14; tx++) {
-    if (gs.grid.isBuildable(tx, ty) && !gs.towers.some(t => t.tx === tx && t.ty === ty)) {
-      const affordable = ['turret', 'frost', 'mortar'].map(id => getTowerDef(id)).filter(d => gs.gold >= d.cost);
-      if (affordable.length > 0) { gs.selectedTowerId = affordable[0].id; gs.tryPlace(tx, ty); }
-    }
-  }
+const otherRun = new GameState();
+otherRun.selectLevel(1);
+otherRun.autoSave(true);
+const otherSnapshot = loadRun();
+assert(otherSnapshot?.v === 2);
+player.restart();
+player.autoSave();
+assert.deepEqual(loadRun(), otherSnapshot);
+win(player);
+assert.deepEqual(loadRun(), otherSnapshot);
+for (let i = 0; i < 5; i++) {
+  player.restart();
+  win(player);
 }
-gs.waves.forceNext();
-const dt = 1 / 60;
-for (let i = 0; i < 300; i++) gs.update(dt);
-
-const snap = gs.snapshot();
-saveRun(snap);
-check('save written', snap.v === 1);
-check('save has towers', snap.towers.length > 0, `towers=${snap.towers.length}`);
-check('save has gold', snap.gold > 0, `gold=${snap.gold}`);
-check('save has wave', snap.waveCurrent >= 1, `wave=${snap.waveCurrent}`);
-check('save has difficulty', snap.difficulty === 'hard');
-check('save has stat snapshot', !!snap.stats);
-check('save stat towers placed', snap.stats.towersPlaced >= snap.towers.length, `placed=${snap.stats.towersPlaced} towers=${snap.towers.length}`);
-check('save stat duration progresses', snap.stats.durationSec > 0, `duration=${snap.stats.durationSec}`);
-
-const loaded = loadRun();
-check('load returns data', loaded !== null);
-if (loaded) {
-  check('version matches', loaded.v === 1);
-  check('level matches', loaded.levelIndex === 2, `got=${loaded.levelIndex}`);
-  check('difficulty matches', loaded.difficulty === 'hard');
-  check('gold matches', loaded.gold === snap.gold, `saved=${snap.gold} loaded=${loaded.gold}`);
-  check('lives matches', loaded.lives === snap.lives);
-  check('score matches', loaded.score === snap.score);
-  check('wave matches', loaded.waveCurrent === snap.waveCurrent);
-  check('tower count matches', loaded.towers.length === snap.towers.length);
-  check('endless flag matches', loaded.endless === snap.endless);
-  check('endless seed matches', loaded.endlessSeed === snap.endlessSeed);
-  check('stat kills match', loaded.stats.kills === snap.stats.kills);
-  check('stat towers match', loaded.stats.towersPlaced === snap.stats.towersPlaced);
-  check('stat upgrades match', loaded.stats.upgrades === snap.stats.upgrades);
-  check('stat spells match', loaded.stats.spellsCast === snap.stats.spellsCast);
-  check('stat gold matches', loaded.stats.goldEarned === snap.stats.goldEarned);
-  check('stat damage matches', loaded.stats.damageDealt === snap.stats.damageDealt);
-  check('stat duration matches', loaded.stats.durationSec === snap.stats.durationSec);
-
-  const restored = new GameState();
-  restored.setDifficulty(loaded.difficulty as 'normal' | 'hard' | 'brutal');
-  restored.selectLevel(loaded.levelIndex);
-  restored.gold = loaded.gold;
-  restored.lives = loaded.lives;
-  restored.score = loaded.score;
-  restored.stats.restore(loaded.stats);
-  check('restored stats kills match loaded', restored.stats.get().kills === loaded.stats.kills);
-  check('restored stats duration match loaded', restored.stats.get().durationSec === loaded.stats.durationSec);
-
-  if (loaded.towers.length > 0) {
-    const t0 = loaded.towers[0];
-    check('tower has id', t0.id.length > 0, `id=${t0.id}`);
-    check('tower has position', t0.tx >= 0 && t0.ty >= 0);
-    check('tower has level', t0.level >= 1);
-  }
+assert.equal(player.achievements.isUnlocked('conqueror'), false);
+for (let i = 1; i < player.levels.total; i++) {
+  player.selectLevel(i);
+  win(player);
 }
-
-clearRun();
-const gs2 = new GameState();
-gs2.endless = true;
-gs2.endlessSeed = 0xCAFEBABE;
-gs2.selectLevel(0);
-gs2.waves.forceNext();
-for (let i = 0; i < 300; i++) gs2.update(dt);
-const snap2 = gs2.snapshot();
-saveRun(snap2);
-const loaded2 = loadRun();
-check('endless save round-trip', loaded2 !== null && loaded2.endless === true);
-check('endless seed preserved', loaded2?.endlessSeed === 0xCAFEBABE);
-check('endless stats preserved', loaded2 !== null && loaded2.stats.durationSec === snap2.stats.durationSec);
-
-clearRun();
-check('clear removes save', loadRun() === null);
-
-console.log(`\n${pass} passed, ${fail} failed`);
-if (fail > 0) process.exit(1);
+assert.equal(player.achievements.isUnlocked('conqueror'), true);
+console.log('PASS  settlement retries atomically, deduplicates the same run, preserves other saves and counts distinct wins');

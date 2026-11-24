@@ -4,10 +4,22 @@
 // tower usage frequency, spell usage, return visits.
 
 import { load, save } from './storage';
+import type { Difficulty } from '../config/Difficulty';
+import type { RunOrigin } from './RunRecords';
+
+export type IntroAction = 'tower' | 'wave' | 'spell' | 'intel';
+export interface ModeSample { started: number; finished: number; won: number; bestWave: number; activeSec: number; simulatedSec: number }
+export interface DifficultySample { started: number; finished: number; won: number }
+export interface OnboardingSample { introRun: string; firstTowerSec: number | null; firstWaveSec: number | null; firstSpellSec: number | null; intelOpened: boolean }
 
 export interface AnalyticsData {
   sessions: number;
   totalPlaySec: number;
+  simulatedSec: number;
+  timedSessions: number;
+  byMode: Partial<Record<RunOrigin['kind'], ModeSample>>;
+  byDifficulty: Partial<Record<Difficulty, DifficultySample>>;
+  onboarding: OnboardingSample | null;
   lastPlayDate: string; // ISO date
   returnDays: number; // distinct days played
   levelsCompleted: Record<number, number>; // levelIndex -> times won
@@ -21,11 +33,16 @@ export interface AnalyticsData {
   longestSessionSec: number;
 }
 
-const KEY = 'analytics';
+const KEY = 'analytics:v2';
 
 const DEFAULTS: AnalyticsData = {
   sessions: 0,
   totalPlaySec: 0,
+  simulatedSec: 0,
+  timedSessions: 0,
+  byMode: {},
+  byDifficulty: {},
+  onboarding: null,
   lastPlayDate: '',
   returnDays: 0,
   levelsCompleted: {},
@@ -44,13 +61,35 @@ export class Analytics {
   private sessionSec = 0;
 
   constructor() {
-    this.data = { ...DEFAULTS, ...load<Partial<AnalyticsData>>(KEY, {}) };
+    const legacy = load<Partial<AnalyticsData>>('analytics', {});
+    const loaded = load<Partial<AnalyticsData> | null>(KEY, null) ?? {
+      ...legacy, totalPlaySec: 0, simulatedSec: legacy.totalPlaySec ?? 0, timedSessions: 0,
+      avgSessionSec: 0, longestSessionSec: 0,
+    };
+    this.data = {
+      ...DEFAULTS, ...loaded,
+      byMode: { ...loaded.byMode },
+      byDifficulty: { ...loaded.byDifficulty },
+      levelsCompleted: { ...loaded.levelsCompleted },
+      levelsAttempted: { ...loaded.levelsAttempted },
+      churnPoints: Array.isArray(loaded.churnPoints) ? [...loaded.churnPoints] : [],
+      towerUsage: { ...loaded.towerUsage },
+      spellUsage: { ...loaded.spellUsage },
+    };
   }
 
   /** Call on game start. */
-  startSession(): void {
+  startSession(runId: string, origin: RunOrigin): void {
     this.sessionSec = 0;
     this.data.sessions++;
+    this.data.timedSessions++;
+    this.mode(origin).started++;
+    if (origin.kind === 'campaign') {
+      this.difficulty(origin.difficulty).started++;
+      if (origin.level === 1 && this.data.onboarding === null) {
+        this.data.onboarding = { introRun: runId, firstTowerSec: null, firstWaveSec: null, firstSpellSec: null, intelOpened: false };
+      }
+    }
     const today = new Date().toISOString().slice(0, 10);
     if (this.data.lastPlayDate && this.data.lastPlayDate !== today) {
       this.data.returnDays++;
@@ -59,10 +98,57 @@ export class Analytics {
     this.persist();
   }
 
-  /** Call every frame with dt. */
-  tick(dt: number): void {
-    this.sessionSec += dt;
-    this.data.totalPlaySec += dt;
+  get activeSeconds(): number { return this.sessionSec; }
+
+  private mode(origin: RunOrigin): ModeSample {
+    return this.data.byMode[origin.kind] ??= { started: 0, finished: 0, won: 0, bestWave: 0, activeSec: 0, simulatedSec: 0 };
+  }
+
+  private difficulty(difficulty: Difficulty): DifficultySample {
+    return this.data.byDifficulty[difficulty] ??= { started: 0, finished: 0, won: 0 };
+  }
+
+  tickActive(seconds: number, origin: RunOrigin): void {
+    this.sessionSec += seconds;
+    this.data.totalPlaySec += seconds;
+    this.mode(origin).activeSec += seconds;
+  }
+
+  tickSimulation(seconds: number, origin: RunOrigin): void {
+    this.data.simulatedSec += seconds;
+    this.mode(origin).simulatedSec += seconds;
+  }
+
+  recordOutcome(origin: RunOrigin, won: boolean, wave: number): void {
+    const mode = this.mode(origin);
+    mode.finished++;
+    if (won) mode.won++;
+    mode.bestWave = Math.max(mode.bestWave, wave);
+    if (origin.kind === 'campaign') {
+      const difficulty = this.difficulty(origin.difficulty);
+      difficulty.finished++;
+      if (won) difficulty.won++;
+    }
+    this.persist();
+  }
+
+  recordFirstAction(action: IntroAction, runId: string, origin: RunOrigin): void {
+    const sample = this.data.onboarding;
+    if (!sample || origin.kind !== 'campaign' || origin.level > 2) return;
+    if (action === 'intel') {
+      if (sample.intelOpened) return;
+      sample.intelOpened = true;
+    } else {
+      if (sample.introRun !== runId && action !== 'spell') return;
+      const key = action === 'wave' ? 'firstWaveSec' : action === 'tower' ? 'firstTowerSec' : 'firstSpellSec';
+      if (sample[key] !== null) return;
+      sample[key] = Math.round(this.sessionSec * 10) / 10;
+    }
+    this.persist();
+  }
+
+  resumeSession(duration: number): void {
+    this.sessionSec = duration;
   }
 
   /** Call on level start. */
@@ -106,8 +192,8 @@ export class Analytics {
     if (this.sessionSec > this.data.longestSessionSec) {
       this.data.longestSessionSec = this.sessionSec;
     }
-    if (this.data.sessions > 0) {
-      this.data.avgSessionSec = this.data.totalPlaySec / this.data.sessions;
+    if (this.data.timedSessions > 0) {
+      this.data.avgSessionSec = this.data.totalPlaySec / this.data.timedSessions;
     }
     this.persist();
   }

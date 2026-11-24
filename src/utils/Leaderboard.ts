@@ -3,7 +3,30 @@
 
 import { SaveSystem } from './SaveSystem';
 import { Rng } from './rng';
-import { dailySeed } from './DailyChallenge';
+import { dailyDateStr, dailySeed } from './DailyChallenge';
+import { weekKey, weeklySeed } from './WeeklyMode';
+import type { Difficulty } from '../config/Difficulty';
+import type { RunOrigin, ScoreRecord } from './RunRecords';
+
+export type LeaderboardType = 'level' | 'endless' | 'daily' | 'weekly' | 'practice' | 'history';
+
+type ActiveBoard = Exclude<LeaderboardType, 'practice' | 'history'>;
+
+function boardOrigin(type: ActiveBoard, levelIndex: number, difficulty: Difficulty, now: Date): RunOrigin {
+  if (type === 'level') return { kind: 'campaign', level: levelIndex + 1, difficulty };
+  if (type === 'daily') return { kind: 'daily', period: dailyDateStr(now) };
+  if (type === 'weekly') return { kind: 'weekly', period: weekKey(now) };
+  return { kind: 'endless' };
+}
+
+export function leaderboardRecord(save: SaveSystem, type: LeaderboardType, levelIndex = 0, difficulty: Difficulty = 'normal', now = new Date()): ScoreRecord | undefined {
+  if (type === 'history') return undefined;
+  if (type === 'practice') {
+    const profile = save.get();
+    return profile.lastPracticeKey ? profile.records[profile.lastPracticeKey] : undefined;
+  }
+  return save.getRecord(boardOrigin(type, levelIndex, difficulty, now));
+}
 
 export interface LeaderboardEntry {
   name: string;
@@ -25,80 +48,41 @@ const NPC_NAMES = [
  */
 export function getLeaderboard(
   save: SaveSystem,
-  type: 'level' | 'endless' | 'daily',
-  levelIndex = 0
+  type: LeaderboardType,
+  levelIndex = 0,
+  difficulty: Difficulty = 'normal',
+  now = new Date(),
 ): LeaderboardEntry[] {
-  const saveSystem = save.get();
-  let playerBest = 0;
-  let playerWave: number | undefined = undefined;
-
-  let seed = 0;
-  let baseTarget = 5000;
-  let baseWave = 20;
-
-  if (type === 'level') {
-    playerBest = saveSystem.levelHighScores[levelIndex + 1] ?? 0;
-    seed = (levelIndex + 1) * 7919; // LCG seed prime multiplier
-    // Base targets scale with level index
-    baseTarget = 2000 + levelIndex * 2500;
-  } else if (type === 'endless') {
-    playerBest = saveSystem.endlessHighScore;
-    playerWave = saveSystem.endlessMaxWave;
-    seed = 88319; // static endless seed
-    baseTarget = 25000;
-    baseWave = 35;
-  } else if (type === 'daily') {
-    // only show daily if it matches current daily challenge date
-    const today = new Date().toISOString().slice(0, 10);
-    if (saveSystem.dailyDate === today) {
-      playerBest = saveSystem.dailyHighScore;
-      playerWave = saveSystem.dailyMaxWave;
-    }
-    seed = dailySeed();
-    baseTarget = 30000;
-    baseWave = 42;
+  const standing = leaderboardRecord(save, type, levelIndex, difficulty, now);
+  const player: LeaderboardEntry[] = standing ? [{ name: 'YOU', score: standing.best.score, wave: type === 'level' ? undefined : standing.best.wave, isPlayer: true }] : [];
+  if (type === 'practice') return player;
+  if (type === 'history') {
+    const profile = save.get();
+    return [
+      { name: 'historical.endless', score: profile.endlessHighScore, isPlayer: true },
+      { name: 'historical.daily', score: profile.dailyHighScore, isPlayer: true },
+      { name: 'historical.campaign', score: Object.values(profile.levelHighScores).reduce((best, score) => Math.max(best, score), 0), isPlayer: true },
+      { name: 'historical.legacy', score: profile.records['0:legacy']?.best.score ?? 0, isPlayer: true },
+    ].filter(row => row.score > 0);
   }
 
+  const origin = boardOrigin(type, levelIndex, difficulty, now);
+  const seed = origin.kind === 'daily' ? dailySeed(origin.period)
+    : origin.kind === 'weekly' ? weeklySeed(origin.period)
+      : origin.kind === 'campaign' ? origin.level * 7919 : 88319;
+  const baseTarget = type === 'level' ? 2000 + levelIndex * 2500 : type === 'daily' ? 30000 : type === 'weekly' ? 27000 : 25000;
+  const baseWave = type === 'daily' ? 42 : type === 'weekly' ? 38 : 35;
   const rng = new Rng(seed);
-  const entries: LeaderboardEntry[] = [];
-
-  // 1. Generate 5 NPC entries
-  const usedNames = new Set<string>();
+  const entries: LeaderboardEntry[] = [...player];
+  const used = new Set<string>();
   for (let i = 0; i < 5; i++) {
-    // pick unique name
-    let nameIdx = rng.int(0, NPC_NAMES.length - 1);
-    let name = NPC_NAMES[nameIdx];
-    while (usedNames.has(name)) {
-      nameIdx = (nameIdx + 1) % NPC_NAMES.length;
-      name = NPC_NAMES[nameIdx];
-    }
-    usedNames.add(name);
-
-    // generate deterministic score with standard jitter
-    const scoreMult = 0.6 + rng.next() * 0.8; // 60% to 140% of base target
-    const score = Math.round(baseTarget * scoreMult);
-
-    let wave: number | undefined = undefined;
-    if (type !== 'level') {
-      const waveMult = 0.5 + rng.next() * 0.9;
-      wave = Math.max(1, Math.round(baseWave * waveMult));
-    }
-
+    let index = rng.int(0, NPC_NAMES.length);
+    while (used.has(NPC_NAMES[index])) index = (index + 1) % NPC_NAMES.length;
+    const name = NPC_NAMES[index];
+    used.add(name);
+    const score = Math.round(baseTarget * (0.6 + rng.next() * 0.8));
+    const wave = type === 'level' ? undefined : Math.max(1, Math.round(baseWave * (0.5 + rng.next() * 0.9)));
     entries.push({ name, score, wave, isPlayer: false });
   }
-
-  // 2. Add player's highscore entry (only if they have recorded a score)
-  if (playerBest > 0) {
-    entries.push({
-      name: 'YOU',
-      score: playerBest,
-      wave: playerWave,
-      isPlayer: true
-    });
-  }
-
-  // 3. Sort descending (score is the primary sorting key)
-  entries.sort((a, b) => b.score - a.score);
-
-  return entries;
+  return entries.sort((a, b) => b.score - a.score || (b.wave ?? 0) - (a.wave ?? 0));
 }

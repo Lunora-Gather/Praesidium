@@ -6,9 +6,12 @@ import { Renderer } from '../engine/Renderer';
 import { TalentTree, TALENTS } from '../game/Talents';
 import { t } from '../utils/i18n';
 import { cardColumns, layoutFor, UI } from './Layout';
+import type { FocusRegion } from './ControlFocus';
 
 export class TalentPanel {
-  private regions: Array<{ x: number; y: number; w: number; h: number; talentId: string }> = [];
+  private regions: Array<FocusRegion & { talentId: string }> = [];
+
+  get focusRegions(): readonly FocusRegion[] { return this.regions; }
 
   draw(r: Renderer, talents: TalentTree): void {
     this.regions = [];
@@ -29,15 +32,16 @@ export class TalentPanel {
     r.text(t('talent.title'), cx, titleY, titleGrad, layout.isCompact ? 23 : 26, 'center', 'bold', 'top', 'header');
 
     r.setShadow('rgba(251, 191, 36, 0.3)', 10, 0, 0);
-    r.text(`${t('talent.points')}: ${talents.talentPoints}`, cx, titleY + (layout.isCompact ? 30 : 34), UI.color.gold, layout.isCompact ? 13 : 16, 'center', 'bold', 'top', 'header');
+    r.text(`${t('talent.points')} ${talents.talentPoints}`, cx, titleY + (layout.isCompact ? 30 : 34), UI.color.gold, layout.isCompact ? 13 : 16, 'center', 'bold', 'top', 'header');
     r.clearShadow();
+    r.text(t('talent.nextRun'), cx, titleY + (layout.isCompact ? 47 : 55), UI.color.textMuted, 10, 'center');
 
     const gap = layout.gap;
     const cols = cardColumns(r, TALENTS.length, 190, 150, layout.safe, gap);
     const rows = Math.ceil(TALENTS.length / cols);
     const startY = titleY + (layout.isCompact ? 60 : 72);
-    const availableH = Math.max(240, r.height - startY - 34);
-    const cardH = Math.max(92, Math.min(layout.isCompact ? 104 : 112, Math.floor((availableH - gap * (rows - 1)) / rows)));
+    const availableH = r.height - startY - 52;
+    const cardH = Math.min(layout.isCompact ? 104 : 112, Math.floor((availableH - gap * (rows - 1)) / rows));
     const cardW = Math.floor((r.width - layout.safe * 2 - gap * (cols - 1)) / cols);
     const totalW = cols * cardW + (cols - 1) * gap;
     const startX = cx - totalW / 2;
@@ -84,7 +88,7 @@ export class TalentPanel {
       const pipGap = 4;
       const pipsW = def.maxRank * pipW + (def.maxRank - 1) * pipGap;
       let px = x + (cardW - pipsW) / 2;
-      const pipY = y + (cardH >= 104 ? 48 : 38);
+      const pipY = y + (cardH >= 104 ? 48 : cardH < 76 ? 25 : 36);
       for (let p = 0; p < def.maxRank; p++) {
         const active = p < rank;
         const pipColor = active ? (isMax ? UI.color.gold : UI.color.blue) : '#1e293b';
@@ -92,20 +96,26 @@ export class TalentPanel {
         px += pipW + pipGap;
       }
 
-      r.text(`${rank}/${def.maxRank}`, x + cardW / 2, pipY + 14, '#ffffff', 11, 'center', 'bold', 'top', 'header');
+      if (cardH >= 76) r.text(`${rank}/${def.maxRank}`, x + cardW / 2, pipY + 11, '#ffffff', 11, 'center', 'bold', 'top', 'header');
 
-      const hintY = y + cardH - 24;
+      const hintY = y + cardH - 18;
       if (isMax) {
         r.text(t('common.maxed'), x + cardW / 2, hintY, UI.color.gold, 10, 'center', 'bold', 'top', 'header');
       } else {
         r.text(t('talent.cost').replace('{cost}', String(def.costPerRank)), x + cardW / 2, hintY, canUp ? UI.color.gold : '#475569', 10, 'center', 'bold', 'top', 'header');
       }
 
-      if (canUp) this.regions.push({ x, y, w: cardW, h: cardH, talentId: def.id });
+      if (canUp) this.regions.push({ x, y, w: cardW, h: cardH, talentId: def.id, label: `${t(`talent.${def.id}.name`)}, ${rank}/${def.maxRank}, ${def.costPerRank} PT` });
     }
 
-    const closeY = Math.min(r.height - 20, startY + rows * (cardH + gap) + 4);
-    r.text(t('talent.close'), cx, closeY, UI.color.textDim, 12, 'center', 'bold');
+    const closeW = 132;
+    const closeH = 34;
+    const closeX = cx - closeW / 2;
+    const closeY = Math.min(r.height - closeH - 8, startY + rows * (cardH + gap));
+    const label = t('common.close');
+    r.roundRect(closeX, closeY, closeW, closeH, 8, '#1e293b', true, '#475569', 1);
+    r.text(label, cx, closeY + closeH / 2, UI.color.text, 12, 'center', 'bold', 'middle');
+    this.regions.push({ x: closeX, y: closeY, w: closeW, h: closeH, talentId: 'close', label });
   }
 
   hit(x: number, y: number): string | null {

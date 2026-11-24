@@ -17,7 +17,7 @@ A new player should understand the core loop without outside explanation:
 
 ## Test setup
 
-Use a fresh browser profile or clear localStorage so tutorial progress resets.
+Use a fresh browser profile for first-run measurement. For a tutorial-only reset, use Briefing → Replay tutorial; this does not clear the save slot or the diagnostic baseline.
 
 Recommended viewports:
 

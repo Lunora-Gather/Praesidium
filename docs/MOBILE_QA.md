@@ -6,6 +6,9 @@ Praesidium is playable on desktop first, but public release should still pass a 
 
 | Device class | Example viewport |
 | --- | --- |
+| Small phone portrait | 320 × 568 |
+| Large phone portrait | 390 × 844 |
+| Short phone landscape | 568 × 320 |
 | Small phone landscape | 640 × 360 |
 | Large phone landscape | 780 × 390 |
 | Small tablet | 1024 × 768 |
@@ -39,15 +42,19 @@ Praesidium is playable on desktop first, but public release should still pass a 
 
 - [ ] Selecting a placed tower opens the bottom drawer on phone-sized screens.
 - [ ] Upgrade and Sell buttons are large enough to tap.
+- [ ] Target priority can be changed from the tower drawer.
 - [ ] Bottom drawer does not cover the entire battlefield.
 - [ ] Tapping outside still allows returning to placement/inspection flow.
 
 ### Placement flow
 
-- [ ] Selected tower hint remains visible above the shop.
+- [ ] Selected tower hint remains visible above the battlefield.
 - [ ] Cancel Placement button is easy to tap.
 - [ ] Invalid placement feedback is visible.
-- [ ] Map can still be read while placing towers.
+- [ ] All buildable tiles fit between the HUD, shop, and spell controls.
+- [ ] A cancelled touch gesture leaves the board unchanged.
+- [ ] The first wave stays idle until the player sends it or enables Auto.
+- [ ] Intel, talents, settings, and stats open from the pause screen.
 
 ### End screens
 
@@ -55,6 +62,12 @@ Praesidium is playable on desktop first, but public release should still pass a 
 - [ ] Defeat screen fits, including report and retry/menu actions.
 - [ ] Seed copy button remains visible in challenge/endless defeats.
 - [ ] Record badges do not overflow.
+
+### Intel and statistics
+
+- [ ] Intel shows all six towers and seven enemies across its pages.
+- [ ] Previous and Next stop at the first and last pages.
+- [ ] Product Health keeps the export and back buttons below the risk list.
 
 ## Current mobile polish status
 

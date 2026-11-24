@@ -1,6 +1,7 @@
 // Full-screen overlays: main menu, pause, victory, defeat.
 // Win/loss screens include a compact battle report so each run ends with useful feedback.
 
+import type { FocusRegion } from './ControlFocus';
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
 import { dailyDateStr } from '../utils/DailyChallenge';
@@ -10,7 +11,7 @@ import { weeklyMode } from '../utils/WeeklyMode';
 import { DailyMissionPanel } from './DailyMissionPanel';
 import { drawGlassPanel, layoutFor, UI } from './Layout';
 
-export type MenuClickAction = 'start' | 'endless' | 'challenge' | 'daily' | 'resume' | 'restart' | 'next' | 'levels' | 'menu' | 'settings' | 'stats' | null;
+export type MenuClickAction = 'start' | 'continue' | 'endless' | 'challenge' | 'share' | 'daily' | 'weekly' | 'resume' | 'restart' | 'next' | 'levels' | 'menu' | 'settings' | 'stats' | 'codex' | 'talent' | 'brief' | null;
 
 export interface ScreenStats {
   stars?: number;
@@ -30,8 +31,11 @@ export interface ScreenStats {
   isStarUpgrade?: boolean;
   isNewEndlessRecord?: boolean;
   isNewDailyRecord?: boolean;
+  isNewModeRecord?: boolean;
   missionCredits?: number;
   weeklyCredits?: number;
+  missionDate?: string;
+  missionEligible?: boolean;
 }
 
 interface ReportRow {
@@ -47,10 +51,12 @@ interface SummaryBadge {
 }
 
 export class Screens {
-  private regions: Array<{ x: number; y: number; w: number; h: number; action: MenuClickAction }> = [];
+  private regions: Array<FocusRegion & { action: MenuClickAction }> = [];
+
+  get focusRegions(): readonly FocusRegion[] { return this.regions; }
   private readonly dailyMissionPanel = new DailyMissionPanel();
 
-  draw(r: Renderer, kind: 'menu' | 'paused' | 'won' | 'lost', score = 0, seed = 0, stats?: ScreenStats): void {
+  draw(r: Renderer, kind: 'menu' | 'paused' | 'won' | 'lost', score = 0, seed = 0, stats?: ScreenStats, canContinue = false): void {
     this.regions = [];
     const layout = layoutFor(r);
 
@@ -62,7 +68,7 @@ export class Screens {
     r.rect(0, 0, r.width, r.height, bgGrad);
 
     if (kind === 'menu') {
-      this.drawReleaseMenu(r, layout.isCompact);
+      this.drawReleaseMenu(r, layout.isCompact, canContinue);
       return;
     }
 
@@ -110,42 +116,49 @@ export class Screens {
     r.text(t(titleKey), cx, cardY + 22, titleGrad, compact ? 31 : 36, 'center', 'bold', 'top', 'header');
     r.clearShadow();
 
-    if (kind === 'paused') r.text(t('hud.paused_title'), cx, cardY + 75, UI.color.textMuted, 13, 'center');
-    if (kind === 'won') {
-      this.drawVictoryReport(r, cardX, cardY, cardW, score, stats, compact);
-      this.dailyMissionPanel.drawProgress(r, { score, ...(stats ?? {}) });
-    }
-    if (kind === 'lost') {
-      this.drawDefeatReport(r, cardX, cardY, cardW, score, seed, stats, compact);
-      this.dailyMissionPanel.drawProgress(r, { score, ...(stats ?? {}) });
-    }
-
     const btnW = cardW - 48;
     const btnH = compact ? 34 : 38;
     const btnX = cx - btnW / 2;
-    let startButtonY = cardY + (isEndScreen ? (compact ? cardH - 102 : 315) : 170);
-    if (kind === 'lost' && seed !== 0) startButtonY = cardY + (compact ? cardH - 84 : 335);
 
     if (kind === 'paused') {
-      this.drawButton(r, btnX, startButtonY, btnW, btnH, t('menu.resume'), 'resume', UI.color.blue, '#1d4ed8');
-      this.drawButton(r, btnX, startButtonY + btnH + 10, btnW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
+      r.text(t('hud.paused_title'), cx, cardY + 75, UI.color.textMuted, 13, 'center');
+      const firstY = cardY + 104;
+      const halfW = (btnW - 8) / 2;
+      const secondX = btnX + halfW + 8;
+      const settingsY = firstY + btnH + 10;
+      const referenceY = settingsY + btnH + 8;
+      this.drawButton(r, btnX, firstY, halfW, btnH, t('menu.resume'), 'resume', UI.color.blue, '#1d4ed8', 13);
+      this.drawButton(r, secondX, firstY, halfW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
+      this.drawUtilityButton(r, btnX, settingsY, halfW, btnH, '⚙', t('menu.settings'), 'settings');
+      this.drawUtilityButton(r, secondX, settingsY, halfW, btnH, '▣', t('hud.stats'), 'stats');
+      this.drawUtilityButton(r, btnX, referenceY, halfW, btnH, 'ⓘ', t('hud.intel'), 'codex');
+      this.drawUtilityButton(r, secondX, referenceY, halfW, btnH, '✦', t('hud.talent'), 'talent');
       return;
     }
 
+    const footer = cardY + cardH - 16 - btnH;
     if (kind === 'won') {
+      const startButtonY = footer - btnH - 8;
+      this.drawVictoryReport(r, cardX, cardY, cardW, score, stats, compact, startButtonY - 10);
+      this.dailyMissionPanel.drawProgress(r, { score, ...(stats ?? {}) });
       const hasNext = !!stats?.hasNextLevel;
       this.drawButton(r, btnX, startButtonY, btnW, btnH, hasNext ? t('summary.nextLevel') : t('menu.levels'), hasNext ? 'next' : 'levels', UI.color.green, '#047857');
       const halfW = (btnW - 10) / 2;
-      this.drawButton(r, btnX, startButtonY + btnH + 10, halfW, btnH, t('summary.retryForStars'), 'restart', '#475569', '#334155', compact ? 10.5 : 12, false);
-      this.drawButton(r, btnX + halfW + 10, startButtonY + btnH + 10, halfW, btnH, t('menu.levels'), 'levels', '#475569', '#334155', compact ? 10.5 : 12, false);
+      this.drawButton(r, btnX, footer, halfW, btnH, t('summary.retryForStars'), 'restart', '#475569', '#334155', compact ? 10.5 : 12, false);
+      this.drawButton(r, btnX + halfW + 10, footer, halfW, btnH, t(hasNext ? 'menu.levels' : 'hud.menu'), hasNext ? 'levels' : 'menu', '#475569', '#334155', compact ? 10.5 : 12, false);
       return;
     }
 
-    this.drawButton(r, btnX, startButtonY, btnW, btnH, t('menu.retry'), 'restart', UI.color.blue, '#1d4ed8');
-    this.drawButton(r, btnX, startButtonY + btnH + 10, btnW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
+    this.drawDefeatReport(r, cardX, cardY, cardW, score, stats, compact, footer - 10);
+    this.dailyMissionPanel.drawProgress(r, { score, ...(stats ?? {}) });
+    const gap = 8;
+    const actionW = seed ? (btnW - 2 * gap) / 3 : (btnW - gap) / 2;
+    this.drawButton(r, btnX, footer, actionW, btnH, t('menu.retry'), 'restart', UI.color.blue, '#1d4ed8');
+    this.drawButton(r, btnX + actionW + gap, footer, actionW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
+    if (seed) this.drawButton(r, btnX + 2 * (actionW + gap), footer, actionW, btnH, t('share.open'), 'share', '#7e22ce', '#581c87', 12);
   }
 
-  private drawReleaseMenu(r: Renderer, compact: boolean): void {
+  private drawReleaseMenu(r: Renderer, compact: boolean, canContinue: boolean): void {
     this.drawMenuBackdrop(r);
 
     const layout = layoutFor(r);
@@ -165,12 +178,12 @@ export class Screens {
     }
 
     const dockW = Math.min(r.width - safe * 2, compact || isShort ? 560 : 820);
-    const dockH = compact || isShort ? 156 : 174;
+    const dockH = compact || isShort ? (dockW >= 500 ? 156 : 201) : 174;
     const dockX = cx - dockW / 2;
     const dockY = isShort
       ? Math.max(112, r.height * 0.30)
       : Math.min(r.height - dockH - safe, stageY + stageH + 18);
-    this.drawModeDock(r, dockX, dockY, dockW, dockH, compact || isShort);
+    this.drawModeDock(r, dockX, dockY, dockW, dockH, compact || isShort, canContinue);
   }
 
   private drawMenuBackdrop(r: Renderer): void {
@@ -216,16 +229,16 @@ export class Screens {
     r.text('PRAESIDIUM', x, y, titleGrad, titleSize, align, 'bold', 'top', 'header');
     r.text(t('app.tagline'), x, y + titleSize + (isShort ? 5 : 8), '#dbeafe', taglineSize, align, 'bold', 'top');
     if (!isShort) {
-      r.text('10 zones · Daily ops · Weekly modifiers', x, y + titleSize + 28, UI.color.textDim, compact ? 9.5 : 11, align, 'bold', 'top', 'header');
+      r.text(t('menu.features'), x, y + titleSize + 28, UI.color.textDim, compact ? 9.5 : 11, align, 'bold', 'top', 'header');
     }
 
     const railW = Math.min(isShort ? 320 : 390, r.width - 48);
     const railX = x - railW / 2;
     const railY = y + titleSize + (isShort ? 31 : 58);
     const items: Array<[string, string, string]> = [
-      ['01', 'Campaign', '#60a5fa'],
-      ['∞', 'Endless', '#a78bfa'],
-      ['24H', 'Daily', '#2dd4bf'],
+      ['01', t('stats.mode.campaign'), '#60a5fa'],
+      ['∞', t('stats.mode.endless'), '#a78bfa'],
+      ['24H', t('stats.mode.daily'), '#2dd4bf'],
     ];
     const itemW = (railW - 12) / 3;
     for (let i = 0; i < items.length; i++) {
@@ -237,7 +250,7 @@ export class Screens {
     }
   }
 
-  private drawModeDock(r: Renderer, x: number, y: number, w: number, h: number, compact: boolean): void {
+  private drawModeDock(r: Renderer, x: number, y: number, w: number, h: number, compact: boolean, canContinue: boolean): void {
     const gap = compact ? 7 : 9;
     const primaryH = compact ? 54 : 64;
     const tileH = compact ? 44 : 50;
@@ -245,27 +258,35 @@ export class Screens {
 
     this.drawCutPanel(r, x - 18, y - 14, w + 36, h + 20, 16, 'rgba(2, 6, 23, 0.36)', 'rgba(103, 232, 249, 0.10)');
 
-    this.drawPrimaryButton(r, x, y, w, primaryH, t('menu.start'), 'start');
+    const startWidth = canContinue ? (w - gap) / 2 : w;
+    if (canContinue) {
+      this.drawButton(r, x, y, startWidth, primaryH, t('menu.start'), 'start', '#334155', '#1e293b');
+      this.drawButton(r, x + startWidth + gap, y, startWidth, primaryH, t('menu.resume'), 'continue', '#2563eb', '#0e7490');
+    } else {
+      this.drawPrimaryButton(r, x, y, startWidth, primaryH, t('menu.start'), 'start');
+    }
     y += primaryH + gap + 2;
 
-    const cols = w >= 440 ? 3 : 1;
-    const tileW = cols === 3 ? (w - gap * 2) / 3 : w;
+    const cols = w >= 500 ? 4 : 2;
+    const tileW = (w - gap * (cols - 1)) / cols;
     const modes: Array<[string, string, string, string, MenuClickAction]> = [
-      ['∞', t('menu.endless'), 'Score climb', '#a78bfa', 'endless'],
-      ['◆', t('menu.daily'), 'Fresh route', '#2dd4bf', 'daily'],
-      ['#', t('menu.challenge'), 'Seed run', '#f0abfc', 'challenge'],
+      ['∞', t('menu.endless'), t('menu.endlessNote'), '#a78bfa', 'endless'],
+      ['◆', t('menu.daily'), t('menu.dailyNote'), '#2dd4bf', 'daily'],
+      ['✦', t('menu.weekly'), t('menu.weeklyNote'), '#93c5fd', 'weekly'],
+      ['#', t('menu.challenge'), t('menu.practiceNote'), '#f0abfc', 'challenge'],
     ];
     for (let i = 0; i < modes.length; i++) {
-      const col = cols === 3 ? i : 0;
-      const row = cols === 3 ? 0 : i;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
       const [icon, label, sub, color, action] = modes[i];
       this.drawModeTile(r, x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH, icon, label, sub, color, action, compact);
     }
-    y += cols === 3 ? tileH + gap : modes.length * (tileH + gap);
+    y += Math.ceil(modes.length / cols) * (tileH + gap);
 
-    const utilW = (w - gap) / 2;
+    const utilW = (w - gap * 2) / 3;
     this.drawUtilityButton(r, x, y, utilW, utilH, '⚙', t('menu.settings'), 'settings');
     this.drawUtilityButton(r, x + utilW + gap, y, utilW, utilH, '▣', t('stats.title'), 'stats');
+    this.drawUtilityButton(r, x + (utilW + gap) * 2, y, utilW, utilH, 'ⓘ', t('ops.short'), 'brief');
 
     if (!compact && r.height >= 720) {
       const hintY = y + utilH + 18;
@@ -276,11 +297,11 @@ export class Screens {
   private drawOpsBrief(r: Renderer, x: number, y: number, w: number): void {
     const mission = dailyMissions(dailyDateStr())[0];
     const week = weeklyMode();
-    r.text("TODAY'S OPS", x, y, '#67e8f9', 10, 'left', 'bold', 'top', 'header');
+    r.text(t('ops.today'), x, y, '#67e8f9', 10, 'left', 'bold', 'top', 'header');
     r.roundRect(x, y + 22, w, 1, 1, 'rgba(103, 232, 249, 0.36)', true);
-    r.text(mission.title, x, y + 36, '#e2e8f0', 12, 'left', 'bold', 'top', 'header');
-    r.text(`Daily +${mission.reward}  /  Weekly +${week.reward}`, x, y + 55, UI.color.textMuted, 9.5, 'left', 'bold', 'top');
-    r.text(this.truncate(week.title, 38), x, y + 73, '#c4b5fd', 10, 'left', 'bold', 'top', 'header');
+    r.text(t(`mission.${mission.kind}.title`), x, y + 36, '#e2e8f0', 12, 'left', 'bold', 'top', 'header');
+    r.text(`${t('stats.mode.daily')} +${mission.reward}  /  ${t('stats.mode.weekly')} +${week.reward}`, x, y + 55, UI.color.textMuted, 9.5, 'left', 'bold', 'top');
+    r.text(this.truncate(t(`weekly.${week.mode}`), 38), x, y + 73, '#c4b5fd', 10, 'left', 'bold', 'top', 'header');
   }
 
   private drawCommandStage(r: Renderer, x: number, y: number, w: number, h: number): void {
@@ -370,7 +391,7 @@ export class Screens {
     r.text('▶', x + 32, y + h / 2, '#ffffff', h >= 62 ? 18 : 15, 'center', 'bold', 'middle', 'header');
     r.text(label, x + 62, y + h / 2 - 1, '#ffffff', h >= 62 ? 18 : 15, 'left', 'bold', 'middle', 'header');
     r.text('CAMPAIGN', x + w - 26, y + h / 2, 'rgba(255,255,255,0.74)', h >= 62 ? 10 : 8.5, 'right', 'bold', 'middle', 'header');
-    this.regions.push({ x, y, w, h, action });
+    this.regions.push({ x, y, w, h, action, label });
   }
 
   private drawModeTile(r: Renderer, x: number, y: number, w: number, h: number, icon: string, label: string, sub: string, color: string, action: MenuClickAction, compact: boolean): void {
@@ -388,17 +409,17 @@ export class Screens {
     r.text(icon, iconX, y + h / 2, color, compact ? 13 : 15, 'center', 'bold', 'middle', 'header');
     r.text(label, x + (compact ? 42 : 48), y + (compact ? 10 : 11), '#f8fafc', compact ? 11 : 12.5, 'left', 'bold', 'top', 'header');
     r.text(sub, x + (compact ? 42 : 48), y + (compact ? 27 : 32), UI.color.textMuted, compact ? 8 : 9, 'left', 'bold', 'top');
-    this.regions.push({ x, y, w, h, action });
+    this.regions.push({ x, y, w, h, action, label });
   }
 
   private drawUtilityButton(r: Renderer, x: number, y: number, w: number, h: number, icon: string, label: string, action: MenuClickAction): void {
     this.drawCutPanel(r, x, y, w, h, 8, 'rgba(15, 23, 42, 0.42)', 'rgba(148, 163, 184, 0.14)');
     r.text(icon, x + 22, y + h / 2, '#cbd5e1', 12, 'center', 'bold', 'middle', 'header');
     r.text(label, x + 42, y + h / 2, '#cbd5e1', 11, 'left', 'bold', 'middle', 'header');
-    this.regions.push({ x, y, w, h, action });
+    this.regions.push({ x, y, w, h, action, label });
   }
 
-  private drawVictoryReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, stats: ScreenStats | undefined, compact: boolean): void {
+  private drawVictoryReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, stats: ScreenStats | undefined, compact: boolean, bottom: number): void {
     const cx = cardX + cardW / 2;
     const starCount = stats?.stars ?? 0;
     const starY = cardY + (compact ? 58 : 70);
@@ -412,22 +433,18 @@ export class Screens {
     r.clearShadow();
     r.text(this.victoryAdvice(starCount), cx, cardY + (compact ? 94 : 112), UI.color.textMuted, compact ? 10.5 : 12, 'center', 'bold', 'top');
     this.drawBadges(r, cx, cardY + (compact ? 112 : 130), this.buildBadges(stats), compact);
-    this.drawReportPanel(r, cardX + 24, cardY + (compact ? 134 : 152), cardW - 48, compact ? 116 : 136, UI.color.green, this.buildRows(score, stats));
+    const y = cardY + (compact ? 134 : 152);
+    this.drawReportPanel(r, cardX + 24, y, cardW - 48, bottom - y, UI.color.green, this.buildRows(score, stats));
   }
 
-  private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, seed: number, stats: ScreenStats | undefined, compact: boolean): void {
+  private drawDefeatReport(r: Renderer, cardX: number, cardY: number, cardW: number, score: number, stats: ScreenStats | undefined, compact: boolean, bottom: number): void {
     const cx = cardX + cardW / 2;
     if (stats?.wave !== undefined) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + (compact ? 66 : 76), '#f87171', compact ? 12 : 14, 'center', 'bold', 'top', 'header');
     const advice = stats?.advice ?? buildDefeatAdviceFromSummary(stats ?? {});
     r.text(advice, cx, cardY + (compact ? 90 : 100), UI.color.textMuted, compact ? 10.5 : 12, 'center', 'bold', 'top');
     this.drawBadges(r, cx, cardY + (compact ? 108 : 118), this.buildBadges(stats), compact);
-    this.drawReportPanel(r, cardX + 24, cardY + (compact ? 130 : 140), cardW - 48, compact ? 116 : 136, UI.color.red, this.buildRows(score, stats));
-    if (seed !== 0) {
-      const seedHex = seed.toString(16).toUpperCase().padStart(8, '0');
-      const seedY = cardY + (compact ? 254 : 286);
-      r.text(`${t('menu.endless')} SEED: ${seedHex}`, cx, seedY, '#c084fc', compact ? 10.5 : 12, 'center', 'bold', 'top', 'header');
-      this.drawButton(r, cx - 90, seedY + 20, 180, compact ? 26 : 28, t('share.copy'), 'challenge', '#a855f7', '#7e22ce', compact ? 10 : 11);
-    }
+    const y = cardY + (compact ? 130 : 140);
+    this.drawReportPanel(r, cardX + 24, y, cardW - 48, bottom - y, UI.color.red, this.buildRows(score, stats));
   }
 
   private buildBadges(stats?: ScreenStats): SummaryBadge[] {
@@ -437,6 +454,7 @@ export class Screens {
     if (stats?.isStarUpgrade) badges.push({ label: t('summary.starUpgrade'), color: UI.color.gold });
     if (stats?.isNewEndlessRecord) badges.push({ label: t('summary.endlessRecord'), color: '#a78bfa' });
     if (stats?.isNewDailyRecord) badges.push({ label: t('summary.dailyRecord'), color: '#14b8a6' });
+    if (stats?.isNewModeRecord) badges.push({ label: t('summary.modeRecord'), color: '#a78bfa' });
     if ((stats?.missionCredits ?? 0) > 0) badges.push({ label: t('summary.dailyCredits').replace('{credits}', `${stats?.missionCredits}`), color: '#2dd4bf' });
     if ((stats?.weeklyCredits ?? 0) > 0) badges.push({ label: t('summary.weeklyCredits').replace('{credits}', `${stats?.weeklyCredits}`), color: '#c084fc' });
     return badges;
@@ -476,6 +494,7 @@ export class Screens {
   }
 
   private drawReportPanel(r: Renderer, x: number, y: number, w: number, h: number, accent: string, rows: ReportRow[]): void {
+    if (h < 54) return;
     r.roundRect(x, y, w, h, 12, 'rgba(10, 15, 30, 0.66)', true, 'rgba(255, 255, 255, 0.05)', 1);
     r.roundRect(x, y, 4, h, 2, accent, true);
     r.text(t('summary.title'), x + 14, y + 10, '#e2e8f0', 11, 'left', 'bold', 'top', 'header');
@@ -510,8 +529,8 @@ export class Screens {
       { offset: 1, color: colorB }
     ]);
     r.roundRect(x, y, w, h, 9, grad, true, 'rgba(255, 255, 255, 0.12)', 1);
-    r.text(label, x + w / 2, y + h / 2, strong ? '#ffffff' : '#cbd5e1', fontSize, 'center', 'bold', 'middle');
-    this.regions.push({ x, y, w, h, action });
+    r.text(label, x + w / 2, y + h / 2, strong ? '#ffffff' : '#cbd5e1', fontSize, 'center', 'bold', 'middle', 'ui', w - 12);
+    this.regions.push({ x, y, w, h, action, label });
   }
 
   private victoryAdvice(stars: number): string {

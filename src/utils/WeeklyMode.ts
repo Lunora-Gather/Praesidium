@@ -37,6 +37,16 @@ export function weekKey(date = new Date()): string {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
+export function isWeekKey(key: unknown): key is string {
+  return typeof key === 'string' && /^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/.test(key);
+}
+
+export const WEEKLY_REWARD_WAVE = 8;
+
+export function weeklySeed(key: string): number {
+  return mix(Math.imul(Number(key.replace(/\D/g, '')), 1597334677)) || 1;
+}
+
 export function weeklyMode(key = weekKey()): WeeklyMode {
   const numeric = parseInt(key.replace(/\D/g, ''), 10) || 202601;
   const item = MODES[mix(numeric * 2246822519) % MODES.length];

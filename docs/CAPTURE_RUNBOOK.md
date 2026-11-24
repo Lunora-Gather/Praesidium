@@ -24,7 +24,7 @@ Produce a small public-facing media set for README, portal cards, release notes,
 ## Capture order
 
 1. Open the deployed Pages build.
-2. Hard refresh the page.
+2. If an update is pending, save the run, close all game tabs, and reopen the build. Verify the expected entry asset before capturing.
 3. Capture the main menu first so deployment freshness is visible.
 4. Capture Level Select after unlocking enough content or using a test profile.
 5. Capture normal combat on a mid-campaign map.

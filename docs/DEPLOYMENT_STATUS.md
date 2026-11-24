@@ -20,17 +20,13 @@ Before publishing, it runs:
 
 ```bash
 npm ci
+npm audit --audit-level=high
 npm run verify
+npx playwright install --with-deps chromium webkit
+npm run verify:browser
 ```
 
-`npm run verify` includes:
-
-1. TypeScript typecheck.
-2. Runtime selftest.
-3. Save/restore regression test.
-4. Balance simulation.
-5. Release audit.
-6. Production build.
+`npm run verify` builds the production bundle and checks type safety, gameplay, save/restore, challenge rules, onboarding, balance, performance and release metadata. The browser gate tests both Chromium and WebKit against production bundles.
 
 Only after that does the workflow publish `./dist` to GitHub Pages.
 
@@ -38,11 +34,12 @@ Only after that does the workflow publish `./dist` to GitHub Pages.
 
 A build can be treated as deployed only when:
 
-- [ ] The latest GitHub Actions deploy workflow finished successfully.
-- [ ] The GitHub Pages URL opens the latest build.
-- [ ] Hard refresh shows the latest version.
-- [ ] Browser smoke test from `docs/FINAL_RELEASE_QA.md` passes.
-- [ ] Mobile smoke test from `docs/MOBILE_QA.md` passes.
+- [ ] The exact source commit passed the Actions deploy workflow and the resulting `gh-pages` revision was built by Pages.
+- [ ] The public HTML carries the expected `praesidium-release` version. The service worker and its listed resources match the same published release, not just HTTP 200.
+- [ ] A browser with fresh storage can start a battle, save it and reload it from the public URL.
+- [ ] Record physical mobile, VoiceOver and outside playtest as separate evidence; never infer them from the desktop smoke.
+
+Run `npm run verify:pages` after the public URL has propagated. For commit-to-CDN comparison, extract the exact successful `gh-pages` build tree into a directory and set `TEST_PAGES_BUILD_DIR` to that directory before running the command. The checker verifies every offline resource digest, then starts, saves and reloads a battle in fresh Chromium and WebKit contexts.
 
 ## Pages URL
 
@@ -56,7 +53,7 @@ https://lunora-gather.github.io/Praesidium/
 2. Confirm the workflow finished successfully.
 3. Confirm the `gh-pages` branch contains the latest generated `dist` output.
 4. Wait a short time for GitHub Pages cache propagation.
-5. Re-open the page in a private/incognito window.
+5. Re-open the page in a private/incognito window. For a normal update, save first and close all open Praesidium tabs instead of clearing site data.
 
 ## Final release decision
 
