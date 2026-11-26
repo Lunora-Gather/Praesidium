@@ -6,6 +6,7 @@ import { chromium, webkit, type Page } from 'playwright';
 import { build } from 'vite';
 import { version as packageVersion } from '../package.json';
 import { serveBuild } from './browser-server';
+import { observeWorkerUpdates } from './worker-update-observer';
 
 const root = await mkdtemp(join(tmpdir(), 'praesidium-offline-'));
 const buildRelease = async (version: string): Promise<string> => {
@@ -25,7 +26,6 @@ const buildRelease = async (version: string): Promise<string> => {
 const waitRelease = (page: Page, value: string) => page.waitForFunction(value =>
   document.documentElement.dataset.testRelease === value && Boolean(document.querySelector('#game-controls button')), value,
   { timeout: 7000 });
-const updateWorker = (page: Page) => page.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update().catch(() => undefined); });
 const engines = { chromium, webkit };
 try {
   const earlier = await buildRelease('A');
@@ -47,10 +47,11 @@ try {
         await running.evaluate(() => caches.open('other-project'));
         await running.getByRole('button', { name: 'Endless Mode', exact: true }).press('Enter');
         await running.getByRole('button', { name: /^Battlefield, column/ }).waitFor();
+        const updates = await observeWorkerUpdates(context, app.url);
 
         // A healthy response to HTML with a missing module must not replace the installed release.
         app.serve(later, file => file === latestModule ? 503 : undefined);
-        await updateWorker(running);
+        await updates.waitFor(await updates.update(), 'redundant');
         const probe = await context.newPage();
         await probe.goto(app.url);
         await waitRelease(probe, 'A');
@@ -59,22 +60,21 @@ try {
 
         // Even an OK response must contain the bytes declared by this build.
         app.serve(later, file => file === latestModule ? 200 : undefined);
-        await updateWorker(running);
+        await updates.waitFor(await updates.update(), 'redundant');
         const invalid = await context.newPage();
         await invalid.goto(app.url);
         await waitRelease(invalid, 'A');
         await invalid.close();
 
         app.serve(later);
-        await updateWorker(running);
-        await running.waitForFunction(async () => Boolean((await navigator.serviceWorker.getRegistration())?.waiting));
+        const upgrade = await updates.update();
+        await updates.waitFor(upgrade, 'installed');
         assert.equal(await running.evaluate(() => document.documentElement.dataset.testRelease), 'A', 'a battle must not be reloaded to activate the update');
         await running.close();
+        await updates.waitFor(upgrade, 'activated');
 
         const relaunched = await context.newPage();
         await relaunched.goto(app.url);
-        await relaunched.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration())?.waiting);
-        await relaunched.reload();
         await waitRelease(relaunched, 'B');
         app.serve(later, () => 503);
         await relaunched.reload();
@@ -84,15 +84,16 @@ try {
 
         // A compatible rollback may change the shell, never the authoritative save.
         app.serve(earlier);
-        await updateWorker(relaunched);
-        await relaunched.waitForFunction(async () => Boolean((await navigator.serviceWorker.getRegistration())?.waiting));
+        const downgrade = await updates.update();
+        await updates.waitFor(downgrade, 'installed');
         await relaunched.close();
+        await updates.waitFor(downgrade, 'activated');
         const rollback = await context.newPage();
         await rollback.goto(app.url);
-        await rollback.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration())?.waiting);
-        await rollback.reload();
         await waitRelease(rollback, 'A');
-        await rollback.getByRole('button', { name: 'Resume', exact: true }).waitFor();
+        await rollback.getByRole('button', { name: 'Resume', exact: true }).press('Enter');
+        await rollback.getByRole('button', { name: 'Resume here', exact: true }).press('Enter');
+        await rollback.getByRole('button', { name: /^Battlefield, column/ }).waitFor();
         console.log(`PASS ${name}: staged release rejects incomplete and mismatched assets, preserves live battle and other caches, starts offline and rolls back to a compatible build with checkpoint`);
         await context.close();
       } finally { await browser.close(); }
