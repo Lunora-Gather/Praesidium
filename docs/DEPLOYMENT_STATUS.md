@@ -2,6 +2,18 @@
 
 This guide explains how to verify that Praesidium is actually deployed and release-ready.
 
+## Verified production release
+
+Praesidium 1.1.0 is live at [the game URL](https://lunora-gather.github.io/Praesidium/).
+The [source workflow](https://github.com/Lunora-Gather/Praesidium/actions/runs/45503796328)
+published `0e54906`. The [Pages build](https://github.com/Lunora-Gather/Praesidium/actions/runs/45504099547)
+deployed the generated tree `85c14d1`.
+
+On 2026-11-26 the public HTML, service worker, and all three assets in the offline
+manifest matched that tree byte for byte. The service worker reported revision
+`fcf0d2cd350eaa99`. Fresh Chromium and WebKit sessions each started an endless
+run, saved wave 1 to IndexedDB, and resumed wave 1 after reloading the public URL.
+
 ## Why combined status may be empty
 
 GitHub's combined commit status can be empty when the repository uses GitHub Actions workflow runs instead of legacy commit status contexts. In that case, `statuses: []` does not necessarily mean failure; it only means no classic status contexts were attached to the commit.

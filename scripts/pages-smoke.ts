@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { chromium, webkit } from 'playwright';
+import { setTimeout as delay } from 'node:timers/promises';
+import { chromium, webkit, type Page } from 'playwright';
 import { version } from '../package.json';
 import { serveBuild } from './browser-server';
 
@@ -28,6 +29,26 @@ async function fetchAsset(url: URL, mime: RegExp): Promise<Buffer> {
 
 async function comparePublished(path: string, bytes: Buffer): Promise<void> {
   if (reference) assert.equal(sha256(bytes), sha256(await readFile(join(reference, path))), `${path} differs from the deployed Pages commit`);
+}
+
+async function waitForSavedWave(page: Page, wave: number): Promise<void> {
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    const savedWave = await page.evaluate(() => new Promise<number | null>((resolve, reject) => {
+      const open = indexedDB.open('praesidium-progress');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const db = open.result;
+        const entry = db.transaction('state').objectStore('state').get('checkpoint');
+        db.close();
+        entry.onsuccess = () => resolve(entry.result?.snapshot?.waves?.current ?? null);
+        entry.onerror = () => reject(entry.error);
+      };
+    }));
+    if (savedWave === wave) return;
+    await delay(100);
+  }
+  assert.fail(`Wave ${wave} did not reach the saved checkpoint`);
 }
 
 try {
@@ -66,16 +87,7 @@ try {
       await page.waitForFunction(() => navigator.serviceWorker.controller?.state === 'activated');
       await page.getByRole('button', { name: 'Endless Mode', exact: true }).press('Enter');
       await page.getByRole('button', { name: 'Send Wave', exact: true }).press('Enter');
-      await page.waitForFunction(() => new Promise<boolean>(resolve => {
-        const open = indexedDB.open('praesidium-progress');
-        open.onerror = () => resolve(false);
-        open.onsuccess = () => {
-          const db = open.result;
-          const entry = db.transaction('state').objectStore('state').get('checkpoint');
-          entry.onsuccess = () => { db.close(); resolve(entry.result?.snapshot?.waves?.current === 1); };
-          entry.onerror = () => { db.close(); resolve(false); };
-        };
-      }));
+      await waitForSavedWave(page, 1);
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.getByRole('button', { name: /^Battlefield, column/ }).waitFor();
       assert.match(await page.locator('#battle-status').textContent() ?? '', /wave 1\b/i, 'Battle should reload at the saved wave');
