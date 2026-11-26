@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium, webkit } from 'playwright';
 import { serveBuild } from './browser-server';
+import { observeWorkerUpdates } from './worker-update-observer';
 
 const legacy = process.env.TEST_LEGACY_BUILD_DIR;
 assert(legacy, 'Set TEST_LEGACY_BUILD_DIR to a production build of the currently published revision');
@@ -19,9 +20,10 @@ try {
       await oldPage.goto(app.url);
       await oldPage.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
       await oldPage.evaluate(() => localStorage.setItem('praesidium:save', JSON.stringify({ version: 1, maxLevelReached: 2, levelStars: { 1: 2 } })));
+      const updates = await observeWorkerUpdates(context, app.url);
       app.serve(candidate);
-      await oldPage.evaluate(async () => { await (await navigator.serviceWorker.getRegistration())?.update(); });
-      await oldPage.waitForFunction(async () => Boolean((await navigator.serviceWorker.getRegistration())?.waiting));
+      const upgrade = await updates.update();
+      await updates.waitFor(upgrade, 'installed');
       const preview = await context.newPage();
       await preview.goto(app.url);
       await preview.getByRole('button', { name: /finish updating/i }).waitFor({ timeout: 6000 });
@@ -47,11 +49,10 @@ try {
       await oldPage.evaluate(() => localStorage.setItem('praesidium:save', JSON.stringify({ version: 1, maxLevelReached: 4, levelStars: { 1: 2, 2: 3, 3: 1 } })));
       await preview.close();
       await oldPage.close();
+      await updates.waitFor(upgrade, 'activated');
 
       const current = await context.newPage();
       await current.goto(app.url);
-      await current.waitForFunction(async () => !(await navigator.serviceWorker.getRegistration())?.waiting);
-      await current.reload();
       await current.getByRole('button', { name: 'Settings', exact: true }).press('Enter');
       await current.getByRole('button', { name: 'Manage saved progress' }).press('Enter');
       await current.getByRole('button', { name: 'Download backup' }).waitFor();

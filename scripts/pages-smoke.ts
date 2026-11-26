@@ -91,9 +91,13 @@ try {
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.getByRole('button', { name: /^Battlefield, column/ }).waitFor();
       assert.match(await page.locator('#battle-status').textContent() ?? '', /wave 1\b/i, 'Battle should reload at the saved wave');
+      await context.setOffline(true);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.getByRole('button', { name: /^Battlefield, column/ }).waitFor();
+      assert.match(await page.locator('#battle-status').textContent() ?? '', /wave 1\b/i, 'Cached game should resume wave 1 offline');
       assert.deepEqual(errors, [], 'No unhandled page errors');
       await context.close();
-      console.log(`PASS ${engine.name()}: fresh browser starts a battle, saves wave 1 and reloads it`);
+      console.log(`PASS ${engine.name()}: fresh browser starts a battle, saves wave 1 and reloads it online and offline`);
     } finally { await browser.close(); }
   }
 } finally { await app?.close(); }
