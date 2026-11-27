@@ -308,20 +308,26 @@
   .campaign-loadout { margin-bottom: 10px; padding-top: 10px; }
   .campaign-difficulty-note { min-height: 1.4em; }
 }
+@media (max-width: 420px) and (max-height: 640px) {
+  .campaign-shell { padding-top: 10px; }
+  .campaign-header { margin-bottom: 12px; }
+  .campaign-map canvas { max-height: clamp(104px, 22svh, 140px); }
+  .campaign-loadout { margin-top: 10px; }
+}
 @media (max-height: 500px) and (min-width: 500px) and (orientation: landscape) {
-  .campaign-shell { padding: 9px 18px 24px; }
-  .campaign-header { margin-bottom: 13px; }
+  .campaign-shell { padding: 7px 18px 24px; }
+  .campaign-header { margin-bottom: 9px; }
   .campaign-header > div:first-child { display: flex; align-items: center; gap: 9px; }
   #campaign-title { margin-top: 0; font-size: 25px; }
   .campaign-progress { width: auto; }
   .campaign-progress > div { flex-direction: row; gap: 10px; }
   .campaign-briefing { grid-template-columns: minmax(0, 1fr) minmax(0, 1.07fr); }
   .campaign-map { min-height: 0; padding: 6px 6px 25px; border-inline-end: 1px solid var(--campaign-rule); border-bottom: none; }
-  .campaign-map canvas { max-height: 210px; }
-  .campaign-brief { padding: 9px 12px; }
+  .campaign-map canvas { max-height: min(210px, 62svh); }
+  .campaign-brief { padding: 8px 12px; }
   #campaign-mission { font-size: 25px; }
   .campaign-theme { margin-top: 4px; }
-  .campaign-loadout { margin: 8px 0 7px; padding-top: 7px; }
+  .campaign-loadout { margin: 6px 0 5px; padding-top: 6px; }
   .campaign-difficulties { margin-top: 4px; }
   .campaign-difficulty-note { margin-top: 5px; min-height: 0; }
   .campaign-route ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
