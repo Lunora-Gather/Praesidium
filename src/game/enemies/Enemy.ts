@@ -165,6 +165,8 @@ export class Enemy {
     return this.slows.length > 0;
   }
 
+  get nextWaypointIndex(): number { return this.wpIndex; }
+
   progressRemaining(grid: Grid): number {
     const waypoint = grid.waypoints[this.wpIndex];
     return waypoint ? this.pos.dist(waypoint) + grid.distanceToGoal[this.wpIndex] : 0;

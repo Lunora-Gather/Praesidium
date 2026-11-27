@@ -16,7 +16,7 @@ try {
     assert(type, `Unknown browser: ${engine}`);
     const browser = await type.launch();
     try {
-      const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, serviceWorkers: 'block' });
+      const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, serviceWorkers: 'block', locale: 'en-US' });
       const errors: Error[] = [];
       const first = await context.newPage();
       first.on('pageerror', error => errors.push(error));
@@ -24,19 +24,18 @@ try {
       await press(first, 'Endless Mode');
       await board(first).waitFor();
       await first.reload();
+      await press(first, 'Resume');
       await board(first).waitFor({ timeout: 5000 });
 
       const second = await context.newPage();
       second.on('pageerror', error => errors.push(error));
       await second.goto(app.url);
-      await second.locator('#game-controls button').first().waitFor();
-      assert.equal(await board(second).count(), 0, 'Opening a second tab must not create a second live writer for the same run');
       await second.getByRole('button', { name: 'Resume', exact: true }).waitFor();
+      assert.equal(await board(second).count(), 0, 'Opening a second tab must not create a second live writer for the same run');
       await press(second, 'Endless Mode');
       await second.getByRole('dialog', { name: /checkpoint|saved run/i }).waitFor({ timeout: 3000 });
       await press(second, 'Cancel');
-      await second.getByRole('button', { name: 'Resume', exact: true }).waitFor();
-      await press(second, 'Resume');
+      await second.getByRole('button', { name: 'Resume', exact: true }).click();
       await second.getByRole('dialog', { name: 'Resume this run here?' }).waitFor();
       await press(second, 'Resume here');
       await board(second).waitFor();
@@ -57,8 +56,8 @@ try {
         window.dispatchEvent(new Event('blur'));
       });
       await second.getByRole('button', { name: /progress could not be saved/i }).waitFor();
-      await second.evaluate(() => window.dispatchEvent(new Event('restore-qa-writes')));
       await second.locator('#progress-notice').click();
+      await second.evaluate(() => window.dispatchEvent(new Event('restore-qa-writes')));
       await press(second, 'Retry saving');
       await second.locator('#progress-notice').waitFor({ state: 'hidden' });
 
@@ -66,18 +65,25 @@ try {
       if (await second.getByRole('button', { name: 'Pause', exact: true }).count()) await press(second, 'Pause');
       await press(second, 'Settings');
       await press(second, 'Manage saved progress');
+      const manager = second.getByRole('dialog', { name: 'Manage saved progress' });
+      await manager.waitFor();
+      assert.equal(await manager.getByRole('button', { name: 'Retry saving' }).count(), 0);
+      await manager.getByRole('button', { name: 'Back', exact: true }).press('Enter');
+      await second.getByRole('dialog', { name: 'Settings' }).waitFor();
+      await press(second, 'Manage saved progress');
       const [download] = await Promise.all([second.waitForEvent('download'), press(second, 'Download backup')]);
       assert.equal(download.suggestedFilename(), 'praesidium-progress.json');
       const backup = await readFile((await download.path())!);
       assert.equal(JSON.parse(backup.toString('utf8')).checkpoint.v, 2);
       const input = second.locator('#progress-backup-input');
-      await input.setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+      const [chooser] = await Promise.all([second.waitForEvent('filechooser'), press(second, 'Restore from a file')]);
+      await chooser.setFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
       await second.getByRole('button', { name: /invalid or unsupported backup/i }).waitFor();
       await input.setInputFiles({ name: 'valid.json', mimeType: 'application/json', buffer: backup });
       await second.getByRole('dialog', { name: 'Restore this backup?' }).waitFor();
       await press(second, 'Restore backup');
       await second.getByRole('button', { name: /backup restored/i }).waitFor();
-      await press(second, 'Back');
+      await second.getByRole('button', { name: 'Endless Mode', exact: true }).waitFor();
       await press(second, 'Resume');
       await board(second).waitFor();
       assert.deepEqual(errors, []);

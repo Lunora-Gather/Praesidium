@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
-import { version } from './package.json';
+import { version } from './package.json' with { type: 'json' };
 
 function offlineShell(): Plugin {
   const release = `praesidium-v${version}`;

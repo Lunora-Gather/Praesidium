@@ -7,7 +7,7 @@
   "display": "fullscreen",
   "background_color": "#060a0f",
   "theme_color": "#0f172a",
-  "orientation": "landscape",
+  "orientation": "any",
   "categories": ["games", "entertainment", "strategy"],
   "lang": "en",
   "dir": "ltr",

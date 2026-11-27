@@ -1,0 +1,66 @@
+#codex-screen {
+  --codex-background: #0d151f;
+  --codex-text: #edf3f8;
+  --codex-muted: #acbdce;
+  --codex-rule: #293b4c;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: var(--codex-background);
+  color: var(--codex-text);
+}
+
+#codex-screen[open] { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+#codex-screen::backdrop { background: var(--codex-background); }
+.codex-width { width: min(100%, 1096px); margin-inline: auto; padding-inline: clamp(14px, 4vw, 48px); }
+.codex-nav { border-bottom: 1px solid var(--codex-rule); }
+.codex-nav .codex-width { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.codex-tabs { display: flex; gap: 3px; }
+
+.codex-nav button {
+  min-width: 44px;
+  min-height: 52px;
+  padding-inline: clamp(8px, 1.8vw, 20px);
+  border: 0;
+  background: transparent;
+  color: var(--codex-muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.codex-nav button:hover { color: var(--codex-text); }
+.codex-nav .codex-back { padding-inline-start: 0; }
+.codex-back::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 9px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  vertical-align: 2px;
+}
+.codex-tabs button { border-bottom: 2px solid transparent; }
+.codex-tabs button[aria-pressed='true'] { color: #f2c584; border-bottom-color: currentColor; }
+.codex-scroll { overflow: auto; overscroll-behavior: contain; }
+.codex-content { padding-block: clamp(18px, 6vh, 55px) 30px; }
+#codex-heading { margin-bottom: clamp(14px, 3vh, 28px); font-size: clamp(30px, 4vw, 54px); letter-spacing: -.03em; outline: none; }
+#codex-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 0 32px; list-style: none; }
+#codex-list > li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 14px; padding-block: 16px; border-top: 1px solid var(--codex-rule); }
+#codex-list canvas { width: clamp(40px, 6vw, 70px); height: auto; background: #172434; border-radius: 7px; }
+#codex-list h2 { font-size: 17px; line-height: 1.2; }
+#codex-list p { margin-block: 5px 8px; color: var(--codex-muted); font-size: 14px; line-height: 1.5; }
+#codex-list ul { list-style: none; color: #d9e6f0; font-size: 12px; line-height: 1.6; }
+
+@media (max-height: 400px) {
+  .codex-content { padding-top: 12px; }
+  .codex-nav button { min-height: 44px; }
+}

@@ -213,16 +213,16 @@ export class ProgressStore {
     });
   }
 
-  buyTalent(id: string, cost: number, maxRank: number, generation: number): Promise<boolean> {
+  buyTalent(id: string, cost: number, maxRank: number, generation: number): Promise<ProgressView | null> {
     return this.transaction('readwrite', async tx => {
       const state = tx.objectStore('state');
       const [profile, currentGeneration] = await Promise.all([request<SaveData>(state.get('profile')), request(state.get('generation'))]);
-      if (currentGeneration !== generation) return false;
+      if (currentGeneration !== generation) return null;
       const reducer = new SaveSystem(true);
       reducer.adopt(readProfile(profile));
-      if (!reducer.buyTalent(id, cost, maxRank)) return false;
+      if (!reducer.buyTalent(id, cost, maxRank)) return null;
       state.put(reducer.get(), 'profile');
-      return true;
+      return this.view(state);
     });
   }
 

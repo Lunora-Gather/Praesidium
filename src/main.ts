@@ -18,8 +18,8 @@ import { logger } from './utils/logger';
 import { Music } from './engine/Music';
 import { Tutorial, type TutorialAction } from './utils/Tutorial';
 import { Vec2 } from './engine/math/Vec2';
-import { Starfield } from './ui/Starfield';
-import { setLocale, t } from './utils/i18n';
+import { HomeScreen, type HomeAction } from './ui/HomeScreen';
+import { getLocale, setLocale, t } from './utils/i18n';
 import { achievementDescription, achievementName, spellName, towerName } from './utils/displayText';
 import { TalentPanel } from './ui/TalentPanel';
 import { StatsScreen } from './ui/StatsScreen';
@@ -30,9 +30,14 @@ import { encodeChallenge } from './utils/ChallengeCode';
 import { ChallengeDialog } from './ui/ChallengeDialog';
 import { buildPlaytestReport, formatPlaytestReport } from './utils/PlaytestReport';
 import { battleLayout, type BattleLayout } from './ui/BattleLayout';
-import { drawWeeklyRunBadge } from './ui/WeeklyRunBadge';
+import { drawRouteMarker } from './ui/RouteMarkers';
+import { getLevelTheme } from './ui/LevelThemes';
+import { weeklyRuleSummary } from './utils/WeeklyRules';
 import { ControlFocus, type FocusRegion } from './ui/ControlFocus';
 import { TileType } from './game/grid/Level';
+import { BattleConfirm } from './ui/BattleConfirm';
+import { AdaptiveResolution } from './engine/AdaptiveResolution';
+import { CameraShake, HEAVY_IMPACT, TOUCH_SHAKE_SCALE } from './engine/CameraShake';
 
 window.addEventListener('error', (e) => {
   console.error('[Praesidium] Unhandled error:', e.error ?? e.message);
@@ -49,6 +54,17 @@ window.addEventListener('unhandledrejection', (e) => {
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 if (!canvas) throw new Error('Canvas element #c not found in DOM');
+
+// Safari can restore focus to a clicked control. Reserve the keyboard marker for keyboard navigation.
+const interaction = document.documentElement.dataset;
+window.addEventListener('pointerdown', () => { interaction.input = 'pointer'; }, { capture: true, passive: true });
+window.addEventListener('keydown', event => {
+  if (event.isComposing || event.metaKey || event.ctrlKey) return;
+  const { key, altKey } = event;
+  if (key === 'Tab' || (!altKey && (key === 'Enter' || key === ' ' || key === 'Escape' || key.startsWith('Arrow')))) {
+    interaction.input = 'keyboard';
+  }
+}, { capture: true });
 
 const renderer = new Renderer(canvas);
 const input = new Input(canvas);
@@ -69,13 +85,44 @@ const announcement = document.getElementById('game-announcement')!;
 const screens = new Screens();
 const worldRenderer = new WorldRenderer();
 const towerPanel = new TowerPanel();
-const settingsScreen = new SettingsScreen(settings);
-const levelSelect = new LevelSelect(state.levels, state.save);
+const settingsScreen = new SettingsScreen(settings, applySettings, back => progress.manage(back));
+const battleConfirm = new BattleConfirm(() => { lastCanvasDraw = -Infinity; });
+const adaptive = new AdaptiveResolution();
+const coarsePointer = matchMedia('(any-pointer: coarse)');
+const cameraShake = new CameraShake();
+const frozenBattle = document.createElement('canvas');
+const frozenContext = frozenBattle.getContext('2d')!;
+let frozenKey = '';
+let pausedPaintKey = '';
+let adaptiveActive = false;
+let returningFromCampaign = false;
+const levelSelect = new LevelSelect(state.levels, state.save, () => {
+  returningFromCampaign = true;
+  state.goMenu();
+}, (index, difficulty) => {
+  progress.start(() => {
+    state.endless = false;
+    state.setDifficulty(difficulty);
+    state.selectLevel(index);
+  });
+});
 const tutorial = new Tutorial();
-const starfield = new Starfield(140);
-const talentPanel = new TalentPanel();
-const statsScreen = new StatsScreen();
-const codexScreen = new CodexScreen();
+const home = new HomeScreen(handleHomeAction);
+const talentPanel = new TalentPanel(state.talents, async id => {
+  const bought = await progress.buyTalent(id);
+  if (bought) tutorialAction('talent');
+  return bought;
+}, () => restorePausedFocus('hud.talent'));
+const statsScreen = new StatsScreen(exportPlaytestReport);
+const codexScreen = new CodexScreen(() => restorePausedFocus('hud.intel'));
+
+function restorePausedFocus(key: string): void {
+  if (state.phase !== 'playing' || !paused) return;
+  const trigger = [...document.querySelectorAll<HTMLButtonElement>('#game-controls button')]
+    .find(button => button.getAttribute('aria-label') === t(key));
+  trigger?.focus({ preventScroll: true });
+}
+
 const challengeDialog = new ChallengeDialog(code => {
   progress.start(() => {
     if ('difficulty' in code) state.startSharedChallenge(code);
@@ -86,20 +133,20 @@ const challengeDialog = new ChallengeDialog(code => {
 interface RectRegion { x: number; y: number; w: number; h: number; }
 
 let paused = false;
-let showSettings = false;
 let hudRegions: HudRegions = { topHeight: TOP_H, shop: [], buttons: [] };
 let spellRegions: Array<FocusRegion & { spellId: string }> = [];
-let cancelPlacementRegion: FocusRegion | null = null;
+let placementRegion: (FocusRegion & { action: 'build' | 'cast' | 'cancel' }) | null = null;
+let battleGeometry: { grid: GameState['grid']; width: number; height: number; layout: BattleLayout } | null = null;
+let battleContext: { width: number; text: string; lines: string[] } | null = null;
 let lastFpsUpdate = performance.now();
 let frameCount = 0;
 let placingMode = true;
+let meteorTarget: { tx: number; ty: number; position: Vec2 } | null = null;
+let placementNotice = '';
+let placementNoticeUntil = 0;
 let touchPlacement: { tx: number; ty: number; towerId: string } | null = null;
-let gameSpeed = 1;
 let gameReady = false;
 let lastCanvasDraw = -Infinity;
-let showTalent = false;
-let showStats = false;
-let showCodex = false;
 let resumeOnFocus = false;
 let saveOnWave = false;
 let battleCamera = { x: 0, y: 0, zoom: 1 };
@@ -113,24 +160,49 @@ const controlFocus = new ControlFocus(
   },
 );
 
-interface Toast { title: string; desc: string; timer: number; maxTime: number; }
+interface Toast { title: string; desc: string; timer: number; maxTime: number; achievement?: boolean; }
 let activeToasts: Toast[] = [];
 
-audio.setMuted(settings.get().muted);
-music.setMuted(settings.get().muted);
+function applySettings(): void {
+  const config = settings.get();
+  audio.setMuted(config.muted);
+  music.setMuted(config.muted);
+  state.effectsEnabled = !config.reducedMotion && config.graphics !== 'low';
+  cameraShake.reset();
+  resizeRenderer();
+  lastCanvasDraw = -Infinity;
+}
+
+function resizeRenderer(): void {
+  const quality = settings.get().graphics;
+  renderer.resize(quality === 'low' ? 1 : quality === 'clear' ? 2 : adaptive.pixelRatio);
+}
+
+function shakeBattle(intensity: number): void {
+  const config = settings.get();
+  if (config.reducedMotion || config.cameraShake === 0) return;
+  const inputScale = coarsePointer.matches ? TOUCH_SHAKE_SCALE : 1;
+  cameraShake.trigger(intensity * (config.cameraShake / 100) * inputScale, performance.now());
+}
+
+applySettings();
 
 const resumeAudio = (): void => audio.resume();
 let resizeFrame = 0;
 const scheduleResize = (): void => {
+  input.cancelPointer();
   if (resizeFrame !== 0) return;
   resizeFrame = window.requestAnimationFrame(() => {
     resizeFrame = 0;
     touchPlacement = null;
-    renderer.resize();
+    meteorTarget = null;
+    adaptive.reset();
+    resizeRenderer();
+    lastCanvasDraw = -Infinity;
   });
 };
-window.addEventListener('pointerdown', resumeAudio, { once: true });
-window.addEventListener('keydown', resumeAudio, { once: true });
+window.addEventListener('pointerdown', resumeAudio);
+window.addEventListener('keydown', resumeAudio);
 window.addEventListener('resize', scheduleResize);
 window.addEventListener('blur', () => {
   if (state.phase !== 'playing') return;
@@ -139,6 +211,7 @@ window.addEventListener('blur', () => {
     resumeOnFocus = true;
   }
   state.autoSave();
+  music.stop();
 });
 window.addEventListener('focus', () => {
   if (resumeOnFocus && state.phase === 'playing') paused = false;
@@ -148,6 +221,7 @@ window.addEventListener('pagehide', () => state.autoSave());
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     state.autoSave();
+    music.stop();
     if (gameReady) loop.stop();
   } else if (gameReady) loop.start();
 });
@@ -161,24 +235,38 @@ state.bus.on('towerPlaced', () => {
 state.bus.on('towerSold', () => { audio.place(); saveOnWave = true; });
 state.bus.on('towerUpgraded', () => { audio.place(); saveOnWave = true; tutorialAction('upgrade'); });
 state.bus.on('towerFire', ({ id }) => audio.shoot(id));
-state.movement.bus.on('enemyReachedGoal', () => { audio.lifeLost(); renderer.shake(6); });
-state.combat.bus.on('hit', (p) => { audio.hit(); state.particles.hit(new Vec2(p.x, p.y), '#fff'); state.particles.floatText(new Vec2(p.x, p.y - 10), `-${Math.round(p.damage)}`, '#ff8a65'); });
+state.movement.bus.on('enemyReachedGoal', () => { audio.lifeLost(); shakeBattle(3); });
+state.combat.bus.on('hit', (p) => {
+  audio.hit();
+  if (!state.effectsEnabled) return;
+  state.particles.hit(new Vec2(p.x, p.y), '#fff');
+  state.particles.floatText(new Vec2(p.x, p.y - 10), `-${Math.round(p.damage)}`, '#ff8a65');
+});
 state.combat.bus.on('kill', (p) => {
   audio.enemyDie();
+  if (p.enemy.isBoss) shakeBattle(HEAVY_IMPACT);
+  if (!state.effectsEnabled) return;
   const pos = new Vec2(p.x, p.y);
   if (p.enemy.isBoss) state.particles.bossDeath(pos, p.enemy.color);
   else state.particles.death(pos, p.enemy.color);
   state.particles.floatText(new Vec2(p.x, p.y - 16), `+${p.reward}g`, '#ffd54f', 1.0);
-  if (p.enemy.isBoss) renderer.shake(18); else renderer.shake(3);
 });
 state.combat.bus.on('splash', (p) => {
+  shakeBattle(2.2);
+  if (!state.effectsEnabled) return;
   state.particles.burst(new Vec2(p.x, p.y), 14, '#ff8a65', 150, 0.5, 4);
   state.particles.shockwave(new Vec2(p.x, p.y), p.radius, '#ff8a65', 0.4);
-  renderer.shake(5);
 });
-state.combat.bus.on('arc', ({ from, to, color }) => state.particles.arc(from, to, color));
-state.bus.on('phaseChanged', ({ to }) => {
+state.combat.bus.on('arc', ({ from, to, color }) => { if (state.effectsEnabled) state.particles.arc(from, to, color); });
+state.bus.on('phaseChanged', ({ from, to }) => {
+  cameraShake.reset();
+  statsScreen.close();
+  if (from === 'levelSelect') levelSelect.hide();
+  if (from === 'menu') home.hide();
   touchPlacement = null;
+  meteorTarget = null;
+  placementNotice = '';
+  frozenKey = '';
   if (to === 'won' || to === 'lost') {
     announcement.textContent = `${t(to === 'won' ? 'win.title' : 'lose.title')}. ${t('hud.score')} ${state.score}.`;
     if (to === 'won') audio.win(); else audio.lose();
@@ -188,10 +276,14 @@ state.bus.on('phaseChanged', ({ to }) => {
     paused = false;
     resumeOnFocus = false;
     placingMode = true;
-    music.start();
-    music.setMuted(settings.get().muted);
+    loop.timeScale = state.playbackSpeed;
   }
-  if (to === 'menu' || to === 'levelSelect') music.stop();
+  if (to !== 'playing') {
+    talentPanel.close();
+    codexScreen.close();
+    music.stop();
+    frozenBattle.width = frozenBattle.height = 1;
+  }
 });
 state.bus.on('runStarted', () => {
   touchPlacement = null;
@@ -199,27 +291,25 @@ state.bus.on('runStarted', () => {
   resumeOnFocus = false;
   saveOnWave = false;
   placingMode = true;
-  showTalent = false;
+  talentPanel.close();
   keyboardTile.tx = 1;
   keyboardTile.ty = 1;
-  gameSpeed = 1;
-  loop.timeScale = 1;
+  loop.timeScale = state.playbackSpeed;
 });
 state.bus.on('spellCast', ({ id, x, y }) => {
   audio.spellCast(id);
   saveOnWave = true;
   tutorialAction('spell');
   state.recordFirstAction('spell');
+  shakeBattle(id === 'meteor' ? HEAVY_IMPACT : id === 'freeze' ? 4 : 2.2);
+  if (!state.effectsEnabled) return;
   const target = new Vec2(x, y);
   if (id === 'meteor') {
     state.particles.meteorImpact(target, 110);
-    renderer.shake(18);
   } else if (id === 'freeze') {
     state.particles.freezePulse(target, Math.max(state.grid.widthPx, state.grid.heightPx) * 0.78);
-    renderer.shake(9);
   } else if (id === 'repair') {
     state.particles.repairPulse(target);
-    renderer.shake(5);
   }
 });
 state.bus.on('waveChanged', ({ current }) => {
@@ -228,11 +318,14 @@ state.bus.on('waveChanged', ({ current }) => {
 });
 state.bus.on('achievementUnlocked', (ach) => {
   audio.achievement();
+  const title = achievementName(ach.id, ach.name);
+  announcement.textContent = `${t('achievement.unlocked')} · ${title}`;
   activeToasts.push({
-    title: achievementName(ach.id, ach.name),
+    title,
     desc: achievementDescription(ach.id, ach.description),
     timer: 4.0,
     maxTime: 4.0,
+    achievement: true,
   });
 });
 
@@ -250,17 +343,62 @@ function hitSpell(x: number, y: number): string | null {
   return null;
 }
 
+function reportPlacement(message: string): void {
+  placementNotice = message;
+  placementNoticeUntil = performance.now() + 3000;
+  announcement.textContent = message;
+}
+
 function selectSpell(id: string): void {
   touchPlacement = null;
+  meteorTarget = null;
+  placementNotice = '';
   if (state.selectedSpellId === id) {
     state.selectedSpellId = null;
     return;
   }
   const spell = state.spells.find(candidate => candidate.def.id === id);
-  if (!spell?.canCast(state)) return;
-  state.selectedSpellId = id;
+  if (!spell?.canCast(state)) {
+    if (spell && !spell.def.heal && spell.ready && state.gold >= spell.def.cost && !spell.hasTarget(state)) {
+      reportPlacement(t('spell.noEnemies'));
+    }
+    return;
+  }
   placingMode = false;
   state.selectedTower = null;
+  state.selectedSpellId = null;
+  const name = spellName(id, spell.def.name);
+  if (spell.def.radius) {
+    state.selectedSpellId = id;
+    reportPlacement(t('spell.chooseTarget').replace('{spell}', name));
+    return;
+  }
+  const grid = state.grid;
+  battleConfirm.open(
+    name,
+    t('spell.confirm').replace('{spell}', name).replace('{cost}', String(spell.def.cost)),
+    t('spell.cast'),
+    () => {
+      if (state.phase !== 'playing' || state.grid !== grid) return;
+      const target = spell.def.heal ? grid.waypoints[grid.waypoints.length - 1]
+        : new Vec2(grid.widthPx / 2, grid.heightPx / 2);
+      if (state.castSpell(id, target)) state.autoSave();
+    },
+  );
+}
+
+function pauseBattle(): void {
+  paused = true;
+  cameraShake.reset();
+  pausedPaintKey = '';
+  state.autoSave();
+}
+
+function cycleTarget(): void {
+  if (!state.selectedTower) return;
+  state.selectedTower.cycleStrategy();
+  state.markCheckpointDirty();
+  state.autoSave();
 }
 
 function tutorialAction(action: TutorialAction): void {
@@ -268,15 +406,18 @@ function tutorialAction(action: TutorialAction): void {
 }
 
 function openCodex(): void {
-  showCodex = true;
+  codexScreen.open();
   tutorialAction('intel');
   state.recordFirstAction('intel');
 }
 
-function handleHUDClick(x: number, y: number): void {
+function handleHUDClick(x: number, y: number, press?: { x: number; y: number }): void {
   const shopPick = hud.hitShop(hudRegions, x, y);
   if (shopPick) {
+    if (press && hud.hitShop(hudRegions, press.x, press.y) !== shopPick) return;
     touchPlacement = null;
+    meteorTarget = null;
+    placementNotice = '';
     state.selectedTowerId = shopPick;
     tutorialAction('select');
     placingMode = true;
@@ -285,56 +426,151 @@ function handleHUDClick(x: number, y: number): void {
     return;
   }
   const btn = hud.hitButton(hudRegions, x, y);
+  if (press && hud.hitButton(hudRegions, press.x, press.y) !== btn) return;
   if (btn === 'send' && state.waves.forceNext()) {
     audio.waveStart();
     tutorialAction('wave');
     state.recordFirstAction('wave');
   }
-  else if (btn === 'pause') paused = !paused;
-  else if (btn === 'speed') { gameSpeed = gameSpeed >= 3 ? 1 : gameSpeed + 1; loop.timeScale = gameSpeed; }
-  else if (btn === 'talent') showTalent = true;
-  else if (btn === 'stats') showStats = true;
-  else if (btn === 'codex') openCodex();
-  else if (btn === 'autoSend') state.waves.autoSend = !state.waves.autoSend;
-  else if (btn === 'menu') state.goMenu();
-  else if (btn === 'settings') showSettings = true;
+  else if (btn === 'pause') pauseBattle();
+  else if (btn === 'speed') {
+    state.playbackSpeed = state.playbackSpeed === 1 ? 2 : state.playbackSpeed === 2 ? 3 : 1;
+    loop.timeScale = state.playbackSpeed;
+    state.autoSave();
+  }
+  else if (btn === 'autoSend') {
+    state.waves.autoSend = !state.waves.autoSend;
+    state.autoSave();
+  }
   else if (btn === 'brief') operations.open(state);
 }
 
-function handleWorldClick(x: number, y: number, touch = false): void {
-  if (state.selectedTower) {
-    const panelAction = towerPanel.hit(x, y);
-    if (panelAction === 'upgrade') { state.upgradeTower(state.selectedTower); return; }
-    if (panelAction === 'sell') { state.sellTower(state.selectedTower); return; }
-    if (panelAction === 'target') { state.selectedTower.cycleStrategy(); return; }
-    if (towerPanel.contains(x, y)) return;
-  }
-  handleBoardClick(x, y, touch);
-}
-
-function handleBoardClick(x: number, y: number, touch = false): void {
-  const { wx, wy } = screenToWorld(x, y);
-  const { tx, ty } = state.grid.pixelToTile(wx, wy);
-  if (tx < 0 || ty < 0 || tx >= state.grid.cols || ty >= state.grid.rows) { touchPlacement = null; state.selectedTower = null; return; }
-  if (state.selectedSpellId) {
-    state.castSpell(state.selectedSpellId, new Vec2(wx, wy));
-    state.selectedSpellId = null;
+function handleWorldClick(x: number, y: number, press?: { x: number; y: number }): void {
+  const tower = state.selectedTower;
+  if (tower && towerPanel.contains(x, y)) {
+    const action = towerPanel.hit(x, y);
+    if (press && towerPanel.hit(press.x, press.y) !== action) return;
+    if (action === 'upgrade') state.upgradeTower(tower);
+    if (action === 'target') cycleTarget();
+    if (action === 'sell') {
+      if (!press) state.sellTower(tower);
+      else battleConfirm.open(
+        t('tower.confirmSell'),
+        t('tower.sellDetail').replace('{tower}', towerName(tower.def.id, tower.def.name)).replace('{value}', String(tower.sellValue)),
+        t('tower.sell').replace('{value}', String(tower.sellValue)),
+        () => { state.sellTower(tower); state.autoSave(); },
+      );
+    }
     return;
   }
-  const existing = state.towers.find((tower) => tower.tx === tx && tower.ty === ty);
-  if (existing) { tutorialAction('inspect'); touchPlacement = null; state.selectedTower = existing; placingMode = false; state.selectedSpellId = null; return; }
+  handleBoardClick(x, y, press);
+}
+
+function handleBoardClick(x: number, y: number, press?: { x: number; y: number }): void {
+  if (!battleGeometry || battleGeometry.grid !== state.grid || !hitRegion(battleGeometry.layout.board, x, y)) return;
+  placementNotice = '';
+  const { wx, wy } = screenToWorld(x, y);
+  const { tx, ty } = state.grid.pixelToTile(wx, wy);
+  if (tx < 0 || ty < 0 || tx >= state.grid.cols || ty >= state.grid.rows) {
+    touchPlacement = null;
+    meteorTarget = null;
+    state.selectedTower = null;
+    return;
+  }
+  const start = press ? screenToWorld(press.x, press.y) : null;
+  const startTile = start && state.grid.pixelToTile(start.wx, start.wy);
+  if (startTile && (startTile.tx !== tx || startTile.ty !== ty)) {
+    touchPlacement = null;
+    meteorTarget = null;
+    return;
+  }
+  if (state.selectedSpellId) {
+    const position = new Vec2(wx, wy);
+    if (press && (meteorTarget?.tx !== tx || meteorTarget.ty !== ty)) {
+      meteorTarget = { tx, ty, position };
+      return;
+    }
+    castAimedSpell(press && meteorTarget ? meteorTarget.position : position);
+    return;
+  }
+  const existing = state.towers.find(tower => tower.tx === tx && tower.ty === ty);
+  if (existing) {
+    tutorialAction('inspect');
+    touchPlacement = null;
+    state.selectedTower = existing;
+    placingMode = false;
+    return;
+  }
   state.selectedTower = null;
   const towerId = state.selectedTowerId;
   if (!placingMode || !towerId) return;
-  if (touch && state.grid.tile * battleCamera.zoom < 28) {
-    if (!state.canPlaceTower(tx, ty, getTowerDef(towerId))) { touchPlacement = null; return; }
-    if (touchPlacement?.tx !== tx || touchPlacement.ty !== ty || touchPlacement.towerId !== towerId) {
-      touchPlacement = { tx, ty, towerId };
-      return;
-    }
+  const def = getTowerDef(towerId);
+  const failure = state.placementFailure(tx, ty, def);
+  if (failure) {
+    touchPlacement = null;
+    reportPlacement(t(`placement.${failure}`).replace('{gold}', String(def.cost - state.gold)));
+    return;
+  }
+  if (press && state.grid.tile * battleCamera.zoom < 28
+      && (touchPlacement?.tx !== tx || touchPlacement.ty !== ty || touchPlacement.towerId !== towerId)) {
+    touchPlacement = { tx, ty, towerId };
+    return;
   }
   touchPlacement = null;
   state.tryPlace(tx, ty);
+}
+
+function castAimedSpell(position: Vec2): void {
+  if (!state.selectedSpellId) return;
+  const spell = state.spells.find(candidate => candidate.def.id === state.selectedSpellId);
+  if (!spell) return;
+  if (!spell.hasTarget(state, position)) {
+    reportPlacement(t(spell.hasTarget(state) ? 'spell.noTarget' : 'spell.noEnemies'));
+    return;
+  }
+  if (state.castSpell(spell.def.id, position)) state.autoSave();
+  state.selectedSpellId = null;
+  meteorTarget = null;
+}
+
+function activatePlacement(): void {
+  if (placementRegion?.action === 'build' && touchPlacement) {
+    const { tx, ty } = touchPlacement;
+    const tile = state.grid.tile * battleCamera.zoom;
+    handleBoardClick(battleCamera.x + (tx + .5) * tile, battleCamera.y + (ty + .5) * tile);
+  } else if (placementRegion?.action === 'cast' && meteorTarget) {
+    placementNotice = '';
+    castAimedSpell(meteorTarget.position);
+  } else {
+    touchPlacement = null;
+    meteorTarget = null;
+    placementNotice = '';
+    placingMode = false;
+    state.selectedTower = null;
+    state.selectedSpellId = null;
+  }
+}
+
+function handleHomeAction(action: HomeAction): void {
+  if (state.phase !== 'menu' || statsScreen.isOpen || progress.blocksInput) return;
+  if (action === 'start') state.goLevelSelect();
+  else if (action === 'continue') progress.resume();
+  else if (action === 'endless') progress.start(() => state.startEndless());
+  else if (action === 'challenge') challengeDialog.open();
+  else if (action === 'daily') progress.start(() => state.startDaily());
+  else if (action === 'weekly') progress.start(() => state.startWeekly());
+  else if (action === 'settings') {
+    home.focus('settings');
+    settingsScreen.open();
+  }
+  else if (action === 'stats') {
+    home.focus('stats');
+    statsScreen.open(state.analytics.get(), state.save);
+  }
+  else if (action === 'brief') {
+    home.focus('brief');
+    operations.open(state);
+  }
 }
 
 function handleMenuClick(action: MenuClickAction): void {
@@ -345,11 +581,17 @@ function handleMenuClick(action: MenuClickAction): void {
   else if (action === 'resume') paused = false;
   else if (action === 'menu') state.goMenu();
   else if (action === 'share') challengeDialog.open(encodeChallenge(state.challengeRules));
-  else if (action === 'settings') showSettings = true;
+  else if (action === 'settings') {
+    restorePausedFocus('menu.settings');
+    settingsScreen.open();
+  }
   else if (action === 'brief') operations.open(state);
-  else if (action === 'stats') showStats = true;
+  else if (action === 'stats') {
+    restorePausedFocus('hud.stats');
+    statsScreen.open(state.analytics.get(), state.save);
+  }
   else if (action === 'codex') openCodex();
-  else if (action === 'talent') showTalent = true;
+  else if (action === 'talent') talentPanel.open(state.runOrigin.kind === 'daily' || state.runOrigin.kind === 'weekly');
 }
 
 function buildRunSummary(extra: Partial<ScreenStats> = {}): ScreenStats {
@@ -358,6 +600,7 @@ function buildRunSummary(extra: Partial<ScreenStats> = {}): ScreenStats {
     wave: state.waves.current,
     kills: run.kills,
     gold: run.goldEarned,
+    goldAvailable: state.gold,
     lives: state.lives,
     towersPlaced: run.towersPlaced,
     upgrades: run.upgrades,
@@ -388,72 +631,19 @@ function exportPlaytestReport(): void {
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 2000);
   if (navigator.clipboard) void navigator.clipboard.writeText(text).catch(() => undefined);
-  activeToasts.push({ title: t('health.exported'), desc: fileName, timer: 3.2, maxTime: 3.2 });
 }
 
 const update = (dt: number): void => {
-  if (!settings.get().reducedMotion && (state.phase === 'menu' || state.phase === 'levelSelect')) starfield.update(dt, renderer.width, renderer.height);
-
   for (const toast of activeToasts) toast.timer -= dt;
   activeToasts = activeToasts.filter(toast => toast.timer > 0);
 
-  if (challengeDialog.isOpen || operations.isOpen || progress.blocksInput) {
-    input.endFrame();
-    return;
-  }
-
-  if (showSettings) {
-    if (input.wasKeyPressed('Escape')) showSettings = false;
-    for (const c of input.clicks()) {
-      const a = settingsScreen.hit(c.x, c.y);
-      if (a) {
-        const res = settingsScreen.apply(a);
-        if (res === 'close') showSettings = false;
-        if (res === 'progress') progress.manage();
-        audio.setMuted(settings.get().muted);
-        music.setMuted(settings.get().muted);
-      }
-    }
-    input.endFrame();
-    return;
-  }
-
-  if (showCodex) {
-    for (const c of input.clicks()) {
-      const action = codexScreen.hit(c.x, c.y);
-      if (action) { const res = codexScreen.apply(action); if (res === 'close') showCodex = false; }
-      else showCodex = false;
-    }
-    if (input.wasKeyPressed('Escape')) showCodex = false;
-    input.endFrame();
-    return;
-  }
-
-  if (showStats) {
-    for (const c of input.clicks()) {
-      const action = statsScreen.hit(c.x, c.y);
-      if (action) {
-        if (action === 'menu') { state.goMenu(); showStats = false; }
-        else if (action === 'close') showStats = false;
-        else if (action === 'export_report') exportPlaytestReport();
-        else statsScreen.apply(action);
-      } else showStats = false;
-    }
-    if (input.wasKeyPressed('Escape')) showStats = false;
-    input.endFrame();
-    return;
-  }
-
-  if (showTalent) {
-    for (const c of input.clicks()) {
-      const id = talentPanel.hit(c.x, c.y);
-      if (id && id !== 'close') progress.buyTalent(id, () => tutorialAction('talent'));
-      else showTalent = false;
-    }
-    if (input.wasKeyPressed('Escape') || input.wasKeyPressed('KeyT')) showTalent = false;
+  if (challengeDialog.isOpen || operations.isOpen || settingsScreen.isOpen || battleConfirm.isOpen
+    || talentPanel.isOpen || codexScreen.isOpen || statsScreen.isOpen || progress.blocksInput) {
     input.endFrame();
     return;
   }
@@ -462,38 +652,14 @@ const update = (dt: number): void => {
     for (const c of input.clicks()) {
       const a = screens.hit(c.x, c.y);
       if (a) handleMenuClick(a);
+      if (talentPanel.isOpen || codexScreen.isOpen || statsScreen.isOpen || operations.isOpen || settingsScreen.isOpen) break;
     }
-    if (input.wasKeyPressed('Space')) paused = false;
-    if (input.wasKeyPressed('Escape')) paused = false;
+    if (!talentPanel.isOpen && !codexScreen.isOpen && (input.wasKeyPressed('Space') || input.wasKeyPressed('Escape'))) paused = false;
     input.endFrame();
     return;
   }
 
-  if (state.phase === 'levelSelect') {
-    for (const c of input.clicks()) {
-      const a = levelSelect.hit(c.x, c.y);
-      if (!a) continue;
-      if (a.kind === 'back') state.goMenu();
-      else if (a.kind === 'level') progress.start(() => { state.setDifficulty(levelSelect.selectedDiff); state.selectLevel(a.index); });
-      else if (a.kind === 'diff') levelSelect.selectedDiff = a.diff;
-    }
-    input.endFrame();
-    return;
-  }
-
-  if (state.phase === 'menu') {
-    for (const c of input.clicks()) {
-      const a = screens.hit(c.x, c.y);
-      if (a === 'start') { state.endless = false; state.endlessSeed = 0; state.goLevelSelect(); }
-      else if (a === 'continue') progress.resume();
-      else if (a === 'endless') progress.start(() => state.startEndless());
-      else if (a === 'challenge') challengeDialog.open();
-      else if (a === 'daily') progress.start(() => state.startDaily());
-      else if (a === 'weekly') progress.start(() => state.startWeekly());
-      else if (a === 'settings') showSettings = true;
-      else if (a === 'stats') showStats = true;
-      else if (a === 'brief') operations.open(state);
-    }
+  if (state.phase === 'levelSelect' || state.phase === 'menu') {
     input.endFrame();
     return;
   }
@@ -501,22 +667,38 @@ const update = (dt: number): void => {
   if (state.phase === 'playing') {
     const { wx, wy } = screenToWorld(input.pointerX, input.pointerY);
     const { tx, ty } = state.grid.pixelToTile(wx, wy);
-    state.hoverTile = touchPlacement ?? (placingMode && tx >= 0 && ty >= 0 && tx < state.grid.cols && ty < state.grid.rows ? { tx, ty } : null);
+    state.hoverTile = touchPlacement ?? (placingMode && battleGeometry && hitRegion(battleGeometry.layout.board, input.pointerX, input.pointerY) ? { tx, ty } : null);
 
     for (const c of input.clicks()) {
       if (c.board) { handleBoardClick(c.x, c.y); continue; }
-      if (state.selectedTower && towerPanel.contains(c.x, c.y)) { handleWorldClick(c.x, c.y); continue; }
-      if (hitRegion(cancelPlacementRegion, c.x, c.y)) { touchPlacement = null; placingMode = false; state.selectedTower = null; state.selectedSpellId = null; continue; }
+      if (state.selectedTower && towerPanel.contains(c.x, c.y)) {
+        handleWorldClick(c.x, c.y, c.press);
+        if (battleConfirm.isOpen) break;
+        continue;
+      }
+      if (hitRegion(placementRegion, c.x, c.y)) {
+        if (c.press && !hitRegion(placementRegion, c.press.x, c.press.y)) continue;
+        activatePlacement();
+        continue;
+      }
       const clickedSpell = hitSpell(c.x, c.y);
-      if (clickedSpell) { selectSpell(clickedSpell); continue; }
-      if (c.y < hudRegions.topHeight) { handleHUDClick(c.x, c.y); continue; }
-      if (c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y);
-      else handleWorldClick(c.x, c.y, c.touch);
+      if (clickedSpell) {
+        if (c.press && hitSpell(c.press.x, c.press.y) !== clickedSpell) continue;
+        selectSpell(clickedSpell);
+        if (battleConfirm.isOpen) break;
+        continue;
+      }
+      if (c.y < hudRegions.topHeight || c.y > renderer.height - BOT_H) handleHUDClick(c.x, c.y, c.press);
+      else handleWorldClick(c.x, c.y, c.press);
+      if (paused || battleConfirm.isOpen || operations.isOpen || settingsScreen.isOpen) break;
     }
 
-    if (input.wasKeyPressed('Space')) paused = !paused;
+    if (battleConfirm.isOpen || operations.isOpen || settingsScreen.isOpen) { input.endFrame(); return; }
+    if (input.wasKeyPressed('Space')) pauseBattle();
     if (input.wasKeyPressed('Escape')) {
       touchPlacement = null;
+      meteorTarget = null;
+      placementNotice = '';
       if (state.selectedSpellId) state.selectedSpellId = null;
       else if (state.selectedTower) state.selectedTower = null;
       else if (placingMode) placingMode = false;
@@ -524,16 +706,16 @@ const update = (dt: number): void => {
     }
     if (input.wasKeyPressed('KeyS') && state.selectedTower) state.sellTower(state.selectedTower);
     if (input.wasKeyPressed('KeyU') && state.selectedTower) state.upgradeTower(state.selectedTower);
-    if (input.wasKeyPressed('KeyT') && state.selectedTower) state.selectedTower.cycleStrategy();
+    if (input.wasKeyPressed('KeyT') && state.selectedTower) cycleTarget();
     for (let i = 0; i < TOWER_LIST.length; i++) {
-      if (input.wasKeyPressed(`Digit${i + 1}`)) { tutorialAction('select'); touchPlacement = null; state.selectedTowerId = TOWER_LIST[i].id; placingMode = true; state.selectedTower = null; state.selectedSpellId = null; }
+      if (input.wasKeyPressed(`Digit${i + 1}`)) { tutorialAction('select'); touchPlacement = null; meteorTarget = null; placementNotice = ''; state.selectedTowerId = TOWER_LIST[i].id; placingMode = true; state.selectedTower = null; state.selectedSpellId = null; }
     }
     const spellKeys = ['KeyQ', 'KeyW', 'KeyE'];
     for (let i = 0; i < spellKeys.length && i < state.spells.length; i++) {
       if (input.wasKeyPressed(spellKeys[i])) selectSpell(state.spells[i].def.id);
     }
 
-    if (!paused && !showTalent && !showCodex && !showSettings && !showStats) {
+    if (liveBattle()) {
       state.update(dt);
       if (saveOnWave) {
         saveOnWave = false;
@@ -552,15 +734,47 @@ const update = (dt: number): void => {
 };
 
 function liveBattle(): boolean {
-  return state.phase === 'playing' && !paused && !showSettings && !showCodex && !showStats && !showTalent
-    && !operations.isOpen && !challengeDialog.isOpen && !progress.blocksInput;
+  return state.phase === 'playing' && !paused && !settingsScreen.isOpen && !statsScreen.isOpen && !talentPanel.isOpen && !codexScreen.isOpen
+    && !operations.isOpen && !challengeDialog.isOpen && !battleConfirm.isOpen && !progress.blocksInput;
 }
 
 const render = (_alpha: number): void => {
   const now = performance.now();
-  const resting = paused || showSettings || showCodex || showStats || showTalent || operations.isOpen || challengeDialog.isOpen || progress.blocksInput;
-  const interval = liveBattle() ? 0 : resting || state.phase === 'won' || state.phase === 'lost' ? 1000 / 24 : 1000 / 30;
+  const resting = paused || settingsScreen.isOpen || operations.isOpen || challengeDialog.isOpen || battleConfirm.isOpen || progress.blocksInput;
+  const live = liveBattle();
+  if (live !== adaptiveActive) {
+    adaptive.reset();
+    adaptiveActive = live;
+  }
+  if (talentPanel.isOpen) {
+    talentPanel.refresh();
+    return;
+  }
+  if (codexScreen.isOpen || statsScreen.isOpen) return;
+  if (state.phase === 'menu') {
+    syncControlFocus();
+    battleStatus.hidden = gameReading.hidden = true;
+    home.show(progress.hasCheckpoint, progress.blocksInput);
+    if (returningFromCampaign) {
+      returningFromCampaign = false;
+      home.focus('start');
+    }
+    return;
+  }
+  if (state.phase === 'levelSelect') {
+    syncControlFocus();
+    battleStatus.hidden = gameReading.hidden = true;
+    levelSelect.show(progress.blocksInput);
+    return;
+  }
+  if (live && settings.get().graphics === 'auto' && devicePixelRatio > 1 && adaptive.sample(now)) resizeRenderer();
+  const staticPause = paused && state.phase === 'playing'
+    && !progress.blocksInput && !settingsScreen.isOpen && !activeToasts.length;
+  const pauseKey = staticPause ? `${renderer.width}:${renderer.height}:${renderer.pixelRatio}:${settings.get().locale}` : '';
+  if (pauseKey && pauseKey === pausedPaintKey && lastCanvasDraw !== -Infinity) return;
+  const interval = live ? 0 : resting || state.phase === 'won' || state.phase === 'lost' ? 1000 / 24 : 1000 / 30;
   if (now - lastCanvasDraw < interval - 1) return;
+  pausedPaintKey = pauseKey;
   lastCanvasDraw = now;
   frameCount++;
   const elapsed = now - lastFpsUpdate;
@@ -569,28 +783,59 @@ const render = (_alpha: number): void => {
     lastFpsUpdate = now;
     frameCount = 0;
   }
-  renderer.reducedMotion = settings.get().reducedMotion;
-  renderer.clear();
-  renderer.updateShake();
+  renderer.reducedMotion = !state.effectsEnabled;
+  renderer.clear('#0b131d');
 
   renderer.camX = 0;
   renderer.camY = 0;
   renderer.zoom = 1;
-  if (state.phase === 'menu' || state.phase === 'levelSelect') starfield.draw(renderer);
 
   if (state.phase === 'playing' || state.phase === 'won' || state.phase === 'lost') {
-    const layout = battleLayout(renderer.width, renderer.height, state.grid.widthPx, state.grid.heightPx);
+    if (!battleGeometry || battleGeometry.grid !== state.grid
+      || battleGeometry.width !== renderer.width || battleGeometry.height !== renderer.height) {
+      battleGeometry = { grid: state.grid, width: renderer.width, height: renderer.height,
+        layout: battleLayout(renderer.width, renderer.height, state.grid) };
+    }
+    const layout = battleGeometry.layout;
     const { x, y, zoom } = layout.camera;
-    const shake = renderer.shakeOffset;
-    battleCamera = { x: x + shake.x * zoom, y: y + shake.y * zoom, zoom };
-    renderer.camX = battleCamera.x;
-    renderer.camY = battleCamera.y;
+    const shake = live ? cameraShake.sample(now) : null;
+    // Touch targets stay on the unshaken grid between successive taps.
+    const touch = coarsePointer.matches;
+    const drawnX = x + (shake?.x ?? 0);
+    const drawnY = y + (shake?.y ?? 0);
+    battleCamera = { x: touch ? x : drawnX, y: touch ? y : drawnY, zoom };
+    renderer.camX = drawnX;
+    renderer.camY = drawnY;
     renderer.zoom = zoom;
-    worldRenderer.draw(renderer, state, settings.get());
-    if (!renderer.reducedMotion) state.particles.draw(renderer);
-
-    let towerScreenPos: Vec2 | null = null;
-    if (state.selectedTower && state.phase === 'playing') towerScreenPos = renderer.toScreen(state.selectedTower.pos);
+    const config = settings.get();
+    const freeze = !live;
+    const key = freeze ? `${renderer.canvas.width}:${renderer.canvas.height}:${renderer.width}:${config.reducedMotion}:${config.graphics}:${config.showRange}:${config.locale}` : '';
+    if (freeze && frozenKey === key) {
+      renderer.ctx.drawImage(frozenBattle, 0, 0, renderer.width, renderer.height);
+    } else {
+      worldRenderer.draw(renderer, state, config, layout.board);
+      if (state.effectsEnabled) state.particles.draw(renderer);
+      if (freeze) {
+        frozenBattle.width = canvas.width;
+        frozenBattle.height = canvas.height;
+        frozenContext.drawImage(canvas, 0, 0);
+        frozenKey = key;
+      } else if (frozenKey) {
+        frozenKey = '';
+        frozenBattle.width = frozenBattle.height = 1;
+      }
+    }
+    if (meteorTarget) {
+      const radius = state.spells.find(spell => spell.def.id === state.selectedSpellId)?.def.radius;
+      if (radius) {
+        renderer.circle(meteorTarget.position, radius, 'rgba(255,112,67,0.22)');
+        renderer.circle(meteorTarget.position, radius, '#fb923c', false);
+      }
+    }
+    if (touchPlacement) {
+      const { tile } = state.grid;
+      renderer.rect(touchPlacement.tx * tile, touchPlacement.ty * tile, tile, tile, '#a5f3fc', false);
+    }
 
     renderer.camX = 0;
     renderer.camY = 0;
@@ -598,44 +843,45 @@ const render = (_alpha: number): void => {
 
     const placingTower = state.phase === 'playing' && placingMode && !state.selectedTower && !state.selectedSpellId;
     const tutorialStep = state.phase === 'playing' && !touchPlacement ? tutorial.active : null;
-    hudRegions = hud.draw(renderer, state, gameSpeed, state.waves.autoSend, layout.shopRight, !tutorialStep && !placingTower);
-    drawWeeklyRunBadge(renderer, state);
-    drawBattleTools(renderer, layout.tools);
-    if (placingTower && !tutorialStep) drawPlacementHint(renderer, layout.infoHeight);
+    const feedback = battleFeedback(now);
+    const award = activeToasts[activeToasts.length - 1];
+    const contextNotice = layout.detail.compact ? feedback || tutorialStep?.text : state.selectedTower ? feedback : '';
+    const infoNotice = contextNotice || (award ? `${t('achievement.unlocked')} · ${award.title}` : '');
+    const pointer = live && !coarsePointer.matches ? { x: input.pointerX, y: input.pointerY } : undefined;
+    hudRegions = hud.draw(renderer, state, layout, placingTower, infoNotice, pointer);
+    drawBattleTools(renderer, layout.tools, Boolean(layout.detail.compact && state.selectedTower), pointer);
+    if (state.selectedTower && state.phase === 'playing') towerPanel.draw(renderer, state.selectedTower, state.gold, layout.detail);
+    else {
+      towerPanel.clear();
+      if (!layout.detail.compact) drawBattleContext(renderer, layout.detail, feedback || tutorialStep?.text
+        || t(placingTower ? 'battle.place' : 'battle.selectTower'));
+    }
+    if (tutorialStep && !feedback) drawTutorialTarget(renderer, tutorialStep.id);
 
-    if (towerScreenPos && state.selectedTower && state.phase === 'playing') towerPanel.draw(renderer, state.selectedTower, state.gold, towerScreenPos.x, towerScreenPos.y, layout.tools);
-    else towerPanel.clear();
-
-    if (tutorialStep) drawTutorial(renderer, tutorialStep.text, tutorialStep.id, layout.infoHeight);
-    if (paused && state.phase === 'playing') screens.draw(renderer, 'paused');
-    if (state.phase === 'won') screens.draw(renderer, 'won', state.score, 0, buildRunSummary({ stars: state.lastStars }));
-    if (state.phase === 'lost') screens.draw(renderer, 'lost', state.score, state.endlessSeed, buildRunSummary());
-    if (settings.get().showFps) renderer.text(`${state.fps} fps`, 8, 52, '#555', 11);
-  } else {
-    renderer.camX = 0;
-    renderer.camY = 0;
-    renderer.zoom = 1;
-    if (state.phase === 'levelSelect') levelSelect.draw(renderer);
-    else screens.draw(renderer, 'menu', 0, 0, undefined, progress.hasCheckpoint);
+    if (paused && state.phase === 'playing') screens.draw(renderer, 'paused', state.score, 0, buildRunSummary());
+    if (state.phase === 'won' || state.phase === 'lost') {
+      const recentAchievements = activeToasts.filter(toast => toast.achievement).length;
+      screens.draw(renderer, state.phase, state.score, state.endlessSeed, buildRunSummary({ stars: state.lastStars, recentAchievements }));
+    }
+    if (config.showFps && live) renderer.text(`${state.fps} fps`, 8, 52, '#555', 11);
   }
 
   renderer.camX = 0;
   renderer.camY = 0;
-  if (showTalent && state.phase === 'playing') talentPanel.draw(renderer, state.talents);
-  if (showStats) statsScreen.draw(renderer, state.analytics.get(), state.save);
-  if (showCodex) codexScreen.draw(renderer);
-  if (showSettings) settingsScreen.draw(renderer);
-
-  drawToasts(renderer);
+  if (paused && state.phase === 'playing') drawToasts(renderer);
   const combat = state.phase === 'playing';
+  const feedback = combat ? battleFeedback(now) : '';
   const status = combat ? `${t('hud.gold')} ${state.gold}. ${t('hud.lives')} ${state.lives}. ${t('hud.wave')} ${state.waves.current}. ${t('hud.score')} ${state.score}.` +
-    (touchPlacement ? ` ${t('placement.confirm').replace('{tower}', towerName(touchPlacement.towerId, getTowerDef(touchPlacement.towerId).name))}` : '') : '';
+    (state.waves.current === 0 ? ` ${t('battle.prepare')}.` : '') +
+    (state.activeWeeklyMode ? ` ${weeklyRuleSummary(state.activeWeeklyMode)}.` : '') +
+    (feedback ? ` ${feedback}` : '') : '';
   const summary = state.phase === 'won' || state.phase === 'lost';
-  const reading = showCodex ? codexScreen.reading : summary
+  const reading = summary
     ? `${t(state.phase === 'won' ? 'win.title' : 'lose.title')}. ${t('hud.wave')} ${state.waves.current}. ${t('hud.score')} ${state.score}. ${t('win.kills')} ${state.stats.get().kills}.` : '';
   syncReading(battleStatus, t('controls.battleStatus'), status);
-  syncReading(gameReading, t(showCodex ? 'codex.title' : 'summary.title'), reading);
+  syncReading(gameReading, t('summary.title'), reading);
   syncControlFocus();
+
 };
 
 function syncReading(element: HTMLElement, label: string, value: string): void {
@@ -645,20 +891,23 @@ function syncReading(element: HTMLElement, label: string, value: string): void {
 }
 
 function syncControlFocus(): void {
-  if (challengeDialog.isOpen || operations.isOpen || progress.blocksInput) return;
+  if (challengeDialog.isOpen || operations.isOpen || settingsScreen.isOpen || battleConfirm.isOpen
+    || talentPanel.isOpen || codexScreen.isOpen || statsScreen.isOpen || progress.blocksInput) return;
   const group = t('controls.group');
-  if (showSettings) controlFocus.sync('settings', group, settingsScreen.focusRegions);
-  else if (showCodex) controlFocus.sync('codex', group, codexScreen.focusRegions);
-  else if (showStats) controlFocus.sync('stats', group, statsScreen.focusRegions);
-  else if (showTalent) controlFocus.sync('talents', group, talentPanel.focusRegions);
-  else if (state.phase === 'levelSelect') controlFocus.sync('route', group, levelSelect.focusRegions);
+  if (state.phase === 'menu' || state.phase === 'levelSelect') controlFocus.sync(state.phase, group, []);
   else if (state.phase !== 'playing' || paused) controlFocus.sync(paused && state.phase === 'playing' ? 'pause' : state.phase, group, screens.focusRegions);
   else {
-    const { tx, ty } = keyboardTile;
+    if (!battleGeometry) return;
+    const { tiles } = battleGeometry.layout;
+    const tx = Math.max(tiles.x, Math.min(tiles.x + tiles.w - 1, keyboardTile.tx));
+    const ty = Math.max(tiles.y, Math.min(tiles.y + tiles.h - 1, keyboardTile.ty));
+    keyboardTile.tx = tx;
+    keyboardTile.ty = ty;
     const tower = state.towers.find(candidate => candidate.tx === tx && candidate.ty === ty);
     const tile = state.grid.at(tx, ty);
     const tileName = tower ? towerName(tower.def.id, tower.def.name)
-      : t(tile === TileType.Buildable ? 'controls.buildable' : tile === TileType.Blocked ? 'controls.blocked' : 'controls.route');
+      : t(tile === TileType.Buildable ? 'controls.buildable' : tile === TileType.Blocked ? 'controls.blocked'
+        : tile === TileType.Spawn ? 'campaign.entry' : tile === TileType.Goal ? 'campaign.base' : 'controls.route');
     const tileSize = state.grid.tile * battleCamera.zoom;
     const board: FocusRegion = {
       x: battleCamera.x + tx * tileSize, y: battleCamera.y + ty * tileSize, w: tileSize, h: tileSize,
@@ -666,75 +915,90 @@ function syncControlFocus(): void {
       board: true,
     };
     const regions = [...hudRegions.shop, board, ...spellRegions, ...hudRegions.buttons, ...towerPanel.focusRegions];
-    if (cancelPlacementRegion) regions.push(cancelPlacementRegion);
+    if (placementRegion) regions.push(placementRegion);
     controlFocus.sync('battle', group, regions);
   }
 }
 
-function drawBattleTools(r: Renderer, tools: BattleLayout['tools']): void {
+function drawBattleTools(r: Renderer, tools: BattleLayout['tools'], inspecting: boolean, pointer?: { x: number; y: number }): void {
   spellRegions = [];
-  const { width: slotW, height: slotH, dx, dy } = tools;
-  let { x, y } = tools;
-
-  for (const sp of state.spells) {
+  for (const [index, sp] of state.spells.entries()) {
+    if (inspecting) break;
+    const { x, y, w, h } = tools[index];
     const selected = state.selectedSpellId === sp.def.id;
     const ready = sp.canCast(state);
     const caption = sp.def.heal && !state.repairAllowed ? t('spell.disabled')
       : !sp.ready ? `${Math.ceil(sp.cooldown)}s`
-        : sp.def.heal && state.lives >= state.maxLives ? t('spell.fullLives') : `${sp.def.cost}g`;
-    let bg: string | CanvasGradient;
-    let border: string;
-    if (selected) {
-      bg = r.linearGradient(x, y, x, y + slotH, [{ offset: 0, color: 'rgba(251, 191, 36, 0.32)' }, { offset: 1, color: 'rgba(146, 64, 14, 0.24)' }]);
-      border = '#fbbf24';
-      r.setShadow('rgba(251, 191, 36, 0.5)', 12, 0, 0);
-    } else if (ready) {
-      bg = r.linearGradient(x, y, x, y + slotH, [{ offset: 0, color: 'rgba(30, 41, 59, 0.9)' }, { offset: 1, color: 'rgba(15, 23, 42, 0.9)' }]);
-      border = '#fbbf24';
-      r.setShadow('rgba(251, 191, 36, 0.35)', 8, 0, 0);
-    } else {
-      bg = 'rgba(15, 23, 42, 0.4)';
-      border = 'rgba(255, 255, 255, 0.03)';
-    }
-
-    r.roundRect(x, y, slotW, slotH, 8, bg, true, border, selected ? 1.8 : 1);
-    r.clearShadow();
-    if (!sp.ready) {
-      const cdH = Math.round(slotH * (sp.cooldown / sp.def.cooldown));
-      r.rect(x + 2, y + slotH - cdH, slotW - 4, cdH, 'rgba(0, 0, 0, 0.4)');
-    }
+        : sp.def.heal && state.lives >= state.maxLives ? t('spell.fullLives')
+          : !sp.def.heal && !sp.hasTarget(state) ? t('spell.awaitingEnemy') : `${sp.def.cost}g`;
     const name = spellName(sp.def.id, sp.def.name);
-    r.text(name, x + slotW / 2, y + slotH * 0.21, ready ? '#f8fafc' : '#94a3b8', 11, 'center', 'bold');
-    r.text(caption, x + slotW / 2, y + slotH * 0.63, ready ? '#fbbf24' : '#94a3b8', 9, 'center', 'bold', 'top', 'header', slotW - 6);
-
-    spellRegions.push({ x, y, w: slotW, h: slotH, spellId: sp.def.id, label: `${name}, ${caption}`, pressed: selected, disabled: !ready });
-    x += dx;
-    y += dy;
+    const inline = w >= 142;
+    const hovered = pointer && hitRegion(tools[index], pointer.x, pointer.y);
+    if (selected || (ready && hovered)) r.roundRect(x, y + 2, w, h - 4, 5, '#203244');
+    if (inline) r.rect(x, y + h + 2, w, 1, '#293b4c');
+    else if (index > 0 && tools[index - 1].y === y) r.rect(x - 3, y + 8, 1, h - 16, '#293b4c');
+    r.text(name, inline ? x + 11 : x + w / 2, y + (inline ? 22 : 13), ready ? '#edf3f8' : '#a7b9ca',
+      inline ? 12 : 11, inline ? 'left' : 'center', 'bold', 'middle', 'ui', inline ? w / 2 : w - 6);
+    r.text(caption, inline ? x + w - 11 : x + w / 2, y + (inline ? 22 : 31), ready ? '#f2c584' : '#a7b9ca',
+      10, inline ? 'right' : 'center', 'normal', 'middle', 'ui', inline ? w / 2 - 20 : w - 6);
+    spellRegions.push({ x, y, w, h, spellId: sp.def.id, label: `${name}, ${caption}`, pressed: selected, disabled: !ready });
   }
 
-  cancelPlacementRegion = null;
+  placementRegion = null;
   if (state.phase !== 'playing' || (!placingMode && !state.selectedSpellId && !state.selectedTower)) return;
-  r.roundRect(x, y, slotW, slotH, 8, 'rgba(15, 23, 42, 0.84)', true, 'rgba(148, 163, 184, 0.22)', 1);
-  r.text(t('common.cancel'), x + slotW / 2, y + slotH / 2, '#cbd5e1', 11, 'center', 'bold', 'middle');
-  cancelPlacementRegion = { x, y, w: slotW, h: slotH, label: t('common.cancel') };
+  const { x, y, w, h } = tools[3];
+  const action = touchPlacement ? 'build' : meteorTarget ? 'cast' : 'cancel';
+  const label = touchPlacement ? t('battle.build') : meteorTarget ? t('spell.cast')
+    : t(state.selectedSpellId ? 'battle.cancel' : state.selectedTower ? 'battle.deselect' : 'battle.cancelBuild');
+  const confirm = action !== 'cancel';
+  const hovered = pointer && hitRegion(tools[3], pointer.x, pointer.y);
+  if (confirm || hovered) r.roundRect(x, y + 2, w, h - 4, 5, confirm ? '#28415a' : '#203244');
+  r.text(label, x + w / 2, y + h / 2, '#e3eef7', 11, 'center', 'bold', 'middle', 'ui', w - 8);
+  placementRegion = { x, y, w, h, label, action };
 }
 
-function drawPlacementHint(r: Renderer, infoHeight: number): void {
-  if (!state.selectedTowerId || state.enemies.some(enemy => enemy.isBoss)) return;
-  const def = getTowerDef(state.selectedTowerId);
-  r.text(t(touchPlacement ? 'placement.confirm' : 'placement.selected').replace('{tower}', towerName(def.id, def.name)), r.width / 2, hudRegions.topHeight + infoHeight / 2, def.color, 12, 'center', 'bold', 'middle', 'header');
+function battleFeedback(now: number): string {
+  if (placementNotice && now < placementNoticeUntil) return placementNotice;
+  if (meteorTarget) return t('spell.confirmTarget');
+  if (state.selectedSpellId) return t('spell.chooseTarget').replace('{spell}', spellName(state.selectedSpellId, 'Meteor'));
+  if (!touchPlacement) return '';
+  return t('placement.confirm').replace('{tower}', towerName(touchPlacement.towerId, getTowerDef(touchPlacement.towerId).name));
 }
 
-function drawTutorial(r: Renderer, text: string, stepId: string, infoHeight: number): void {
-  drawTutorialTarget(r, stepId);
-  const w = Math.min(520, r.width - 32);
-  const h = Math.min(40, infoHeight - 5);
-  const x = (r.width - w) / 2;
-  const y = hudRegions.topHeight + (infoHeight - h) / 2;
-  r.setShadow('rgba(59, 130, 246, 0.35)', 16, 0, 0);
-  r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.94)', true, 'rgba(96, 165, 250, 0.55)', 1.4);
-  r.clearShadow();
-  r.text(text, x + w / 2, y + h / 2, '#dbeafe', r.width < 700 ? 11.5 : 13, 'center', 'bold', 'middle', 'ui', w - 16);
+function drawBattleContext(r: Renderer, box: BattleLayout['detail'], text: string): void {
+  const { x, y, w, vertical } = box;
+  const theme = getLevelTheme(state.levels.levelNumber);
+  const baseX = vertical ? x + 8 : x + w / 2 + 8;
+  const pad = 12;
+  const labelWidth = vertical ? w - 36 : w / 2 - 36;
+  const maxWidth = w - pad * 2;
+  if (battleContext?.width !== maxWidth || battleContext.text !== text) {
+    const tokens = getLocale() === 'zh' ? Array.from(text) : text.match(/\S+\s*/g) ?? [];
+    r.ctx.font = 'bold 11px sans-serif';
+    let line = '';
+    const lines: string[] = [];
+    for (const token of tokens) {
+      if (line && r.ctx.measureText(line + token).width > maxWidth) {
+        lines.push(line.trim());
+        line = '';
+      }
+      line += token;
+    }
+    if (line) lines.push(line.trim());
+    battleContext = { width: maxWidth, text, lines };
+  }
+  const { lines } = battleContext;
+  const visible = vertical ? 4 : 2;
+  drawRouteMarker(r.ctx, x + pad + 4, y + 15, 4, theme.pathCore, theme.background);
+  drawRouteMarker(r.ctx, baseX + 8, y + (vertical ? 35 : 15), 4, theme.pathCore, theme.background, true);
+  r.text(t('campaign.entry'), x + pad + 16, y + 15, '#a7b9ca', 10, 'left', 'normal', 'middle', 'ui', labelWidth);
+  r.text(t('campaign.base'), baseX + 20, y + (vertical ? 35 : 15), '#a7b9ca', 10, 'left', 'normal', 'middle', 'ui', labelWidth);
+  r.rect(x + pad, y + (vertical ? 50 : 28), w - pad * 2, 1, '#304458');
+  const textY = y + (vertical ? 61 : 39);
+  for (const [index, value] of lines.slice(0, visible).entries()) {
+    r.text(index === visible - 1 && lines.length > visible ? `${value}…` : value, x + pad, textY + index * 14,
+      '#e3eef7', 11, 'left', 'bold', 'top', 'ui', maxWidth);
+  }
 }
 
 function drawTutorialTarget(r: Renderer, stepId: string): void {
@@ -745,8 +1009,8 @@ function drawTutorialTarget(r: Renderer, stepId: string): void {
   else if (stepId === 'wave') target = hudRegions.buttons.find(btn => btn.action === 'send') ?? null;
   else if (stepId === 'upgrade' || stepId === 'inspect') target = state.selectedTower ? null : hudRegions.shop[0] ?? null;
   else if (stepId === 'spell') target = spellRegions[0] ?? null;
-  else if (stepId === 'intel') target = hudRegions.buttons.find(btn => btn.action === 'codex') ?? null;
-  else if (stepId === 'talent') target = hudRegions.buttons.find(btn => btn.action === 'talent') ?? null;
+  else if (stepId === 'intel') target = hudRegions.buttons.find(btn => btn.action === 'pause') ?? null;
+  else if (stepId === 'talent') target = hudRegions.buttons.find(btn => btn.action === 'pause') ?? null;
 
   if (target) {
     r.roundRect(target.x - 5, target.y - 5, target.w + 10, target.h + 10, 12, 'rgba(59, 130, 246, 0.10)', true, stroke, 2);
@@ -793,15 +1057,22 @@ function drawToasts(r: Renderer): void {
   }
 }
 
+let wasLive = false;
 const loop = new GameLoop(update, render, 60, seconds => {
-  if (!document.hidden && document.hasFocus() && liveBattle()) state.recordActiveTime(seconds);
+  const active = !document.hidden && liveBattle();
+  loop.timeScale = active ? state.playbackSpeed : 1;
+  if (wasLive && !active) state.autoSave();
+  wasLive = active;
+  if (active) music.start();
+  else music.stop();
+  if (active && document.hasFocus()) state.recordActiveTime(seconds);
 });
-void progress.initialize(state).then(() => {
+void progress.initialize(state, () => { paused = true; }).then(() => {
   gameReady = true;
   if (!document.hidden) loop.start();
   document.getElementById('boot-loading')?.remove();
   window.setInterval(() => {
-    if (state.phase === 'playing' && !paused && !document.hidden) state.autoSave();
+    if (liveBattle() && !document.hidden) state.autoSave();
   }, 4000);
   logger.info('Praesidium booted');
 });

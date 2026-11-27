@@ -1,17 +1,14 @@
-// Full-screen overlays: main menu, pause, victory, defeat.
+// Full-screen overlays for pause, victory, and defeat.
 // Win/loss screens include a compact battle report so each run ends with useful feedback.
 
 import type { FocusRegion } from './ControlFocus';
 import { Renderer } from '../engine/Renderer';
 import { t } from '../utils/i18n';
-import { dailyDateStr } from '../utils/DailyChallenge';
-import { dailyMissions } from '../utils/DailyMissions';
 import { buildDefeatAdviceFromSummary } from '../utils/RunAdvice';
-import { weeklyMode } from '../utils/WeeklyMode';
 import { DailyMissionPanel } from './DailyMissionPanel';
 import { drawGlassPanel, layoutFor, UI } from './Layout';
 
-export type MenuClickAction = 'start' | 'continue' | 'endless' | 'challenge' | 'share' | 'daily' | 'weekly' | 'resume' | 'restart' | 'next' | 'levels' | 'menu' | 'settings' | 'stats' | 'codex' | 'talent' | 'brief' | null;
+export type MenuClickAction = 'start' | 'share' | 'resume' | 'restart' | 'next' | 'levels' | 'menu' | 'settings' | 'stats' | 'codex' | 'talent' | 'brief' | null;
 
 export interface ScreenStats {
   stars?: number;
@@ -19,6 +16,7 @@ export interface ScreenStats {
   advice?: string;
   kills?: number;
   gold?: number;
+  goldAvailable?: number;
   lives?: number;
   towersPlaced?: number;
   upgrades?: number;
@@ -34,6 +32,7 @@ export interface ScreenStats {
   isNewModeRecord?: boolean;
   missionCredits?: number;
   weeklyCredits?: number;
+  recentAchievements?: number;
   missionDate?: string;
   missionEligible?: boolean;
 }
@@ -56,21 +55,11 @@ export class Screens {
   get focusRegions(): readonly FocusRegion[] { return this.regions; }
   private readonly dailyMissionPanel = new DailyMissionPanel();
 
-  draw(r: Renderer, kind: 'menu' | 'paused' | 'won' | 'lost', score = 0, seed = 0, stats?: ScreenStats, canContinue = false): void {
+  draw(r: Renderer, kind: 'paused' | 'won' | 'lost', score = 0, seed = 0, stats?: ScreenStats): void {
     this.regions = [];
     const layout = layoutFor(r);
 
-    const bgGrad = r.linearGradient(0, 0, 0, r.height, [
-      { offset: 0, color: 'rgba(8, 12, 24, 0.92)' },
-      { offset: 0.55, color: 'rgba(15, 23, 42, 0.94)' },
-      { offset: 1, color: 'rgba(2, 6, 23, 0.98)' }
-    ]);
-    r.rect(0, 0, r.width, r.height, bgGrad);
-
-    if (kind === 'menu') {
-      this.drawReleaseMenu(r, layout.isCompact, canContinue);
-      return;
-    }
+    r.rect(0, 0, r.width, r.height, kind === 'paused' ? '#0d151ff6' : '#0d151f');
 
     const cx = r.width / 2;
     const cy = r.height / 2;
@@ -86,48 +75,27 @@ export class Screens {
     let glowColor = UI.color.blue;
     if (kind === 'won') glowColor = UI.color.green;
     if (kind === 'lost') glowColor = UI.color.red;
-    drawGlassPanel(r, cardX, cardY, cardW, cardH, layout.radius + 2, glowColor, 0.9);
+    if (isEndScreen) drawGlassPanel(r, cardX, cardY, cardW, cardH, layout.radius + 2, glowColor, 0.9);
 
     const titleKey = kind === 'paused' ? 'hud.pause' : kind === 'won' ? 'win.title' : 'lose.title';
-    let titleGrad: CanvasGradient;
-    let textGlow = 'rgba(59, 130, 246, 0.4)';
-
-    if (kind === 'won') {
-      textGlow = 'rgba(52, 211, 153, 0.45)';
-      titleGrad = r.linearGradient(cx - 100, cardY + 24, cx + 100, cardY + 24, [
-        { offset: 0, color: '#34d399' },
-        { offset: 1, color: '#059669' }
-      ]);
-    } else if (kind === 'lost') {
-      textGlow = 'rgba(248, 113, 113, 0.45)';
-      titleGrad = r.linearGradient(cx - 100, cardY + 24, cx + 100, cardY + 24, [
-        { offset: 0, color: '#f87171' },
-        { offset: 1, color: '#dc2626' }
-      ]);
-    } else {
-      titleGrad = r.linearGradient(cx - 120, cardY + 24, cx + 120, cardY + 24, [
-        { offset: 0, color: '#60a5fa' },
-        { offset: 0.5, color: '#a78bfa' },
-        { offset: 1, color: '#f472b6' }
-      ]);
-    }
-
-    r.setShadow(textGlow, 12, 0, 0);
-    r.text(t(titleKey), cx, cardY + 22, titleGrad, compact ? 31 : 36, 'center', 'bold', 'top', 'header');
-    r.clearShadow();
+    const titleColor = kind === 'won' ? '#9de7c7' : kind === 'lost' ? '#f1a99b' : '#edf3f8';
+    r.text(t(titleKey), cx, cardY + 22, titleColor, compact ? 31 : 36, 'center', 'bold', 'top', 'header');
 
     const btnW = cardW - 48;
-    const btnH = compact ? 34 : 38;
+    const btnH = 44;
     const btnX = cx - btnW / 2;
 
     if (kind === 'paused') {
-      r.text(t('hud.paused_title'), cx, cardY + 75, UI.color.textMuted, 13, 'center');
+      const info = stats ? [`${t('hud.wave')} ${stats.wave}`, `${t('hud.lives')} ${stats.lives}`].join('  ·  ') : t('hud.paused_title');
+      r.text(info, cx, cardY + 75, UI.color.textMuted, 13, 'center');
       const firstY = cardY + 104;
       const halfW = (btnW - 8) / 2;
       const secondX = btnX + halfW + 8;
       const settingsY = firstY + btnH + 10;
       const referenceY = settingsY + btnH + 8;
-      this.drawButton(r, btnX, firstY, halfW, btnH, t('menu.resume'), 'resume', UI.color.blue, '#1d4ed8', 13);
+      r.roundRect(btnX, firstY, halfW, btnH, 6, '#f2c584');
+      r.text(t('menu.resume'), btnX + halfW / 2, firstY + btnH / 2, '#2b2118', 13, 'center', 'bold', 'middle');
+      this.regions.push({ x: btnX, y: firstY, w: halfW, h: btnH, action: 'resume', label: t('menu.resume') });
       this.drawButton(r, secondX, firstY, halfW, btnH, t('hud.menu'), 'menu', '#475569', '#1e293b', 13, false);
       this.drawUtilityButton(r, btnX, settingsY, halfW, btnH, '⚙', t('menu.settings'), 'settings');
       this.drawUtilityButton(r, secondX, settingsY, halfW, btnH, '▣', t('hud.stats'), 'stats');
@@ -158,262 +126,8 @@ export class Screens {
     if (seed) this.drawButton(r, btnX + 2 * (actionW + gap), footer, actionW, btnH, t('share.open'), 'share', '#7e22ce', '#581c87', 12);
   }
 
-  private drawReleaseMenu(r: Renderer, compact: boolean, canContinue: boolean): void {
-    this.drawMenuBackdrop(r);
-
-    const layout = layoutFor(r);
-    const safe = Math.max(layout.safe, 18);
-    const isShort = r.height < 560;
-    const cx = r.width / 2;
-    const titleY = isShort ? 24 : Math.max(38, r.height * 0.075);
-    this.drawHeroCopy(r, cx, titleY, 'center', compact, isShort);
-
-    const stageW = Math.min(r.width - safe * 2, compact ? 620 : 900);
-    const stageH = isShort ? 0 : Math.min(230, Math.max(155, r.height * 0.24));
-    const stageX = cx - stageW / 2;
-    const stageY = titleY + (compact ? 88 : 118);
-    if (!isShort) {
-      this.drawCommandStage(r, stageX, stageY, stageW, stageH);
-      this.drawOpsBrief(r, stageX + 24, stageY + stageH - 76, Math.min(360, stageW - 48));
-    }
-
-    const dockW = Math.min(r.width - safe * 2, compact || isShort ? 560 : 820);
-    const dockH = compact || isShort ? (dockW >= 500 ? 156 : 201) : 174;
-    const dockX = cx - dockW / 2;
-    const dockY = isShort
-      ? Math.max(112, r.height * 0.30)
-      : Math.min(r.height - dockH - safe, stageY + stageH + 18);
-    this.drawModeDock(r, dockX, dockY, dockW, dockH, compact || isShort, canContinue);
-  }
-
-  private drawMenuBackdrop(r: Renderer): void {
-    const horizonY = Math.max(150, Math.floor(r.height * 0.60));
-    const gridGrad = r.linearGradient(0, horizonY, 0, r.height, [
-      { offset: 0, color: 'rgba(14, 165, 233, 0.10)' },
-      { offset: 1, color: 'rgba(2, 6, 23, 0)' },
-    ]);
-    r.rect(0, horizonY, r.width, r.height - horizonY, gridGrad, true);
-
-    const oldAlpha = r.ctx.globalAlpha;
-    r.ctx.save();
-    r.ctx.globalAlpha = 0.18;
-    r.ctx.strokeStyle = 'rgba(103, 232, 249, 0.42)';
-    r.ctx.lineWidth = 1;
-    for (let y = horizonY + 18; y < r.height; y += 34) {
-      r.ctx.beginPath();
-      r.ctx.moveTo(0, y);
-      r.ctx.lineTo(r.width, y + (y - horizonY) * 0.08);
-      r.ctx.stroke();
-    }
-    for (let x = -r.width; x < r.width * 2; x += 92) {
-      r.ctx.beginPath();
-      r.ctx.moveTo(x, r.height);
-      r.ctx.lineTo(r.width / 2 + (x - r.width / 2) * 0.16, horizonY);
-      r.ctx.stroke();
-    }
-    r.ctx.restore();
-    r.ctx.globalAlpha = oldAlpha;
-  }
-
-  private drawHeroCopy(r: Renderer, x: number, y: number, align: CanvasTextAlign, compact: boolean, isShort: boolean): void {
-    const titleSize = isShort ? 32 : compact ? 42 : 58;
-    const taglineSize = isShort ? 11 : compact ? 12 : 14;
-    const titleW = Math.min(560, r.width - 36);
-    const titleX1 = x - titleW / 2;
-    const titleGrad = r.linearGradient(titleX1, y, titleX1 + titleW, y, [
-      { offset: 0, color: '#67e8f9' },
-      { offset: 0.5, color: '#93c5fd' },
-      { offset: 1, color: '#f0abfc' },
-    ]);
-
-    r.text('PRAESIDIUM', x, y, titleGrad, titleSize, align, 'bold', 'top', 'header');
-    r.text(t('app.tagline'), x, y + titleSize + (isShort ? 5 : 8), '#dbeafe', taglineSize, align, 'bold', 'top');
-    if (!isShort) {
-      r.text(t('menu.features'), x, y + titleSize + 28, UI.color.textDim, compact ? 9.5 : 11, align, 'bold', 'top', 'header');
-    }
-
-    const railW = Math.min(isShort ? 320 : 390, r.width - 48);
-    const railX = x - railW / 2;
-    const railY = y + titleSize + (isShort ? 31 : 58);
-    const items: Array<[string, string, string]> = [
-      ['01', t('stats.mode.campaign'), '#60a5fa'],
-      ['∞', t('stats.mode.endless'), '#a78bfa'],
-      ['24H', t('stats.mode.daily'), '#2dd4bf'],
-    ];
-    const itemW = (railW - 12) / 3;
-    for (let i = 0; i < items.length; i++) {
-      const [kicker, label, color] = items[i];
-      const ix = railX + i * (itemW + 6);
-      this.drawCutPanel(r, ix, railY, itemW, isShort ? 31 : 38, 7, 'rgba(2, 6, 23, 0.30)', `${color}55`);
-      r.text(kicker, ix + itemW / 2, railY + (isShort ? 6 : 7), color, isShort ? 10 : 12, 'center', 'bold', 'top', 'header');
-      r.text(label, ix + itemW / 2, railY + (isShort ? 19 : 23), '#cbd5e1', isShort ? 7.5 : 8.5, 'center', 'bold', 'top', 'header');
-    }
-  }
-
-  private drawModeDock(r: Renderer, x: number, y: number, w: number, h: number, compact: boolean, canContinue: boolean): void {
-    const gap = compact ? 7 : 9;
-    const primaryH = compact ? 54 : 64;
-    const tileH = compact ? 44 : 50;
-    const utilH = compact ? 28 : 30;
-
-    this.drawCutPanel(r, x - 18, y - 14, w + 36, h + 20, 16, 'rgba(2, 6, 23, 0.36)', 'rgba(103, 232, 249, 0.10)');
-
-    const startWidth = canContinue ? (w - gap) / 2 : w;
-    if (canContinue) {
-      this.drawButton(r, x, y, startWidth, primaryH, t('menu.start'), 'start', '#334155', '#1e293b');
-      this.drawButton(r, x + startWidth + gap, y, startWidth, primaryH, t('menu.resume'), 'continue', '#2563eb', '#0e7490');
-    } else {
-      this.drawPrimaryButton(r, x, y, startWidth, primaryH, t('menu.start'), 'start');
-    }
-    y += primaryH + gap + 2;
-
-    const cols = w >= 500 ? 4 : 2;
-    const tileW = (w - gap * (cols - 1)) / cols;
-    const modes: Array<[string, string, string, string, MenuClickAction]> = [
-      ['∞', t('menu.endless'), t('menu.endlessNote'), '#a78bfa', 'endless'],
-      ['◆', t('menu.daily'), t('menu.dailyNote'), '#2dd4bf', 'daily'],
-      ['✦', t('menu.weekly'), t('menu.weeklyNote'), '#93c5fd', 'weekly'],
-      ['#', t('menu.challenge'), t('menu.practiceNote'), '#f0abfc', 'challenge'],
-    ];
-    for (let i = 0; i < modes.length; i++) {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const [icon, label, sub, color, action] = modes[i];
-      this.drawModeTile(r, x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH, icon, label, sub, color, action, compact);
-    }
-    y += Math.ceil(modes.length / cols) * (tileH + gap);
-
-    const utilW = (w - gap * 2) / 3;
-    this.drawUtilityButton(r, x, y, utilW, utilH, '⚙', t('menu.settings'), 'settings');
-    this.drawUtilityButton(r, x + utilW + gap, y, utilW, utilH, '▣', t('stats.title'), 'stats');
-    this.drawUtilityButton(r, x + (utilW + gap) * 2, y, utilW, utilH, 'ⓘ', t('ops.short'), 'brief');
-
-    if (!compact && r.height >= 720) {
-      const hintY = y + utilH + 18;
-      r.text(t('menu.shortcuts'), x + w / 2, hintY, UI.color.textDim, 9, 'center', 'bold', 'top');
-    }
-  }
-
-  private drawOpsBrief(r: Renderer, x: number, y: number, w: number): void {
-    const mission = dailyMissions(dailyDateStr())[0];
-    const week = weeklyMode();
-    r.text(t('ops.today'), x, y, '#67e8f9', 10, 'left', 'bold', 'top', 'header');
-    r.roundRect(x, y + 22, w, 1, 1, 'rgba(103, 232, 249, 0.36)', true);
-    r.text(t(`mission.${mission.kind}.title`), x, y + 36, '#e2e8f0', 12, 'left', 'bold', 'top', 'header');
-    r.text(`${t('stats.mode.daily')} +${mission.reward}  /  ${t('stats.mode.weekly')} +${week.reward}`, x, y + 55, UI.color.textMuted, 9.5, 'left', 'bold', 'top');
-    r.text(this.truncate(t(`weekly.${week.mode}`), 38), x, y + 73, '#c4b5fd', 10, 'left', 'bold', 'top', 'header');
-  }
-
-  private drawCommandStage(r: Renderer, x: number, y: number, w: number, h: number): void {
-    this.drawCutPanel(r, x, y, w, h, 22, 'rgba(2, 6, 23, 0.20)', 'rgba(96, 165, 250, 0.10)');
-    r.ctx.save();
-    r.ctx.globalAlpha = 0.12;
-    r.ctx.strokeStyle = '#67e8f9';
-    r.ctx.lineWidth = 1;
-    for (let gx = x + 34; gx < x + w - 20; gx += 52) {
-      r.ctx.beginPath();
-      r.ctx.moveTo(gx, y + 18);
-      r.ctx.lineTo(gx + 40, y + h - 18);
-      r.ctx.stroke();
-    }
-    r.ctx.restore();
-    this.drawPreviewPath(r, x + 70, y + 38, w - 140);
-  }
-
-  private drawPreviewPath(r: Renderer, x: number, y: number, w: number): void {
-    const h = 92;
-    const points = [
-      { x, y: y + h * 0.62 },
-      { x: x + w * 0.22, y: y + h * 0.62 },
-      { x: x + w * 0.22, y: y + h * 0.22 },
-      { x: x + w * 0.54, y: y + h * 0.22 },
-      { x: x + w * 0.54, y: y + h * 0.78 },
-      { x: x + w, y: y + h * 0.78 },
-    ];
-    r.ctx.save();
-    r.ctx.strokeStyle = 'rgba(96, 165, 250, 0.62)';
-    r.ctx.lineWidth = 12;
-    r.ctx.lineCap = 'round';
-    r.ctx.lineJoin = 'round';
-    r.ctx.beginPath();
-    r.ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) r.ctx.lineTo(points[i].x, points[i].y);
-    r.ctx.stroke();
-    r.ctx.strokeStyle = 'rgba(219, 234, 254, 0.84)';
-    r.ctx.lineWidth = 2;
-    r.ctx.stroke();
-    for (let i = 1; i < points.length - 1; i += 2) {
-      const p = points[i];
-      r.ctx.fillStyle = i === 1 ? '#34d399' : '#f59e0b';
-      r.ctx.beginPath();
-      r.ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-      r.ctx.fill();
-    }
-    r.ctx.restore();
-  }
-
-  private drawCutPanel(r: Renderer, x: number, y: number, w: number, h: number, cut: number, fill: string | CanvasGradient, stroke?: string | CanvasGradient): void {
-    r.ctx.beginPath();
-    r.ctx.moveTo(x + cut, y);
-    r.ctx.lineTo(x + w, y);
-    r.ctx.lineTo(x + w - cut, y + h);
-    r.ctx.lineTo(x, y + h);
-    r.ctx.closePath();
-    r.ctx.fillStyle = fill;
-    r.ctx.fill();
-    if (stroke) {
-      r.ctx.strokeStyle = stroke;
-      r.ctx.lineWidth = 1.1;
-      r.ctx.stroke();
-    }
-  }
-
-  private drawPrimaryButton(r: Renderer, x: number, y: number, w: number, h: number, label: string, action: MenuClickAction): void {
-    const grad = r.linearGradient(x, y, x + w, y + h, [
-      { offset: 0, color: '#2563eb' },
-      { offset: 0.52, color: '#0ea5e9' },
-      { offset: 1, color: '#14b8a6' },
-    ]);
-    r.setShadow('rgba(14, 165, 233, 0.34)', 22, 0, 7);
-    this.drawCutPanel(r, x, y, w, h, 18, grad, 'rgba(219, 234, 254, 0.36)');
-    r.clearShadow();
-    r.ctx.save();
-    r.ctx.globalAlpha = 0.18;
-    r.ctx.fillStyle = '#ffffff';
-    r.ctx.beginPath();
-    r.ctx.moveTo(x + 16, y + 12);
-    r.ctx.lineTo(x + w - 18, y + 8);
-    r.ctx.lineTo(x + w - 48, y + h - 10);
-    r.ctx.lineTo(x + 32, y + h - 8);
-    r.ctx.closePath();
-    r.ctx.fill();
-    r.ctx.restore();
-    r.text('▶', x + 32, y + h / 2, '#ffffff', h >= 62 ? 18 : 15, 'center', 'bold', 'middle', 'header');
-    r.text(label, x + 62, y + h / 2 - 1, '#ffffff', h >= 62 ? 18 : 15, 'left', 'bold', 'middle', 'header');
-    r.text('CAMPAIGN', x + w - 26, y + h / 2, 'rgba(255,255,255,0.74)', h >= 62 ? 10 : 8.5, 'right', 'bold', 'middle', 'header');
-    this.regions.push({ x, y, w, h, action, label });
-  }
-
-  private drawModeTile(r: Renderer, x: number, y: number, w: number, h: number, icon: string, label: string, sub: string, color: string, action: MenuClickAction, compact: boolean): void {
-    const grad = r.linearGradient(x, y, x, y + h, [
-      { offset: 0, color: 'rgba(15, 23, 42, 0.84)' },
-      { offset: 1, color: 'rgba(2, 6, 23, 0.72)' },
-    ]);
-    this.drawCutPanel(r, x, y, w, h, 10, grad, `${color}55`);
-    r.ctx.save();
-    r.ctx.fillStyle = color;
-    r.ctx.globalAlpha = 0.9;
-    r.ctx.fillRect(x, y + 2, 4, h - 4);
-    r.ctx.restore();
-    const iconX = x + (compact ? 22 : 25);
-    r.text(icon, iconX, y + h / 2, color, compact ? 13 : 15, 'center', 'bold', 'middle', 'header');
-    r.text(label, x + (compact ? 42 : 48), y + (compact ? 10 : 11), '#f8fafc', compact ? 11 : 12.5, 'left', 'bold', 'top', 'header');
-    r.text(sub, x + (compact ? 42 : 48), y + (compact ? 27 : 32), UI.color.textMuted, compact ? 8 : 9, 'left', 'bold', 'top');
-    this.regions.push({ x, y, w, h, action, label });
-  }
-
   private drawUtilityButton(r: Renderer, x: number, y: number, w: number, h: number, icon: string, label: string, action: MenuClickAction): void {
-    this.drawCutPanel(r, x, y, w, h, 8, 'rgba(15, 23, 42, 0.42)', 'rgba(148, 163, 184, 0.14)');
+    r.rect(x, y + h - 1, w, 1, '#293b4c');
     r.text(icon, x + 22, y + h / 2, '#cbd5e1', 12, 'center', 'bold', 'middle', 'header');
     r.text(label, x + 42, y + h / 2, '#cbd5e1', 11, 'left', 'bold', 'middle', 'header');
     this.regions.push({ x, y, w, h, action, label });
@@ -431,7 +145,7 @@ export class Screens {
       r.text(active ? '★' : '☆', starX, starY, active ? UI.color.gold : '#334155', starSize, 'center', 'normal', 'top', 'header');
     }
     r.clearShadow();
-    r.text(this.victoryAdvice(starCount), cx, cardY + (compact ? 94 : 112), UI.color.textMuted, compact ? 10.5 : 12, 'center', 'bold', 'top');
+    r.text(this.victoryAdvice(starCount), cx, cardY + (compact ? 94 : 112), UI.color.textMuted, compact ? 10.5 : 12, 'center', 'bold', 'top', 'ui', cardW - 40);
     this.drawBadges(r, cx, cardY + (compact ? 112 : 130), this.buildBadges(stats), compact);
     const y = cardY + (compact ? 134 : 152);
     this.drawReportPanel(r, cardX + 24, y, cardW - 48, bottom - y, UI.color.green, this.buildRows(score, stats));
@@ -441,7 +155,7 @@ export class Screens {
     const cx = cardX + cardW / 2;
     if (stats?.wave !== undefined) r.text(t('lose.survived').replace('{wave}', String(stats.wave)), cx, cardY + (compact ? 66 : 76), '#f87171', compact ? 12 : 14, 'center', 'bold', 'top', 'header');
     const advice = stats?.advice ?? buildDefeatAdviceFromSummary(stats ?? {});
-    r.text(advice, cx, cardY + (compact ? 90 : 100), UI.color.textMuted, compact ? 10.5 : 12, 'center', 'bold', 'top');
+    r.text(advice, cx, cardY + (compact ? 90 : 100), UI.color.textMuted, compact ? 10.5 : 12, 'center', 'bold', 'top', 'ui', cardW - 40);
     this.drawBadges(r, cx, cardY + (compact ? 108 : 118), this.buildBadges(stats), compact);
     const y = cardY + (compact ? 130 : 140);
     this.drawReportPanel(r, cardX + 24, y, cardW - 48, bottom - y, UI.color.red, this.buildRows(score, stats));
@@ -449,6 +163,9 @@ export class Screens {
 
   private buildBadges(stats?: ScreenStats): SummaryBadge[] {
     const badges: SummaryBadge[] = [];
+    if (stats?.recentAchievements) {
+      badges.push({ label: t('summary.newAchievements').replace('{count}', String(stats.recentAchievements)), color: UI.color.gold });
+    }
     if (stats?.isNewHighScore) badges.push({ label: t('summary.newHighScore'), color: '#60a5fa' });
     if (stats?.isNewLevelScore) badges.push({ label: t('summary.newLevelScore'), color: '#22c55e' });
     if (stats?.isStarUpgrade) badges.push({ label: t('summary.starUpgrade'), color: UI.color.gold });
@@ -494,7 +211,18 @@ export class Screens {
   }
 
   private drawReportPanel(r: Renderer, x: number, y: number, w: number, h: number, accent: string, rows: ReportRow[]): void {
-    if (h < 54) return;
+    if (h < 30) return;
+    if (h < 72) {
+      const visible = rows.slice(0, w < 290 ? 3 : 4);
+      const slot = w / visible.length;
+      r.rect(x, y, w, 1, '#293b4c');
+      for (const [i, item] of visible.entries()) {
+        const cx = x + (i + .5) * slot;
+        r.text(item.label, cx, y + 5, '#acbdce', 9, 'center', 'normal', 'top', 'ui', slot - 6);
+        r.text(item.value, cx, y + 18, '#edf3f8', 12, 'center', 'bold', 'top', 'header', slot - 6);
+      }
+      return;
+    }
     r.roundRect(x, y, w, h, 12, 'rgba(10, 15, 30, 0.66)', true, 'rgba(255, 255, 255, 0.05)', 1);
     r.roundRect(x, y, 4, h, 2, accent, true);
     r.text(t('summary.title'), x + 14, y + 10, '#e2e8f0', 11, 'left', 'bold', 'top', 'header');
@@ -544,10 +272,6 @@ export class Screens {
     const m = Math.floor(sec / 60);
     const s = Math.round(sec % 60);
     return m > 0 ? `${m}m ${s}s` : `${s}s`;
-  }
-
-  private truncate(text: string, max: number): string {
-    return text.length <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;
   }
 
   hit(x: number, y: number): MenuClickAction {

@@ -1,0 +1,259 @@
+#home {
+  --home-ground: #0b131d;
+  --home-panel: #121f2e;
+  --home-border: #2c3e51;
+  --home-text: #f0f4f8;
+  --home-muted: #a8bacb;
+  --home-action: #f2c584;
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--home-ground);
+  color: var(--home-text);
+}
+
+.home-shell {
+  width: min(100%, 1264px);
+  min-height: 100%;
+  margin-inline: auto;
+  padding: clamp(22px, 3.5vw, 46px) clamp(20px, 4vw, 50px) 30px;
+}
+
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 23px;
+}
+
+.home-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 11px;
+  font-size: 13px;
+  font-weight: 620;
+  color: var(--home-muted);
+}
+
+.home-reticle {
+  flex: none;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #63809a;
+  border-radius: 50%;
+  color: #c2d7e8;
+}
+.home-reticle::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--home-action) 1.5px, transparent 2px);
+}
+
+#home button {
+  font: inherit;
+  color: inherit;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+#home button[aria-disabled="true"] { cursor: wait; }
+
+.home-tools {
+  display: flex;
+  flex: none;
+  gap: 3px;
+}
+
+#home .home-tools button {
+  border: 0;
+  border-radius: 6px;
+  padding: 0 13px;
+  color: var(--home-muted);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
+  min-height: clamp(345px, 38vw, 470px);
+  border: 1px solid var(--home-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--home-panel);
+}
+
+.home-intro {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  padding: clamp(24px, 4vw, 54px);
+}
+
+#home-title {
+  font-size: clamp(40px, 5.3vw, 74px);
+  font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 730;
+  letter-spacing: -.055em;
+  line-height: .99;
+}
+
+.home-premise {
+  max-width: 28ch;
+  margin-top: 19px;
+  color: var(--home-muted);
+  font-size: clamp(15px, 1.42vw, 18px);
+  line-height: 1.65;
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 29px;
+}
+
+#home .home-actions button {
+  min-width: 112px;
+  min-height: 52px;
+  border: 1px solid var(--home-action);
+  border-radius: 7px;
+  padding-inline: 23px;
+  font-size: 15px;
+  font-weight: 740;
+  color: #241c15;
+  background: var(--home-action);
+}
+
+#home[data-checkpoint="true"] .home-start {
+  border-color: #486178;
+  background: #1a293a;
+  color: var(--home-text);
+}
+
+.home-art {
+  position: relative;
+  min-height: 0;
+  background: #233445;
+}
+
+.home-art img {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 58% center;
+}
+
+.home-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--home-panel), #121f2e00 30%);
+}
+
+.home-modes {
+  margin-top: 26px;
+}
+
+#home-modes-title {
+  margin: 0 0 11px;
+  font-size: 17px;
+  font-weight: 680;
+}
+
+.home-mode-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid var(--home-border);
+}
+
+#home .home-mode-list button {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 19px);
+  min-width: 0;
+  min-height: 76px;
+  padding: 8px clamp(10px, 1.4vw, 20px);
+  text-align: left;
+  border: 0;
+  border-inline-start: 1px solid var(--home-border);
+  background: transparent;
+}
+
+#home .home-mode-list button:first-child { border-inline-start: 0; }
+
+.home-mode-symbol {
+  flex: 0 0 25px;
+  text-align: center;
+  color: #9cbad3;
+  font-size: 23px;
+}
+.home-mode-list strong { display: block; font-size: 15px; font-weight: 680; line-height: 1.2; }
+.home-mode-list small { display: block; margin-top: 5px; font-size: 12px; color: var(--home-muted); }
+
+@media (hover: hover) {
+  #home .home-tools button:hover, #home .home-mode-list button:hover { color: var(--home-text); background: #182639; }
+  #home .home-actions button:hover { background: #ffda9f; }
+  #home[data-checkpoint="true"] .home-start:hover { background: #27394c; }
+}
+
+@media (max-width: 850px) {
+  .home-hero { grid-template-columns: minmax(0, 46fr) minmax(0, 54fr); }
+  .home-art::after { background: linear-gradient(90deg, var(--home-panel), #121f2e00 24%); }
+  #home .home-actions button { min-width: 96px; padding-inline: 14px; }
+  .home-mode-symbol { flex-basis: 19px; font-size: 17px; }
+}
+
+@media (max-width: 640px) and (orientation: portrait), (max-width: 480px) {
+  .home-shell { padding: 12px 15px 21px; }
+  .home-header { gap: 8px; margin-bottom: 10px; }
+  #home .home-tools button { min-width: 44px; padding-inline: 7px; font-size: 13px; }
+  .home-mark { flex: 0 1 auto; min-width: 0; gap: 7px; font-size: 11px; line-height: 1.25; }
+  .home-reticle { width: 21px; height: 21px; }
+  .home-hero { grid-template-columns: 1fr; min-height: 0; }
+  .home-art { grid-row: 1; min-height: clamp(133px, 43vw, 237px); }
+  .home-art img { object-position: 58% 54%; }
+  .home-art::after { background: linear-gradient(0deg, var(--home-panel), #121f2e00 31%); }
+  .home-intro { padding: 4px 18px 16px; }
+  #home-title { font-size: clamp(38px, 11vw, 57px); }
+  .home-premise { margin-top: 7px; max-width: none; font-size: 13px; line-height: 1.5; }
+  .home-actions { margin-top: 13px; }
+  #home .home-actions button { flex: 1 1 90px; min-width: 0; min-height: 45px; padding-inline: 6px; }
+  .home-modes { margin-top: 17px; }
+  .home-mode-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #home .home-mode-list button { min-height: 60px; padding: 6px 7px; }
+  #home .home-mode-list button:nth-child(odd) { border-inline-start: 0; }
+  #home .home-mode-list button:nth-child(n+3) { border-top: 1px solid var(--home-border); }
+  .home-mode-list strong { font-size: 13px; }
+  .home-mode-list small { font-size: 11px; }
+}
+
+@media (max-height: 500px) and (min-width: 500px) and (orientation: landscape) {
+  .home-shell { padding: 6px 18px 17px; }
+  .home-header { margin-bottom: 5px; }
+  .home-hero { min-height: 158px; }
+  .home-intro { padding: 14px 12px 14px 17px; }
+  #home-title { font-size: clamp(33px, 6.2vw, 48px); }
+  .home-premise { margin-top: 7px; font-size: 13px; line-height: 1.35; }
+  .home-actions { margin-top: 10px; }
+  #home .home-actions button { min-width: 0; min-height: 44px; padding-inline: 13px; font-size: 13px; }
+  .home-modes { margin-top: 9px; }
+  #home-modes-title { margin-bottom: 5px; font-size: 14px; }
+  #home .home-mode-list button { min-height: 64px; padding: 5px 6px; }
+  .home-mode-list strong { font-size: 12px; }
+  .home-mode-list small { font-size: 10px; }
+}

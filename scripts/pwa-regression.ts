@@ -24,7 +24,7 @@ const buildRelease = async (version: string): Promise<string> => {
   return out;
 };
 const waitRelease = (page: Page, value: string) => page.waitForFunction(value =>
-  document.documentElement.dataset.testRelease === value && Boolean(document.querySelector('#game-controls button')), value,
+  document.documentElement.dataset.testRelease === value && Boolean(document.querySelector('#home:not([hidden])')), value,
   { timeout: 7000 });
 const engines = { chromium, webkit };
 try {
@@ -39,7 +39,7 @@ try {
       app.serve(earlier);
       const browser = await engine.launch();
       try {
-        const context = await browser.newContext();
+        const context = await browser.newContext({ locale: 'en-US' });
         const running = await context.newPage();
         await running.goto(app.url);
         await waitRelease(running, 'A');

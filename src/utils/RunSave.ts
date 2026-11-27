@@ -45,6 +45,7 @@ export interface RunSnapshot extends RunBasics {
   version?: RunVersion | null;
   missionDate?: string;
   activeSec?: number;
+  playbackSpeed?: 1 | 2 | 3;
   talentRanks?: TalentLoadout;
   variedOpener?: boolean;
   wavesClearedThrough?: number;
@@ -144,6 +145,7 @@ export function isRunSnapshot(data: unknown): data is RunSnapshot | LegacyRunSna
       || (data.version !== undefined && data.version !== null && !isRunVersion(data.version))
       || (data.missionDate !== undefined && !isDateKey(data.missionDate))
       || (data.activeSec !== undefined && !number(data.activeSec))
+      || (data.playbackSpeed !== undefined && !integer(data.playbackSpeed, 1, 3))
       || (data.origin !== undefined && !isRunOrigin(data.origin))
       || (data.talentRanks !== undefined && !isTalentLoadout(data.talentRanks))
       || (data.variedOpener !== undefined && (typeof data.variedOpener !== 'boolean' || (data.variedOpener && !data.endless)))

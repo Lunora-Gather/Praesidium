@@ -47,11 +47,6 @@
         border-radius: 5px;
         background: transparent;
       }
-      #game-controls button:focus-visible {
-        outline: 2px solid #e0f2fe;
-        outline-offset: 2px;
-        box-shadow: 0 0 0 5px #1d4ed8;
-      }
       #challenge-dialog, .app-dialog {
         position: fixed;
         inset: 0;
@@ -78,7 +73,11 @@
         font: inherit;
       }
       #challenge-dialog input { min-width: 0; font: 16px ui-monospace, monospace; }
-      #challenge-dialog :focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+      #challenge-code:focus { background-color: #283c53; caret-color: #f2c584; }
+      #challenge-code::selection { background: #3d5f7f; color: #fff; }
+      :root:not([data-input="pointer"]) #challenge-dialog form:has(#challenge-code:focus-visible) #challenge-label {
+        color: #f2c584;
+      }
       #challenge-dialog input[aria-invalid="true"] { border-color: #fda4af; }
       #challenge-status { min-height: 1.4em; color: #fecdd3; }
       #challenge-dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
@@ -87,21 +86,39 @@
         position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
         white-space: nowrap; clip-path: inset(50%);
       }
-      .ops-dialog { width: min(540px, calc(100% - 24px)); overflow: hidden; }
-      .ops-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
-      .ops-content { min-height: 0; overflow: auto; overscroll-behavior: contain; padding-right: 5px; }
-      .ops-dialog .actions { padding-top: 10px; border-top: 1px solid #334155; }
-      .ops-dialog h3 { font-size: 15px; margin: 16px 0 7px; color: #a5f3fc; }
-      .ops-dialog ul { margin: 0 0 6px; padding-left: 21px; font-size: 13px; line-height: 1.6; }
+      .battle-confirm [type="button"]:last-child { background: #1d4ed8; }
       .app-dialog::backdrop { background: rgba(2, 6, 23, .78); }
       .app-dialog h2 { color: #f8fafc; font-size: 21px; margin-bottom: 12px; }
       .app-dialog p { font-size: 14px; line-height: 1.45; }
+      .stats-filter label:not([hidden]) { display: grid; gap: 5px; margin-top: 9px; }
+      .stats-filter select {
+        min-height: 44px; width: 100%; padding: 7px 10px; font: inherit; color: #edf3f8;
+        background: #172536; border: 1px solid #526985; border-radius: 6px;
+      }
+      @media (min-width: 480px) and (max-height: 420px) {
+        .stats-filter[open] { display: grid; width: min(510px, calc(100% - 32px)); grid-template-columns: 1.4fr .7fr 1fr; column-gap: 12px; }
+        .stats-filter h2, .stats-filter .actions { grid-column: 1 / -1; }
+      }
       .app-dialog .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
       .app-dialog button, #progress-notice {
         min-height: 44px; padding: 8px 12px; border: 1px solid #516484;
         border-radius: 8px; background: #16243a; color: #f8fafc; font: inherit;
       }
-      .app-dialog :focus-visible, #progress-notice:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+      :where(button, input, select, summary, dialog, .ops-content):focus {
+        outline: none;
+      }
+      :root:not([data-input="pointer"]) :where(button, select, input[type="range"], summary, .ops-content):focus-visible {
+        box-shadow: inset 0 -3px var(--control-focus, #c5def6);
+      }
+      :is(.home-actions button, .campaign-deploy, .progress-primary) { --control-focus: currentColor; }
+      @media (forced-colors: active) {
+        :root:not([data-input="pointer"]) :where(button, input, select, summary, .ops-content):focus-visible,
+        #challenge-code:focus {
+          outline: 2px solid Highlight;
+          outline-offset: -2px;
+          box-shadow: none;
+        }
+      }
       #progress-notice {
         position: fixed; left: 50%; bottom: 8px; z-index: 3; transform: translateX(-50%);
         width: max-content; max-width: calc(100% - 16px); color: #fef3c7;
@@ -157,6 +174,141 @@
   <body>
     <canvas id="c" aria-hidden="true"></canvas>
     <div id="game-controls" role="group"></div>
+    <main id="home" hidden aria-labelledby="home-title">
+      <div class="home-shell">
+        <header class="home-header">
+          <div class="home-mark">
+            <span class="home-reticle" aria-hidden="true"></span>
+            <span data-home-text="home.genre"></span>
+          </div>
+          <nav class="home-tools">
+            <button type="button" data-home-action="brief" data-home-label="ops.short" data-home-text="ops.short"></button>
+            <button type="button" data-home-action="stats" data-home-label="home.stats" data-home-text="home.stats"></button>
+            <button type="button" data-home-action="settings" data-home-label="menu.settings" data-home-text="menu.settings"></button>
+          </nav>
+        </header>
+        <section class="home-hero" aria-labelledby="home-title">
+          <div class="home-intro">
+            <h1 id="home-title">Praesidium</h1>
+            <p class="home-premise" data-home-text="home.premise"></p>
+            <div class="home-actions">
+              <button type="button" class="home-continue" data-home-action="continue" data-home-label="menu.resume" data-home-text="menu.resume" hidden></button>
+              <button type="button" class="home-start" data-home-action="start" data-home-label="menu.start" data-home-text="menu.start"></button>
+            </div>
+          </div>
+          <div class="home-art" aria-hidden="true">
+            <img src="/src/assets/home-outpost.webp" alt="" width="1200" height="800" fetchpriority="high">
+          </div>
+        </section>
+        <section class="home-modes" aria-labelledby="home-modes-title">
+          <h2 id="home-modes-title" data-home-text="home.modes"></h2>
+          <div class="home-mode-list">
+            <button type="button" data-home-action="endless" data-home-label="menu.endless" aria-describedby="home-endless-note">
+              <span class="home-mode-symbol" aria-hidden="true">∞</span>
+              <span><strong data-home-text="menu.endless"></strong><small id="home-endless-note" data-home-text="menu.endlessNote"></small></span>
+            </button>
+            <button type="button" data-home-action="daily" data-home-label="menu.daily" aria-describedby="home-daily-note">
+              <span class="home-mode-symbol" aria-hidden="true">◷</span>
+              <span><strong data-home-text="menu.daily"></strong><small id="home-daily-note"></small></span>
+            </button>
+            <button type="button" data-home-action="weekly" data-home-label="menu.weekly" aria-describedby="home-weekly-note">
+              <span class="home-mode-symbol" aria-hidden="true">◇</span>
+              <span><strong data-home-text="menu.weekly"></strong><small id="home-weekly-note"></small></span>
+            </button>
+            <button type="button" data-home-action="challenge" data-home-label="menu.challenge" aria-describedby="home-seed-note">
+              <span class="home-mode-symbol" aria-hidden="true">#</span>
+              <span><strong data-home-text="menu.challenge"></strong><small id="home-seed-note" data-home-text="home.seedNote"></small></span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+    <main id="campaign" hidden aria-labelledby="campaign-title">
+      <div class="campaign-shell">
+        <header class="campaign-header">
+          <div>
+            <button type="button" class="campaign-back" data-campaign="back">
+              <span class="campaign-chevron" aria-hidden="true"></span><span data-campaign-text="common.menu"></span>
+            </button>
+            <h1 id="campaign-title" data-campaign="title" data-campaign-text="campaign.title" tabindex="-1"></h1>
+          </div>
+          <div class="campaign-progress">
+            <div><strong data-campaign="progress"></strong><span data-campaign="count"></span></div>
+            <progress data-campaign="meter"></progress>
+          </div>
+        </header>
+        <section class="campaign-briefing" data-campaign="briefing" aria-labelledby="campaign-mission">
+          <div class="campaign-map">
+            <canvas data-campaign="map" aria-hidden="true"></canvas>
+            <div class="campaign-legend">
+              <span><i class="campaign-entry" aria-hidden="true"></i><span data-campaign-text="campaign.entry"></span></span>
+              <span><i class="campaign-base" aria-hidden="true"></i><span data-campaign-text="campaign.base"></span></span>
+            </div>
+          </div>
+          <div class="campaign-brief">
+            <p class="campaign-stage" data-campaign="stage"></p>
+            <h2 id="campaign-mission" data-campaign="mission"></h2>
+            <p class="campaign-theme" data-campaign="theme"></p>
+            <p class="sr-only" role="status" data-campaign="summary"></p>
+            <div class="campaign-loadout">
+              <p id="campaign-difficulty" data-campaign-text="campaign.difficulty"></p>
+              <div class="campaign-difficulties" role="group" aria-labelledby="campaign-difficulty" data-campaign="difficulties"></div>
+              <p class="campaign-difficulty-note" data-campaign="difficulty-note" aria-live="polite"></p>
+            </div>
+            <button type="button" class="campaign-deploy" data-campaign="deploy" aria-describedby="campaign-deploy-detail">
+              <span data-campaign="deploy-label"></span>
+              <span id="campaign-deploy-detail" class="campaign-deploy-detail" data-campaign="deploy-detail"></span>
+            </button>
+          </div>
+        </section>
+        <nav class="campaign-route" aria-labelledby="campaign-route-title">
+          <h2 id="campaign-route-title" data-campaign-text="campaign.route"></h2>
+          <ol data-campaign="route"></ol>
+        </nav>
+      </div>
+    </main>
+    <dialog id="codex-screen" aria-labelledby="codex-heading">
+      <header class="codex-nav">
+        <div class="codex-width">
+          <button type="button" class="codex-back"></button>
+          <div class="codex-tabs">
+            <button type="button" data-codex-tab="towers" aria-controls="codex-list"></button>
+            <button type="button" data-codex-tab="enemies" aria-controls="codex-list"></button>
+          </div>
+        </div>
+      </header>
+      <div class="codex-scroll">
+        <div class="codex-width codex-content">
+          <h1 id="codex-heading" tabindex="-1"></h1>
+          <ul id="codex-list"></ul>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="talent-screen" aria-labelledby="talent-title">
+      <header class="talent-nav">
+        <div class="talent-width">
+          <button type="button" class="talent-back"><span aria-hidden="true"></span><span data-talent="back"></span></button>
+        </div>
+      </header>
+      <div class="talent-scroll">
+        <div class="talent-width talent-content">
+          <div class="talent-header">
+            <div>
+              <h1 id="talent-title" tabindex="-1"></h1>
+              <p data-talent="scope"></p>
+              <p data-talent="challenge" hidden></p>
+            </div>
+            <div class="talent-balance">
+              <span data-talent="points-label"></span>
+              <strong data-talent="points"></strong>
+            </div>
+          </div>
+          <ul class="talent-list"></ul>
+          <p class="talent-earn" data-talent="earn"></p>
+          <p class="talent-status" role="status"></p>
+        </div>
+      </div>
+    </dialog>
     <div id="battle-status" class="sr-only" role="region" hidden></div>
     <div id="game-reading" class="sr-only" role="region" hidden></div>
     <p id="game-announcement" class="sr-only" role="status"></p>

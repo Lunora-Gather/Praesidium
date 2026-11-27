@@ -4,6 +4,14 @@ All notable changes to Praesidium are tracked here.
 
 ## Unreleased
 
+## 1.2.0 - 2026-11-27
+
+- Reworked the command deck, campaign preview, settings, briefing, stats and Intel screens with scrollable native controls and responsive layouts.
+- Added shared tower and enemy silhouettes, clearer routes and endpoints, and build and skill previews on the battlefield.
+- Refined touch placement, sale confirmation and spell targeting. The first wave waits for the player. Aiming a damaging spell at an empty area leaves the gold and cooldown available.
+- Added adjustable screen shake, reduced-motion support and adaptive graphics. Paused scenes avoid continuous redraws and audio scheduling.
+- Save battle speed with the checkpoint and resume paused after a refresh. Keep backup recovery, older save migration and offline update verification covered by browser tests.
+
 ## 1.1.0 - 2026-11-25
 
 - Updated build dependencies and tightened the legacy save cutover, including when an existing worker is bypassed by a forced reload.

@@ -13,7 +13,7 @@ const browser = await chromium.launch();
 const button = (page: Page, name: string | RegExp) => page.getByRole('button', { name, exact: typeof name === 'string' });
 
 try {
-  const desktop = await browser.newContext({ viewport: { width: 1280, height: 720 }, recordVideo: { dir: out, size: { width: 1280, height: 720 } }, serviceWorkers: 'block' });
+  const desktop = await browser.newContext({ viewport: { width: 1280, height: 720 }, recordVideo: { dir: out, size: { width: 1280, height: 720 } }, serviceWorkers: 'block', locale: 'en-US' });
   const page = await desktop.newPage();
   await page.goto(app.url);
   await button(page, 'Endless Mode').waitFor();
@@ -26,7 +26,7 @@ try {
   await board.press('Enter');
   await board.press('ArrowUp');
   await board.press('Enter');
-  await button(page, 'Send Wave').press('Enter');
+  await button(page, 'Start wave 1').press('Enter');
   await page.waitForFunction(() => document.getElementById('game-announcement')?.textContent?.includes('Wave 1'));
   // Hold on actual live combat long enough to show enemies entering the route in the clip.
   await page.waitForTimeout(7500);
@@ -37,14 +37,14 @@ try {
   await video.saveAs(join(out, 'gameplay-candidate.webm'));
   await video.delete();
 
-  const phone = await browser.newContext({ viewport: { width: 568, height: 320 }, hasTouch: true, serviceWorkers: 'block' });
+  const phone = await browser.newContext({ viewport: { width: 568, height: 320 }, hasTouch: true, serviceWorkers: 'block', locale: 'en-US' });
   const narrow = await phone.newPage();
   await narrow.goto(app.url);
   await button(narrow, 'Weekly Challenge').press('Enter');
   await button(narrow, 'Operations briefing').waitFor();
   await narrow.screenshot({ path: join(out, 'mobile-landscape.png') });
   await narrow.setViewportSize({ width: 320, height: 568 });
-  await narrow.waitForFunction(() => document.querySelector('button[aria-label="Auto Send"]')?.getBoundingClientRect().y === 33);
+  await narrow.waitForFunction(() => document.querySelector('button[aria-label="Skip wave interval"]')?.getBoundingClientRect().y === 33);
   await narrow.screenshot({ path: join(out, 'mobile-portrait.png') });
   await button(narrow, 'Operations briefing').press('Enter');
   await narrow.getByRole('dialog', { name: 'Operations briefing' }).waitFor();

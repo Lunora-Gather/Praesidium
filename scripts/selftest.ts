@@ -18,13 +18,14 @@ import { achievementName, enemyName, spellName, towerName, traitName } from '../
 import type { MenuClickAction, ScreenStats } from '../src/ui/Screens';
 import { dailyMissions, evaluateMissions, missionSummary } from '../src/utils/DailyMissions';
 import { buildProductHealth } from '../src/utils/ProductHealth';
+import { buildDefeatAdviceFromSummary } from '../src/utils/RunAdvice';
 import { buildPlaytestReport, formatPlaytestReport } from '../src/utils/PlaytestReport';
 import { weekKey, weeklyMode, weeklyModeSummary } from '../src/utils/WeeklyMode';
 import { weeklyRules, weeklyRuleSummary } from '../src/utils/WeeklyRules';
 import { classifyBossEncounter } from '../src/utils/BossEncounter';
 import { drawWeeklyRunBadge } from '../src/ui/WeeklyRunBadge';
 import { battleLayout } from '../src/ui/BattleLayout';
-import { battleHudLayout, BOT_H } from '../src/ui/BattleHudLayout';
+import { battleHudLayout } from '../src/ui/BattleHudLayout';
 import { Enemy } from '../src/game/enemies/Enemy';
 import { getEnemyDef } from '../src/game/enemies/EnemyRegistry';
 import { Projectile } from '../src/game/projectiles/Projectile';
@@ -55,35 +56,41 @@ for (const [i, level] of LEVELS.entries()) {
   check(`level ${i + 1} has buildable tiles`, level.tiles.includes(TileType.Buildable));
 }
 
-for (const [width, height] of [[320, 568], [390, 844], [568, 320], [640, 360], [780, 390], [900, 600], [1024, 768], [1280, 720], [1920, 1080]]) {
+for (const [width, height] of [[320, 568], [390, 430], [390, 844], [480, 320], [568, 320], [640, 360], [780, 390], [900, 600], [1024, 768], [1380, 778], [1920, 1080]]) {
+  const epsilon = .00001;
+  const inside = (box: { x: number; y: number; w: number; h: number }) => box.x >= -epsilon && box.y >= -epsilon
+    && box.x + box.w <= width + epsilon && box.y + box.h <= height + epsilon;
   const fits = LEVELS.every(level => {
     const grid = new Grid(level);
-    const { camera, tools, infoHeight, shopRight, topHeight } = battleLayout(width, height, grid.widthPx, grid.heightPx);
-    const mapRight = camera.x + grid.widthPx * camera.zoom;
-    const mapBottom = camera.y + grid.heightPx * camera.zoom;
-    const toolRight = tools.x + tools.width + tools.dx * 3;
-    const toolBottom = tools.y + tools.height + tools.dy * 3;
-    const separatesMapAndTools = tools.x >= mapRight || tools.y >= mapBottom;
-    const separatesShopAndTools = toolBottom <= height - BOT_H || tools.x >= shopRight;
-    return camera.x >= 0 && camera.y >= topHeight + infoHeight && mapRight <= width && mapBottom <= height - BOT_H
-      && tools.x >= 0 && toolRight <= width && toolBottom <= height && tools.height >= 34
-      && separatesMapAndTools && separatesShopAndTools;
+    const { camera, board, tiles, tools, info, shop, detail } = battleLayout(width, height, grid);
+    const separate = [info, shop, detail, ...tools].every(box => box.x >= board.x + board.w - epsilon || box.y >= board.y + board.h - epsilon
+      || box.x + box.w <= board.x + epsilon || box.y + box.h <= board.y + epsilon);
+    const playableTilesIncluded = grid.tiles.every((tile, index) => tile === TileType.Blocked || (index % grid.cols >= tiles.x
+      && index % grid.cols < tiles.x + tiles.w && Math.floor(index / grid.cols) >= tiles.y && Math.floor(index / grid.cols) < tiles.y + tiles.h));
+    return camera.zoom * grid.tile >= (height <= 430 ? 13 : 18) && [board, info, shop, detail, ...tools].every(inside)
+      && tools.every(box => box.w >= 44 && box.h >= 44) && separate && playableTilesIncluded;
   });
   check(`battle map and controls fit all campaign levels at ${width}×${height}`, fits);
-  const hud = battleHudLayout(width);
+  const layout = battleLayout(width, height, new Grid(LEVELS[0]));
+  const frame = layout.field;
+  if (width >= 1280) check(`battle controls span the window while the map stays centered at ${width}×${height}`,
+    frame.w >= width - 64 && layout.shop.w === frame.w
+      && Math.abs(layout.board.x + layout.board.w / 2 - width / 2) < epsilon
+      && Math.abs(layout.tools[0].x + layout.tools[0].w - (frame.x + frame.w)) < epsilon);
+  const hud = battleHudLayout(width, frame);
   const items = [...hud.metrics, ...hud.controls];
-  const epsilon = 0.00001;
   check(`HUD metrics and 44px controls do not overlap at ${width}×${height}`,
     hud.controls.every(region => region.w >= 44 - epsilon && region.h >= 44) && items.every((a, index) =>
-      a.x >= 0 && a.y >= 0 && a.x + a.w <= width + epsilon && a.y + a.h <= hud.topHeight
-      && items.slice(index + 1).every(b => a.x + a.w <= b.x + epsilon || b.x + b.w <= a.x + epsilon
+      inside(a) && a.y + a.h <= hud.topHeight && items.slice(index + 1).every(b => a.x + a.w <= b.x + epsilon || b.x + b.w <= a.x + epsilon
         || a.y + a.h <= b.y + epsilon || b.y + b.h <= a.y + epsilon)));
 }
 
 const prep = new GameState();
 prep.selectLevel(0);
+prep.waves.autoSend = true;
 prep.update(20);
-check('first wave waits for the player', prep.waves.current === 0);
+check('first wave waits for the player even with intervals skipped', prep.waves.current === 0);
+check('offensive spells cannot charge gold during preparation', !prep.castSpell('meteor', Vec2.zero) && !prep.castSpell('freeze', Vec2.zero) && prep.gold === BALANCE.startGold);
 check('player can launch the first wave after preparing', prep.waves.forceNext() && prep.waves.current === 1);
 
 const combatGrid = prep.grid;
@@ -377,6 +384,10 @@ for (let i = 0; i < 60 * 60; i++) {
 }
 check('endless runs without crash', true);
 check('endless never reaches won', gs2.phase !== 'won');
+
+const defeat: ScreenStats = { wave: 4, lives: 0, towersPlaced: 3, upgrades: 1, spellsCast: 1, gold: 480, goldAvailable: 0 };
+check('defeat advice does not treat earned gold as unspent', buildDefeatAdviceFromSummary(defeat) === tr('summary.defeatAdvice'));
+check('defeat advice suggests using available gold', buildDefeatAdviceFromSummary({ ...defeat, goldAvailable: 120 }) === tr('advice.defeat.spendGold'));
 
 // --- Challenge seed reproducibility ---
 const gs3 = new GameState();

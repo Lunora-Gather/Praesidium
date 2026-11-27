@@ -1,17 +1,24 @@
-// HUD: top stat bar + bottom tower shop. Responsive and data-rich.
-
-import { Renderer } from '../engine/Renderer';
-import { GameState } from '../game/GameState';
-import { TOWER_LIST, getTowerDef } from '../game/towers/TowerRegistry';
+// Tactical header and tower shelf. The same measured regions drive input and drawing.
+import type { Renderer } from '../engine/Renderer';
+import type { GameState } from '../game/GameState';
+import { TOWER_LIST } from '../game/towers/TowerRegistry';
 import { getEnemyDef } from '../game/enemies/EnemyRegistry';
-import { Vec2 } from '../engine/math/Vec2';
-import { t } from '../utils/i18n';
-import { classifyBossEncounter } from '../utils/BossEncounter';
-import { enemyName, towerName, traitName as localizedTraitName } from '../utils/displayText';
-import { layoutFor, UI } from './Layout';
+import { getLocale, t } from '../utils/i18n';
+import { enemyName, towerName } from '../utils/displayText';
 import type { FocusRegion } from './ControlFocus';
-import { battleHudLayout, TOP_H, BOT_H } from './BattleHudLayout';
+import { battleHudLayout, TOP_H } from './BattleHudLayout';
+import type { BattleBox, BattleLayout } from './BattleLayout';
+import { drawWeeklyRunBadge } from './WeeklyRunBadge';
+import { classifyBossEncounter } from '../utils/BossEncounter';
+import { getLevelTheme } from './LevelThemes';
+import { drawTowerSprite } from './BattleSprites';
 export { TOP_H, BOT_H } from './BattleHudLayout';
+
+const INK = '#edf3f8';
+const MUTED = '#a7b9ca';
+const LINE = '#293b4c';
+const SHELF = '#0f1b27';
+const AMBER = '#f2c584';
 
 export interface HudRegions {
   topHeight: number;
@@ -20,206 +27,141 @@ export interface HudRegions {
 }
 
 export class HUD {
-  draw(r: Renderer, s: GameState, speed = 1, autoSend = false, shopRight = r.width, showWavePreview = true): HudRegions {
-    const regions: HudRegions = { topHeight: TOP_H, shop: [], buttons: [] };
-    const geometry = battleHudLayout(r.width);
-    const top = geometry.topHeight;
-    regions.topHeight = top;
-    const topGrad = r.linearGradient(0, 0, 0, top, [
-      { offset: 0, color: 'rgba(6, 10, 15, 0.98)' },
-      { offset: 1, color: 'rgba(15, 23, 42, 0.98)' },
-    ]);
-    r.rect(0, 0, r.width, top, topGrad);
-    r.rect(0, top - 1, r.width, 1, 'rgba(96,165,250,0.22)');
+  private wave: { grid: GameState['grid']; key: string; text: string } | null = null;
+  private boss: { key: string; grid: GameState['grid']; label: string } | null = null;
 
-    const compact = r.width < 1080;
+  draw(r: Renderer, s: GameState, layout: BattleLayout, placing: boolean, feedback = '',
+    pointer?: { x: number; y: number }): HudRegions {
+    const geometry = battleHudLayout(r.width, layout.field);
+    const regions: HudRegions = { topHeight: geometry.topHeight, shop: [], buttons: [] };
+    r.rect(0, 0, r.width, geometry.topHeight, SHELF);
+    r.rect(0, geometry.topHeight - 1, r.width, 1, LINE);
+
+    const current = s.waves.current;
     const metrics = [
-      [t('hud.gold'), String(s.gold), UI.color.gold],
-      [t('hud.lives'), String(s.lives), s.lives <= 5 ? '#f87171' : '#34d399'],
-      [t('hud.wave'), `${s.waves.current}/${s.endless ? '∞' : s.waves.totalWaves}`, '#34d399'],
-      [s.comboCount >= 3 ? `${t('hud.score')} ×${s.comboCount}` : t('hud.score'), String(s.score), '#e2e8f0'],
+      [t('hud.gold'), String(s.gold), AMBER],
+      [t('hud.lives'), String(s.lives), s.lives <= 5 ? '#fca5a5' : INK],
+      [t('hud.wave'), current ? `${current}/${s.endless ? '∞' : s.waves.totalWaves}` : '—', INK],
+      [s.comboCount >= 3 ? `${t('hud.score')} ×${s.comboCount}` : t('hud.score'), String(s.score), INK],
     ];
+    const stacked = geometry.topHeight > TOP_H;
     for (const [i, { x, y, w, h }] of geometry.metrics.entries()) {
       const [label, value, color] = metrics[i];
-      const middle = y + h / 2;
-      r.text(label, x + w / 2, middle - 7, UI.color.textMuted, compact ? 9 : 10, 'center', 'bold', 'middle', 'ui', w - 4);
-      r.text(value, x + w / 2, middle + 7, color, compact ? 13 : 15, 'center', 'bold', 'middle', 'header', w - 4);
+      r.text(label, x + w / 2, y + h / 2 - 8, MUTED, 10, 'center', 'normal', 'middle', 'ui', w - 5);
+      r.text(value, x + w / 2, y + h / 2 + 7, color, stacked ? 13 : 16, 'center', 'bold', 'middle', 'ui', w - 5);
+      if (i > 0) r.rect(x, y + (stacked ? 6 : 13), 1, h - (stacked ? 12 : 26), LINE);
     }
-    const actionLabels = {
-      codex: t('hud.intel'), talent: t('hud.talent'), settings: t('menu.settings'), stats: t('hud.stats'),
-      menu: t('hud.menu'), autoSend: t('hud.autoLabel'), speed: t('controls.speed').replace('{speed}', String(speed)),
-      pause: t('hud.pause'), send: t('hud.send'), brief: t('ops.title'),
-    };
-    const waveInProg = s.waves.inProgress;
-    const next = !s.endless && s.waves.current >= s.waves.totalWaves ? t('hud.last') : `${t('hud.wave')} ${s.waves.current + 1}`;
+
+    const sending = s.waves.inProgress;
+    const canSend = !sending && s.waves.state !== 'done';
+    const speed = s.playbackSpeed;
+    const skip = s.waves.autoSend;
+    const startWave = t('battle.launch').replace('{wave}', String(current + 1));
+    const sendLabel = sending ? t('battle.spawning').replace('{count}', String(s.waves.remainingToSpawn))
+      : canSend ? startWave : t('battle.final');
     const labels = {
-      ...actionLabels, send: waveInProg ? '▶ …' : next, pause: compact ? '⏸' : actionLabels.pause, speed: `${speed}×`,
-      autoSend: `${t('hud.auto')}${autoSend ? ' ✓' : ''}`, brief: compact ? 'ⓘ' : t('ops.short'),
+      send: sendLabel, pause: t('hud.pause'), speed: t('controls.speed').replace('{speed}', String(speed)),
+      autoSend: t('hud.autoLabel'), brief: t('ops.title'),
     };
     for (const { action, x, y, w, h } of geometry.controls) {
-      const active = (action === 'send' && !waveInProg) || (action === 'autoSend' && autoSend) || (action === 'speed' && speed > 1);
-      const color = action === 'send' ? '#2563eb' : action === 'autoSend' ? '#059669' : '#6d28d9';
-      r.roundRect(x, y, w, h, 8, active ? color : '#16243a', true, active ? '#93c5fd' : 'rgba(148,163,184,0.20)', 1);
-      r.text(labels[action], x + w / 2, y + h / 2, '#f1f5f9', 11, 'center', 'bold', 'middle', 'ui', w - 6);
-      regions.buttons.push({ x, y, w, h, action, label: actionLabels[action], pressed: action === 'autoSend' ? autoSend : undefined });
+      const primary = action === 'send' && canSend;
+      const disabled = action === 'send' && !canSend;
+      const selected = action === 'autoSend' && skip;
+      const shortLabel = action === 'speed' ? `${speed}×`
+        : action === 'autoSend' ? `${t('hud.auto')}${skip ? ' ✓' : ''}` : action === 'brief' ? t('ops.short') : labels[action];
+      const hovered = pointer && pointer.x >= x && pointer.x < x + w && pointer.y >= y && pointer.y < y + h;
+      if (primary || selected || (hovered && !disabled)) {
+        r.roundRect(x, y + 2, w, h - 4, 6, primary ? AMBER : '#203244');
+      } else if (action !== 'send') {
+        r.rect(x - 2, y + 12, 1, h - 24, LINE);
+      }
+      r.text(shortLabel, x + w / 2, y + h / 2, primary ? '#261c12' : disabled ? MUTED : INK, stacked ? 11 : 12, 'center', 'bold', 'middle', 'ui', w - 8);
+      regions.buttons.push({ x, y, w, h, action, label: labels[action], pressed: action === 'autoSend' ? skip : undefined, disabled });
     }
-    if (s.waves.betweenProgress > 0 && !s.waves.inProgress) {
-      const w = r.width * 0.42;
-      r.roundRect((r.width - w) / 2, top - 2, w * s.waves.betweenProgress, 2, 1, UI.color.blue, true);
-    }
-    if (showWavePreview) this.drawWavePreview(r, s, waveInProg, r.width < 850);
-    const layout = layoutFor(r);
+    this.drawInfo(r, s, layout.info, feedback);
 
-    const botY = r.height - BOT_H;
-    const botGrad = r.linearGradient(0, botY, 0, r.height, [
-      { offset: 0, color: 'rgba(6, 10, 15, 0.95)' },
-      { offset: 1, color: 'rgba(10, 16, 28, 0.98)' },
-    ]);
-    r.rect(0, botY, r.width, BOT_H, botGrad);
-    r.rect(0, botY, r.width, 1, 'rgba(59,130,246,0.12)');
-
-    const gap = r.width < 520 ? 6 : layout.gap;
-    const padding = r.width < 520 ? 8 : layout.safe;
-    const availShop = shopRight - padding * 2;
-    const rawCardW = (availShop - gap * (TOWER_LIST.length - 1)) / TOWER_LIST.length;
-    const maxCardW = r.width < 520 ? 66 : 120;
-    const cardW = Math.min(maxCardW, rawCardW);
-    const shopW = cardW * TOWER_LIST.length + gap * (TOWER_LIST.length - 1);
-
-    let sx = Math.max(padding, (shopRight - shopW) / 2);
-    for (const def of TOWER_LIST) {
-      const selected = s.selectedTowerId === def.id;
+    const { x, y, w, h } = layout.shop;
+    r.rect(0, y - 5, r.width, r.height - y + 5, SHELF);
+    r.rect(0, y - 5, r.width, 1, LINE);
+    const gap = w < 460 ? 4 : 6;
+    const cardW = (w - gap * (TOWER_LIST.length - 1)) / TOWER_LIST.length;
+    for (const [index, def] of TOWER_LIST.entries()) {
+      const selected = placing && s.selectedTowerId === def.id;
       const affordable = s.gold >= def.cost;
-      const cardY = botY + 8;
-      const cardH = BOT_H - 16;
+      const sx = x + index * (cardW + gap);
       const displayName = towerName(def.id, def.name);
-
-      let bg: string | CanvasGradient;
-      let border: string;
-      if (selected) {
-        bg = r.linearGradient(sx, cardY, sx, cardY + cardH, [
-          { offset: 0, color: 'rgba(59,130,246,0.36)' },
-          { offset: 1, color: 'rgba(37,99,235,0.16)' },
-        ]);
-        border = UI.color.blue;
-        r.setShadow('rgba(59,130,246,0.5)', 14);
-      } else if (affordable) {
-        bg = r.linearGradient(sx, cardY, sx, cardY + cardH, [
-          { offset: 0, color: 'rgba(20,32,56,0.92)' },
-          { offset: 1, color: 'rgba(10,16,28,0.9)' },
-        ]);
-        border = 'rgba(255,255,255,0.12)';
+      const wide = cardW >= 80;
+      const hovered = pointer && pointer.x >= sx && pointer.x < sx + cardW && pointer.y >= y && pointer.y < y + h;
+      if (index > 0) r.rect(sx - gap / 2, y + 8, 1, h - 16, LINE);
+      if (selected || hovered) r.rect(sx, y, cardW, h, selected ? '#1d3042' : '#172636');
+      if (selected) r.rect(sx, y + h - 2, cardW, 2, '#9ac4ea');
+      const inset = Math.max(0, (cardW - 156) / 2);
+      r.ctx.globalAlpha = affordable ? 1 : .58;
+      drawTowerSprite(r, def.id, def.color, sx + (wide ? 19 + inset : cardW / 2), y + (wide ? h / 2 + 1 : 13), wide ? 36 : 26, 0);
+      r.ctx.globalAlpha = 1;
+      if (wide) {
+        const shortcutSpace = cardW >= 110 ? 22 : 5;
+        r.text(displayName, sx + inset + 39, y + 17, INK, 12, 'left', 'bold', 'middle', 'ui', cardW - inset * 2 - 39 - shortcutSpace);
+        r.text(`${def.cost}g`, sx + inset + 39, y + 36, affordable ? AMBER : MUTED, 11, 'left', 'normal', 'middle');
+        if (cardW >= 110) r.text(String(index + 1), sx + cardW - inset - 10, y + 17, MUTED, 10, 'right', 'normal', 'middle');
       } else {
-        bg = 'rgba(10,15,25,0.6)';
-        border = 'rgba(255,255,255,0.03)';
+        r.text(displayName, sx + cardW / 2, y + 30, INK, 10, 'center', 'bold', 'middle', 'ui', cardW - 4);
+        r.text(String(def.cost), sx + cardW / 2, y + 43, affordable ? AMBER : MUTED, 10, 'center', 'normal', 'middle');
       }
-
-      r.roundRect(sx, cardY, cardW, cardH, 10, bg, true, border, selected ? 1.6 : 1);
-      r.clearShadow();
-
-      const dotX = sx + (cardW < 60 ? cardW / 2 : 12);
-      const dotY = cardY + (cardW < 60 ? 16 : cardH / 2 - 2);
-      r.setShadow(def.color, selected ? 10 : 4);
-      r.circle(new Vec2(dotX, dotY), cardW < 60 ? 4 : 5, def.color);
-      r.clearShadow();
-
-      const textX = sx + (cardW < 60 ? cardW / 2 : 22);
-      if (cardW >= 95) {
-        r.text(displayName, textX, cardY + 9, affordable ? '#f1f5f9' : '#475569', 11, 'left', 'bold');
-        r.text(`${def.cost}g`, textX, cardY + cardH - 18, affordable ? UI.color.gold : '#374151', 10, 'left', 'bold', 'top', 'header');
-        const idx = TOWER_LIST.findIndex(d => d.id === def.id) + 1;
-        r.text(`[${idx}]`, sx + cardW - 16, cardY + 9, 'rgba(100,116,139,0.7)', 9, 'right', 'normal', 'top', 'header');
-      } else if (cardW >= 60) {
-        r.text(displayName.slice(0, 4), textX, cardY + cardH / 2 - 6, affordable ? '#f1f5f9' : '#475569', 10, 'left', 'bold');
-        r.text(`${def.cost}g`, textX, cardY + cardH / 2 + 5, affordable ? UI.color.gold : '#374151', 9, 'left', 'bold', 'top', 'header');
-      } else {
-        r.text(displayName.slice(0, 1), textX, cardY + 26, affordable ? '#f1f5f9' : '#475569', 10, 'center', 'bold');
-        r.text(`${def.cost}`, textX, cardY + 40, affordable ? UI.color.gold : '#374151', 8, 'center', 'bold', 'top', 'header');
-      }
-
-      regions.shop.push({ x: sx, y: cardY, w: cardW, h: cardH, towerId: def.id, label: `${displayName}, ${def.cost}g`, pressed: selected });
-      sx += cardW + gap;
+      regions.shop.push({ x: sx, y, w: cardW, h, towerId: def.id, label: `${displayName}, ${def.cost}g`, pressed: selected });
     }
-
     return regions;
   }
 
-  private drawWavePreview(r: Renderer, s: GameState, waveInProg: boolean, isSmall: boolean): void {
-    if (waveInProg || isSmall || r.width < 1040 || s.comboCount >= 3) return;
-    const preview = s.waves.previewNext();
-    if (!preview || preview.enemies.length === 0) return;
+  private drawInfo(r: Renderer, s: GameState, box: BattleBox, feedback: string): void {
+    const { x, y, w, h } = box;
+    const ruleWidth = s.activeWeeklyMode ? Math.min(178, Math.round(w * .42)) : 0;
+    const contentWidth = w - ruleWidth;
+    const current = s.waves.current;
+    const preview = this.previewText(s);
+    const compact = h < 42 || w < 400;
+    const countdown = s.waves.state === 'between' && !s.waves.autoSend
+      ? t('battle.countdown').replace('{seconds}', String(Math.ceil(s.waves.secondsUntilNext))) : '';
+    const status = current === 0 ? t('battle.prepare') : countdown || t('battle.wave').replace('{wave}', String(current));
+    const mode = s.runOrigin.kind === 'daily' ? t('menu.daily') : s.runOrigin.kind === 'weekly' ? t('menu.weekly')
+      : s.runOrigin.kind === 'campaign' ? (getLocale() === 'en' ? s.levels.current.name : t(`campaign.mission.${getLevelTheme(s.levels.levelNumber).id}`))
+      : s.runOrigin.kind === 'endless' ? t('menu.endless') : t('battle.practice');
+    r.text(`${mode} · ${status}`, x + 10, y + h / 2 - 8, INK, compact ? 11 : 13, 'left', 'bold', 'middle', 'ui', contentWidth - 20);
 
-    const enemyText = preview.enemies
-      .slice(0, 5)
-      .map(group => {
-        const def = getEnemyDef(group.id);
-        return `${enemyName(def.id, def.name)}×${group.count}`;
-      })
-      .join(' · ');
-    const more = preview.enemies.length > 5 ? ' · …' : '';
-    const threats = this.previewThreats(preview.enemies);
-    const recommended = this.previewRecommendations(preview.enemies);
-    const encounter = classifyBossEncounter(preview.enemies);
-    const hasEncounter = encounter.id !== 'none';
-    const line1 = hasEncounter
-      ? `${t('hud.nextWave')} ${preview.waveNumber}: ${encounter.label} · ${enemyText}${more}`
-      : `${t('hud.nextWave')} ${preview.waveNumber}: ${enemyText}${more}`;
-    const line2 = hasEncounter
-      ? `${encounter.advice}  |  ${t('hud.recommended')}: ${recommended}`
-      : `${t('hud.threats')}: ${threats}  |  ${t('hud.recommended')}: ${recommended}`;
-    const w = Math.min(hasEncounter ? 760 : 620, Math.max(420, Math.max(line1.length, line2.length) * 5.7 + 34));
-    const h = hasEncounter ? 52 : 44;
-    const x = (r.width - w) / 2;
-    const y = TOP_H + 8;
-    const border = hasEncounter ? `${encounter.color}88` : 'rgba(59, 130, 246, 0.28)';
-
-    r.roundRect(x, y, w, h, 12, 'rgba(15, 23, 42, 0.84)', true, border, 1);
-    if (hasEncounter) r.roundRect(x + 8, y + 8, 5, h - 16, 3, encounter.color, true);
-    r.text(line1, r.width / 2, y + 10, hasEncounter ? encounter.color : '#bfdbfe', 10, 'center', 'bold', 'top', 'header');
-    r.text(line2, r.width / 2, y + (hasEncounter ? 31 : 27), '#94a3b8', 9.5, 'center', 'bold', 'top');
-  }
-
-  private previewThreats(enemies: Array<{ id: string; count: number }>): string {
-    const sorted = [...enemies]
-      .sort((a, b) => this.threatScore(b.id, b.count) - this.threatScore(a.id, a.count))
-      .slice(0, 3);
-
-    return sorted
-      .map(group => {
-        const def = getEnemyDef(group.id);
-        const trait = def.traits.find(item => item.includes('Resists') || item.includes('Boss') || item.includes('Fast') || item.includes('Siege')) ?? def.traits[0];
-        return `${enemyName(def.id, def.name)}(${localizedTraitName(trait)})`;
-      })
-      .join(' · ');
-  }
-
-  private previewRecommendations(enemies: Array<{ id: string; count: number }>): string {
-    const scores = new Map<string, number>();
-    for (const group of enemies) {
-      const def = getEnemyDef(group.id);
-      const weight = this.threatScore(group.id, group.count);
-      for (const id of def.recommendedTowerIds) {
-        scores.set(id, (scores.get(id) ?? 0) + weight);
-      }
+    let bosses = 0, health = 0;
+    for (const enemy of s.enemies) if (enemy.isBoss && !enemy.dead) {
+      bosses++;
+      health += enemy.hpRatio;
     }
-
-    return [...scores.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([id]) => {
-        const def = getTowerDef(id);
-        return towerName(def.id, def.name);
-      })
-      .join(' + ');
+    if (bosses && !feedback) this.drawBossWarning(r, s, { x: x + 10, y: y + h / 2 + 8, w: contentWidth - 20, h }, bosses, health / bosses);
+    else r.text(feedback || preview || t('battle.noReinforcements'), x + 10, y + h / 2 + 8, MUTED, compact ? 10 : 11, 'left', 'normal', 'middle', 'ui', contentWidth - 20);
+    if (countdown) r.rect(x, y + h - 2, contentWidth * (1 - s.waves.betweenProgress), 2, '#7fadd5');
+    if (ruleWidth) drawWeeklyRunBadge(r, s, { x: x + contentWidth, y, w: ruleWidth, h });
   }
 
-  private threatScore(id: string, count: number): number {
-    const def = getEnemyDef(id);
-    const hpWeight = def.hp / 40;
-    const speedWeight = def.speed / 70;
-    const bossWeight = def.isBoss ? 10 : 0;
-    const resistWeight = def.resist ? Object.values(def.resist).length * 2 : 0;
-    return count + hpWeight + speedWeight + bossWeight + resistWeight;
+  private previewText(s: GameState): string {
+    const key = `${s.waves.current}:${s.waves.state === 'done'}:${getLocale()}`;
+    if (this.wave?.grid === s.grid && this.wave.key === key) return this.wave.text;
+    const wave = s.waves.previewNext();
+    const groups = wave?.enemies.slice(0, 2).map(({ id, count }) => `${enemyName(id, getEnemyDef(id).name)} ×${count}`);
+    const text = wave && groups?.length ? `${t('ops.nextWave')} · ${groups.join(' · ')}${wave.enemies.length > 2 ? ' …' : ''}` : '';
+    this.wave = { grid: s.grid, key, text };
+    return text;
+  }
+
+  private drawBossWarning(r: Renderer, s: GameState, box: BattleBox, count: number, ratio: number): void {
+    const key = `${s.waves.current}:${Math.floor(performance.now() / 500)}:${getLocale()}`;
+    if (this.boss?.grid !== s.grid || this.boss.key !== key) {
+      const counts = new Map<string, number>();
+      for (const enemy of s.enemies) counts.set(enemy.id, (counts.get(enemy.id) ?? 0) + 1);
+      const encounter = classifyBossEncounter([...counts].map(([id, count]) => ({ id, count })));
+      this.boss = { key, grid: s.grid, label: encounter.label || t('boss.standard.title') };
+    }
+    const { x, y, w } = box;
+    const meterWidth = Math.min(116, w * .33);
+    r.text(count > 1 ? `${this.boss.label} ×${count}` : this.boss.label, x, y, '#fecaca', 11, 'left', 'bold', 'middle', 'ui', w - meterWidth - 8);
+    r.roundRect(x + w - meterWidth, y - 2, meterWidth, 4, 2, '#3f252c');
+    if (ratio > 0) r.roundRect(x + w - meterWidth, y - 2, meterWidth * ratio, 4, 2, '#f38181');
   }
 
   hitShop(regions: HudRegions, x: number, y: number): string | null {

@@ -17,7 +17,7 @@ Praesidium is a polished sci-fi tower defense browser game. Build and upgrade to
 - Intel Codex with tower roles, enemy traits, and recommended counters.
 - Talents, achievements, local statistics, Product Health diagnostics, and offline leaderboards.
 - Mobile landscape support with compact HUD and tower drawer.
-- No account, no backend, no remote telemetry; progress stays in browser localStorage.
+- No account, no backend, no remote telemetry; progress stays in IndexedDB, and preferences stay in localStorage.
 
 ## Screenshot capture list
 

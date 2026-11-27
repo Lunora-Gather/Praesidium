@@ -140,12 +140,8 @@ export class WaveManager {
   autoSend = false;
 
   update(dt: number, grid: Grid, out: Enemy[]): void {
-    if (this.state === 'done') return;
+    if (this.state === 'done' || this.state === 'idle') return;
     this.timer += dt;
-    if (this.state === 'idle') {
-      if (this.autoSend) this.startNext();
-      return;
-    }
 
     if (this.state === 'between') {
       this.betweenTimer += dt;
@@ -182,7 +178,7 @@ export class WaveManager {
   private diffCountMul = 1;
 
   previewNext(): WavePreview | null {
-    if (this.state === 'done' || this.state === 'running') return null;
+    if (this.state === 'done') return null;
     const nextWaveNumber = this.current + 1;
     if (!this.endless && nextWaveNumber > this.waves.length) return null;
 
@@ -286,6 +282,8 @@ export class WaveManager {
     return true;
   }
 
+  get remainingToSpawn(): number { return this.spawnGroups.reduce((sum, group) => sum + group.count, 0); }
+
   get inProgress(): boolean {
     return this.state === 'running';
   }
@@ -293,5 +291,9 @@ export class WaveManager {
   get betweenProgress(): number {
     if (this.state !== 'between') return 0;
     return Math.min(1, this.betweenTimer / BALANCE.waveInterDelay);
+  }
+
+  get secondsUntilNext(): number {
+    return Math.max(0, BALANCE.waveInterDelay - this.betweenTimer);
   }
 }

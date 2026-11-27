@@ -28,7 +28,7 @@ npm run release:audit
 
 ## 2. Browser smoke test
 
-Test the latest GitHub Pages build after a hard refresh.
+Open the deployed GitHub Pages build in a fresh browser session. Follow [Deployment and verification](DEPLOYMENT_STATUS.md) to check the published files and offline resume.
 
 - [ ] Main menu loads.
 - [ ] Campaign level select opens.

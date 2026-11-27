@@ -65,7 +65,8 @@ try {
   assert(manifest.some(([path]) => path === './index.html') && manifest.some(([path]) => path.startsWith('./assets/') && path.endsWith('.js')),
     'Live integrity manifest must cover the shell and the entry module');
   await Promise.all([comparePublished('index.html', html), comparePublished('sw.js', worker), ...manifest.map(async ([path, hash]) => {
-    const mime = path.endsWith('.html') ? /html/i : path.endsWith('.js') ? /javascript/i : path.endsWith('.json') ? /json/i : /./;
+    const mime = path.endsWith('.html') ? /html/i : path.endsWith('.js') ? /javascript/i
+      : path.endsWith('.css') ? /css/i : path.endsWith('.json') ? /json/i : path.endsWith('.webp') ? /image\/webp/i : /./;
     const bytes = await fetchAsset(asset(path), mime);
     assert.equal(sha256(bytes), hash, `${path} fails integrity verification`);
     if (path === './index.html') assert.equal(sha256(html), hash, 'Root HTML is inconsistent with index.html');
@@ -86,13 +87,18 @@ try {
       assert.equal(await page.locator('meta[name="praesidium-release"]').getAttribute('content'), version);
       await page.waitForFunction(() => navigator.serviceWorker.controller?.state === 'activated');
       await page.getByRole('button', { name: 'Endless Mode', exact: true }).press('Enter');
-      await page.getByRole('button', { name: 'Send Wave', exact: true }).press('Enter');
+      await page.getByRole('button', { name: /^(?:Send Wave|Start wave 1)$/i }).press('Enter');
       await waitForSavedWave(page, 1);
       await page.reload({ waitUntil: 'domcontentloaded' });
+      const resume = page.getByRole('button', { name: 'Resume', exact: true });
+      await resume.waitFor();
+      assert.equal(await page.getByRole('button', { name: 'Pause', exact: true }).count(), 0, 'Automatic reload must start paused');
+      await resume.press('Enter');
       await page.getByRole('button', { name: /^Battlefield, column/ }).waitFor();
       assert.match(await page.locator('#battle-status').textContent() ?? '', /wave 1\b/i, 'Battle should reload at the saved wave');
       await context.setOffline(true);
       await page.reload({ waitUntil: 'domcontentloaded' });
+      await resume.press('Enter');
       await page.getByRole('button', { name: /^Battlefield, column/ }).waitFor();
       assert.match(await page.locator('#battle-status').textContent() ?? '', /wave 1\b/i, 'Cached game should resume wave 1 offline');
       assert.deepEqual(errors, [], 'No unhandled page errors');

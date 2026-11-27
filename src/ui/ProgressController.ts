@@ -5,7 +5,7 @@ import { decodeProgressBackup, MAX_BACKUP_BYTES, ProgressStore, progressGuard, t
 import { t } from '../utils/i18n';
 import { runIdentity, type RunSnapshot } from '../utils/RunSave';
 import type { RunResult, RunSettlement } from '../utils/SaveSystem';
-import { ProgressDialog } from './ProgressDialog';
+import { ProgressDialog, type ProgressAction } from './ProgressDialog';
 
 const TAB_KEY = 'praesidium:checkpoint-owner';
 const previousOwner = (): string | null => {
@@ -48,7 +48,7 @@ export class ProgressController implements BattleStorage {
   get hasCheckpoint(): boolean { return this.view?.checkpoint != null; }
   get blocksInput(): boolean { return this.exclusive || this.dialog.isOpen; }
 
-  async initialize(game: GameState): Promise<void> {
+  async initialize(game: GameState, onReload: () => void): Promise<void> {
     this.game = game;
     this.backupInput.type = 'file';
     this.backupInput.id = 'progress-backup-input';
@@ -69,7 +69,7 @@ export class ProgressController implements BattleStorage {
         const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
         const lastOwner = previousOwner();
         if (view?.checkpoint && nav?.type === 'reload' && lastOwner && view.checkpoint.owner === lastOwner) {
-          await this.claim(view);
+          if (await this.claim(view)) onReload();
         }
       } catch (error) { this.fail(error); }
     });
@@ -105,6 +105,11 @@ export class ProgressController implements BattleStorage {
   private async read(): Promise<ProgressView> {
     if (!this.store) throw new Error('Progress database is not open');
     const view = await this.store.read();
+    this.adopt(view);
+    return view;
+  }
+
+  private adopt(view: ProgressView): void {
     this.view = view;
     this.game.save.adopt(view.profile);
     this.game.achievements.syncCampaign(view.profile.levelStars);
@@ -116,7 +121,6 @@ export class ProgressController implements BattleStorage {
       this.game.goMenu();
       this.notify('progress.changed');
     } else if (view.corrupt) this.notify('progress.damaged');
-    return view;
   }
 
   refresh(): void {
@@ -129,14 +133,15 @@ export class ProgressController implements BattleStorage {
     try { sessionStorage.setItem(TAB_KEY, this.owner); } catch { /* Menu resume still works. */ }
   }
 
-  private async claim(view: ProgressView): Promise<void> {
+  private async claim(view: ProgressView): Promise<boolean> {
     const checkpoint = await this.store?.claim(this.owner, progressGuard(view));
-    if (!checkpoint) { await this.read(); this.notify('progress.changed'); return; }
+    if (!checkpoint) { await this.read(); this.notify('progress.changed'); return false; }
     this.own(checkpoint);
-    if (!this.game.restore(checkpoint.snapshot)) { this.notify('progress.damaged'); return; }
+    if (!this.game.restore(checkpoint.snapshot)) { this.notify('progress.damaged'); return false; }
     await this.read();
     this.notify(null);
     this.channel?.postMessage('changed');
+    return true;
   }
 
   resume(): void {
@@ -200,7 +205,14 @@ export class ProgressController implements BattleStorage {
         }
         if (this.status === 'progress.failed' && !this.staged) this.notify(null);
       }
-    }).catch(error => this.fail(error)).finally(() => { this.saving = false; });
+    }).catch(error => { this.game.retryCheckpoint(); this.fail(error); }).finally(() => {
+      this.saving = false;
+      const pending = this.pendingCheckpoint;
+      if (pending) {
+        this.pendingCheckpoint = null;
+        this.checkpoint(pending);
+      }
+    });
   }
 
   settle(run: RunResult): Promise<RunSettlement | null> {
@@ -229,19 +241,23 @@ export class ProgressController implements BattleStorage {
     }).catch(error => this.fail(error));
   }
 
-  buyTalent(id: string, onBought?: () => void): void {
+  async buyTalent(id: string): Promise<boolean> {
     const def = TALENTS.find(talent => talent.id === id);
     const generation = this.view?.generation;
-    if (!def || generation === undefined || !this.store) return;
-    void this.enqueue(async () => {
-      const bought = await this.store!.buyTalent(id, def.costPerRank, def.maxRank, generation);
-      await this.read();
-      if (bought) { onBought?.(); this.channel?.postMessage('changed'); }
-    }).catch(error => this.fail(error));
+    const store = this.store;
+    if (!def || generation === undefined || !store) return false;
+    return this.enqueue(async () => {
+      const view = await store.buyTalent(id, def.costPerRank, def.maxRank, generation);
+      if (!view) { await this.read(); return false; }
+      this.adopt(view);
+      this.channel?.postMessage('changed');
+      return true;
+    }).catch(error => { this.fail(error); return false; });
   }
 
   private exportBackup(): void {
     this.game.autoSave();
+    this.dialog.setBackupFeedback(false);
     void this.enqueue(async () => {
       if (!this.store) throw new Error('Progress database is not open');
       const backup = await this.store.exportBackup();
@@ -253,7 +269,10 @@ export class ProgressController implements BattleStorage {
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }).catch(error => this.fail(error));
+    }).catch(error => {
+      if (this.dialog.setBackupFeedback(true)) logger.warn('Backup could not be downloaded', error);
+      else this.fail(error);
+    });
   }
 
   private restoreFile(file: File): void {
@@ -284,10 +303,12 @@ export class ProgressController implements BattleStorage {
     })().catch(error => this.fail(error)).finally(() => { this.exclusive = false; });
   }
 
-  manage(): void {
+  manage(back?: () => void): void {
     if (this.exclusive || this.dialog.isOpen) return;
-    const message = this.status ?? (this.hasCheckpoint ? 'progress.saved' : 'progress.empty');
-    const retry = { label: this.status === 'progress.updateNeeded' ? 'progress.checkUpdate' : 'progress.retry', run: () => {
+    const message = this.status === 'progress.failed' ? 'progress.failedDetail'
+      : this.status ?? (this.hasCheckpoint ? 'progress.saved' : 'progress.empty');
+    const canRetry = this.staged || this.status === 'progress.failed' || this.status === 'progress.updateNeeded';
+    const retry = canRetry ? { label: this.status === 'progress.updateNeeded' ? 'progress.checkUpdate' : 'progress.retry', run: () => {
       if (this.staged) this.runSettlement();
       else void this.enqueue(async () => {
         if (!await this.open()) return;
@@ -301,10 +322,10 @@ export class ProgressController implements BattleStorage {
         }
         this.notify(this.view?.corrupt ? 'progress.damaged' : null);
       }).catch(error => this.fail(error));
-    } };
-    const actions = [retry];
-    if (this.store) actions.unshift({ label: 'progress.export', run: () => this.exportBackup() });
-    if (this.store && !this.staged) actions.unshift({ label: 'progress.import', run: () => this.backupInput.click() });
-    this.dialog.manage(message, actions);
+    } } : undefined;
+    const actions: ProgressAction[] = [];
+    if (this.store) actions.push({ label: 'progress.export', detail: 'progress.exportHelp', run: () => this.exportBackup(), keepOpen: true });
+    if (this.store && !this.staged) actions.push({ label: 'progress.import', detail: 'progress.importHelp', run: () => this.backupInput.click() });
+    this.dialog.manage(message, actions, retry, back);
   }
 }

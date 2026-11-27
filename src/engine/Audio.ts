@@ -13,6 +13,7 @@ export class Audio {
   private muted = false;
   private readonly lastPlayed = new Map<string, number>();
   private readonly masterVolume = 0.2;
+  private transientVoices = 0;
 
   private ensure(): void {
     if (this.ctx) return;
@@ -33,7 +34,9 @@ export class Audio {
 
   resume(): void {
     this.ensure();
-    if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume();
+    if (this.ctx && this.ctx.state !== 'running' && this.ctx.state !== 'closed') {
+      void this.ctx.resume().catch(() => { /* A later user gesture can resume audio. */ });
+    }
   }
 
   setMuted(m: boolean): void {
@@ -53,10 +56,10 @@ export class Audio {
     return true;
   }
 
-  private synth(f1: number, f2: number, dur: number, type: OscillatorType = 'square', vol = 0.5): void {
-    if (this.muted) return;
+  private synth(f1: number, f2: number, dur: number, type: OscillatorType = 'square', vol = 0.5, transient = false): void {
+    if (this.muted || (transient && this.transientVoices >= 10)) return;
     this.ensure();
-    if (!this.ctx || !this.master) return;
+    if (this.ctx?.state !== 'running' || !this.master) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -69,32 +72,38 @@ export class Audio {
     g.connect(this.master);
     osc.start(t);
     osc.stop(t + dur);
+    if (transient) this.transientVoices++;
+    osc.onended = () => {
+      if (transient) this.transientVoices--;
+      osc.disconnect();
+      g.disconnect();
+    };
   }
 
   shoot(id: string): void {
     if (this.muted) return;
     if (!this.canPlay(`shoot:${id}`, id === 'tesla' ? 42 : 55)) return;
     if (id === 'sniper') {
-      this.synth(400, 80, 0.22, 'sawtooth', 0.2); // Heavy sniper thump
+      this.synth(400, 80, 0.22, 'sawtooth', 0.2, true); // Heavy sniper thump
     } else if (id === 'mortar' || id === 'cannon') {
-      this.synth(200, 50, 0.32, 'triangle', 0.28); // Mortar launch boom
+      this.synth(200, 50, 0.32, 'triangle', 0.28, true); // Mortar launch boom
     } else if (id === 'frost') {
-      this.synth(900, 300, 0.13, 'sine', 0.2); // Frost chime
+      this.synth(900, 300, 0.13, 'sine', 0.2, true); // Frost chime
     } else if (id === 'tesla') {
-      this.synth(1200, 800, 0.07, 'sawtooth', 0.16); // Tesla electric zap
+      this.synth(1200, 800, 0.07, 'sawtooth', 0.16, true); // Tesla electric zap
     } else {
-      this.synth(800, 200, 0.08, 'sawtooth', 0.12); // Regular turret chirp
+      this.synth(800, 200, 0.08, 'sawtooth', 0.12, true); // Regular turret chirp
     }
   }
 
   hit(): void {
     if (!this.canPlay('hit', 34)) return;
-    this.synth(180, 60, 0.07, 'triangle', 0.15); // deep solid impact thud
+    this.synth(180, 60, 0.07, 'triangle', 0.15, true); // deep solid impact thud
   }
 
   enemyDie(): void {
     if (!this.canPlay('enemyDie', 48)) return;
-    this.synth(140, 30, 0.2, 'sawtooth', 0.2); // rumbling explosion sound
+    this.synth(140, 30, 0.2, 'sawtooth', 0.2, true); // rumbling explosion sound
   }
 
   place(): void {

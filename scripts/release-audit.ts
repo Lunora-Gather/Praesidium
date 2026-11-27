@@ -150,7 +150,7 @@ check('public manifest aligns campaign count', contains('public/manifest.json', 
 check('public manifest start URL is relative', contains('public/manifest.json', '"start_url": "./"'));
 check('manifest uses standalone/fullscreen display', manifest.includes('fullscreen') || manifest.includes('standalone'));
 check('manifest start_url is relative', manifest.includes('"start_url"'));
-check('manifest prefers landscape', manifest.includes('"orientation": "landscape"'));
+check('installed game supports both orientations', manifest.includes('"orientation": "any"'));
 check('manifest includes game category', manifest.includes('"games"'));
 check('manifest includes app shortcut', manifest.includes('"shortcuts"'));
 
@@ -182,17 +182,20 @@ check('display helpers include trait localization', displayText.includes('traitN
 // Key release features wired in code
 check('layout system exists', fileExists('src/ui/Layout.ts'));
 check('layout system defines breakpoints', contains('src/ui/Layout.ts', 'LayoutMode') && contains('src/ui/Layout.ts', 'layoutFor'));
-check('HUD uses shared layout tokens', contains('src/ui/HUD.ts', 'layoutFor'));
-check('level select uses shared layout tokens', contains('src/ui/LevelSelect.ts', 'layoutFor'));
-check('level select has compact landscape layout', contains('src/ui/LevelSelect.ts', 'isCompactLandscape'));
+check('HUD and battle use the shared field geometry', contains('src/ui/HUD.ts', 'battleHudLayout(r.width, layout.field)'));
+check('level select uses native campaign controls', html.includes('aria-labelledby="campaign-difficulty"') && html.includes('class="campaign-deploy"'));
+check('level select has compact landscape layout', contains('src/ui/level-select.css', '(orientation: landscape)'));
 check('screens use shared layout tokens', contains('src/ui/Screens.ts', 'layoutFor'));
-check('settings screen uses shared layout tokens', contains('src/ui/SettingsScreen.ts', 'layoutFor'));
-check('stats screen uses shared layout tokens', contains('src/ui/StatsScreen.ts', 'layoutFor'));
-check('stats screen exposes product health tab', contains('src/ui/StatsScreen.ts', "tab_health") && contains('src/ui/StatsScreen.ts', 'buildProductHealth'));
-check('stats screen can export playtest report', fileExists('src/utils/PlaytestReport.ts') && contains('src/ui/StatsScreen.ts', 'export_report') && contains('src/main.ts', 'buildPlaytestReport'));
+check('settings screen uses a named dialog with a scrollable body',
+  contains('src/ui/SettingsScreen.ts', "createElement('dialog')") && contains('src/ui/SettingsScreen.ts', 'aria-labelledby')
+  && contains('src/ui/settings.css', '.settings-scroll') && contains('src/ui/settings.css', 'overflow: auto'));
+check('stats screen uses a named dialog and scrollable content', contains('src/ui/StatsScreen.ts', 'aria-labelledby')
+  && contains('src/ui/stats.css', '.stats-scroll') && contains('src/ui/stats.css', 'overflow: auto'));
+check('stats screen exposes product health tab', contains('src/ui/StatsScreen.ts', 'health.title') && contains('src/ui/StatsScreen.ts', 'buildProductHealth'));
+check('stats screen can export playtest report', fileExists('src/utils/PlaytestReport.ts') && contains('src/ui/StatsScreen.ts', 'exportReport') && contains('src/main.ts', 'buildPlaytestReport'));
 check('daily mission panel exists', fileExists('src/ui/DailyMissionPanel.ts'));
 check('daily mission progress can render after runs', contains('src/ui/DailyMissionPanel.ts', 'drawProgress'));
-check('daily mission panel avoids compact menu overlap', contains('src/ui/DailyMissionPanel.ts', 'shouldDrawMenuPanel'));
+check('daily mission progress leaves short results unobstructed', contains('src/ui/DailyMissionPanel.ts', 'if (!isSideRail && r.height < 740) return'));
 check('daily mission rewards persist once', contains('src/utils/SaveSystem.ts', 'recordDailyMissionProgress') && contains('src/utils/SaveSystem.ts', 'dailyMissionClaims'));
 check('weekly mode system exists', fileExists('src/utils/WeeklyMode.ts') && contains('src/utils/WeeklyMode.ts', 'weeklyMode'));
 check('weekly run badge exists', fileExists('src/ui/WeeklyRunBadge.ts') && contains('src/ui/WeeklyRunBadge.ts', 'drawWeeklyRunBadge'));
@@ -210,24 +213,28 @@ check('boss encounter classifier exists', fileExists('src/utils/BossEncounter.ts
 check('HUD labels boss encounters', contains('src/ui/HUD.ts', 'classifyBossEncounter') && contains('src/ui/HUD.ts', 'encounter.label'));
 check('selftest covers boss encounter variety', contains('scripts/selftest.ts', 'later boss encounter changes composition'));
 check('selftest covers boss encounter classifier', contains('scripts/selftest.ts', 'boss classifier detects fast escort'));
-check('talent panel uses shared layout tokens', contains('src/ui/TalentPanel.ts', 'layoutFor'));
-check('codex screen uses shared layout tokens', contains('src/ui/CodexScreen.ts', 'layoutFor'));
-check('tower panel uses shared layout tokens', contains('src/ui/TowerPanel.ts', 'layoutFor'));
+check('talent screen has native modal focus and scrollable content', html.includes('<dialog id="talent-screen"')
+  && contains('src/ui/TalentPanel.ts', 'this.dialog.showModal()') && contains('src/ui/talents.css', 'overflow: auto'));
+check('codex uses native scroll and the combat sprites', html.includes('<dialog id="codex-screen"')
+  && contains('src/ui/CodexScreen.ts', 'drawEnemySprite') && contains('src/ui/codex.css', 'overflow: auto'));
+check('tower panel uses a reserved area beside the board', contains('src/ui/TowerPanel.ts', "BattleLayout['detail']")
+  && contains('src/main.ts', 'state.gold, layout.detail'));
 check('level themes exist', fileExists('src/ui/LevelThemes.ts'));
 check('world renderer uses level themes', contains('src/ui/WorldRenderer.ts', 'getLevelTheme'));
 check('world renderer draws battle backdrop', contains('src/ui/WorldRenderer.ts', 'drawBattleBackdrop'));
 check('world renderer draws path flow markers', contains('src/ui/WorldRenderer.ts', 'drawPathFlow'));
-check('world renderer draws tower glow', contains('src/ui/WorldRenderer.ts', 'drawTowerGlow'));
-check('world renderer draws enemy shadow', contains('src/ui/WorldRenderer.ts', 'drawEnemyShadow'));
-check('world renderer has boss warning', contains('src/ui/WorldRenderer.ts', 'drawBossWarning'));
+check('combat renders cached tower and enemy sprites', contains('src/ui/WorldRenderer.ts', 'drawTowerSprite')
+  && contains('src/ui/WorldRenderer.ts', 'drawEnemySprite') && fileExists('src/ui/BattleSprites.ts'));
+check('battle information area has boss warning', contains('src/ui/HUD.ts', 'drawBossWarning'));
 check('HUD uses shared compact geometry', contains('src/ui/HUD.ts', 'battleHudLayout') && contains('src/ui/BattleLayout.ts', 'battleTopHeight'));
 check('tower panel has mobile drawer', contains('src/ui/TowerPanel.ts', 'drawMobileDrawer'));
 check('screens have compact layout', contains('src/ui/Screens.ts', 'compact'));
-check('screens use adaptive full-screen menu dock', contains('src/ui/Screens.ts', 'drawModeDock'));
-check('screens preserve daily weekly ops brief', contains('src/ui/Screens.ts', 'drawOpsBrief'));
-check('screens avoid compact landscape backdrop collision', contains('src/ui/Screens.ts', 'isShort'));
-check('level select uses campaign route rail', contains('src/ui/LevelSelect.ts', 'drawRouteRail'));
-check('level select uses mission slab cards', contains('src/ui/LevelSelect.ts', 'drawMissionSlab'));
+check('home loads its locally bundled artwork', fileExists('src/assets/home-outpost.webp') && html.includes('src/assets/home-outpost.webp'));
+check('home keeps the daily weekly ops brief and four modes available', html.includes('data-home-action="brief"')
+  && ['endless', 'daily', 'weekly', 'challenge'].every(action => html.includes(`data-home-action="${action}"`)));
+check('home has a compact landscape layout', contains('src/ui/home.css', '(orientation: landscape)'));
+check('campaign route lists all stages', html.includes('<ol data-campaign="route">') && contains('src/ui/LevelSelect.ts', 'index < this.levels.total'));
+check('campaign preview renders the actual path', contains('src/ui/LevelSelect.ts', 'drawRouteMap') && contains('src/ui/RoutePreview.ts', 'level.waypoints'));
 check('tutorial has a real Intel discovery action', contains('src/utils/Tutorial.ts', "'intel'")
   && contains('src/main.ts', "tutorialAction('intel')") && contains('src/utils/i18n.ts', 'tutorial.intel'));
 check('tutorial highlights target controls', contains('src/main.ts', 'drawTutorialTarget') && contains('src/main.ts', 'findFirstBuildableScreenTile'));
@@ -239,7 +246,7 @@ check('particle system has freeze pulse', contains('src/game/effects/ParticleSys
 check('particle system has boss death effect', contains('src/game/effects/ParticleSystem.ts', 'bossDeath'));
 check('particle system caps pooled effects', contains('src/game/effects/ParticleSystem.ts', 'MAX_PARTICLES'));
 check('main wires enhanced spell effects', contains('src/main.ts', 'meteorImpact'));
-check('renderer caps device pixel ratio', contains('src/engine/Renderer.ts', 'Math.min(2, window.devicePixelRatio'));
+check('renderer caps device pixel ratio', contains('src/engine/Renderer.ts', 'resize(maxPixelRatio = 2)') && contains('src/engine/Renderer.ts', 'Math.min(maxPixelRatio, window.devicePixelRatio'));
 check('service worker builds a versioned cache', contains('public/sw.js', '${RELEASE}-${REVISION}')
   && contains('vite.config.ts', 'praesidium-v${version}'));
 

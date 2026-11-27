@@ -1,40 +1,36 @@
-export const TOP_H = 52;
-export const BOT_H = 72;
+import type { BattleBox } from './BattleLayout';
 
-type Action = 'send' | 'pause' | 'speed' | 'autoSend' | 'brief' | 'menu' | 'stats' | 'settings' | 'codex' | 'talent';
-interface Box { x: number; y: number; w: number; h: number }
+export const TOP_H = 52;
+export const BOT_H = 62;
+
+type Action = 'send' | 'pause' | 'speed' | 'autoSend' | 'brief';
 export interface BattleHudLayout {
   topHeight: number;
-  metrics: Box[];
-  controls: Array<Box & { action: Action }>;
+  metrics: BattleBox[];
+  controls: Array<BattleBox & { action: Action }>;
 }
 
-export function battleTopHeight(width: number): number { return width < 490 ? 84 : TOP_H; }
+export function battleTopHeight(width: number): number { return width < 450 ? 84 : TOP_H; }
 
-// Use one geometry for drawing, tapping and calculating the playable map bounds.
-export function battleHudLayout(width: number): BattleHudLayout {
+export function battleHudLayout(width: number, frame = { x: 8, w: width - 16 }): BattleHudLayout {
   const topHeight = battleTopHeight(width);
   const stacked = topHeight > TOP_H;
-  const wide = width >= 1080;
-  const pad = wide ? 16 : 8;
-  const gap = width < 560 ? 4 : 6;
+  const gap = frame.w < 540 ? 4 : 6;
   const controls: [Action, number][] = [
-    ['send', wide ? 94 : 64], ['pause', wide ? 62 : 44], ['speed', 44], ['autoSend', wide ? 65 : 46], ['brief', wide ? 56 : 44],
+    ['send', stacked ? 86 : 116], ['pause', 44], ['speed', 44], ['autoSend', stacked ? 68 : 88], ['brief', stacked ? 44 : 58],
   ];
-  if (wide) controls.push(['menu', 58], ['stats', 54], ['settings', 58], ['codex', 54], ['talent', 56]);
   const natural = controls.reduce((total, [, w]) => total + w, gap * (controls.length - 1));
-  const actionW = Math.min(width - 2 * pad, natural);
-  const metricsW = stacked ? width - 2 * pad : width - 2 * pad - actionW - gap;
-  const slot = metricsW / 4;
-  let x = stacked ? (width - actionW) / 2 : width - pad - actionW;
-  const fit = (actionW - gap * (controls.length - 1)) / (natural - gap * (controls.length - 1));
-  const y = stacked ? 33 : 4;
+  const actionW = Math.min(natural, stacked ? frame.w : frame.w - 156);
+  const flex = Math.max(0, actionW - gap * (controls.length - 1) - controls.length * 44);
+  const flexNatural = controls.reduce((total, [, w]) => total + w - 44, 0);
+  const slot = stacked ? frame.w / 4 : Math.min(144, (frame.w - actionW - gap) / 4);
+  let x = stacked ? frame.x + (frame.w - actionW) / 2 : frame.x + frame.w - actionW;
   return {
     topHeight,
-    metrics: Array.from({ length: 4 }, (_, index) => ({ x: pad + slot * index, y: 1, w: slot, h: stacked ? 30 : TOP_H - 2 })),
+    metrics: Array.from({ length: 4 }, (_, index) => ({ x: frame.x + slot * index, y: 0, w: slot, h: stacked ? 30 : TOP_H })),
     controls: controls.map(([action, preferred]) => {
-      const w = preferred * fit;
-      const region = { x, y, w, h: 44, action };
+      const w = 44 + (preferred - 44) * (flex / flexNatural);
+      const region = { x, y: stacked ? 33 : 4, w, h: 44, action };
       x += w + gap;
       return region;
     }),

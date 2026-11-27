@@ -9,7 +9,7 @@ export class Input {
   private dragged = false;
   pointerX = -1;
   pointerY = -1;
-  private readonly queuedClicks: Array<{ x: number; y: number; board: boolean; touch: boolean }> = [];
+  private readonly queuedClicks: Array<{ x: number; y: number; board: boolean; press?: { x: number; y: number } }> = [];
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     canvas.addEventListener('pointerdown', this.onDown);
@@ -32,12 +32,12 @@ export class Input {
     return this.justPressedKeys.has(code);
   }
 
-  clicks(): readonly { x: number; y: number; board: boolean; touch: boolean }[] {
+  clicks(): ReadonlyArray<(typeof this.queuedClicks)[number]> {
     return this.queuedClicks;
   }
 
-  activateAt(x: number, y: number, board = false, touch = false): void {
-    this.queuedClicks.push({ x, y, board, touch });
+  activateAt(x: number, y: number, board = false, press?: { x: number; y: number }): void {
+    this.queuedClicks.push({ x, y, board, press });
   }
 
   private updatePosition(event: PointerEvent): DOMRect {
@@ -48,6 +48,9 @@ export class Input {
   }
 
   private readonly onDown = (event: PointerEvent): void => {
+    if (event.pointerType === 'touch' && !event.isPrimary && this.pointerId !== null) {
+      this.dragged = true;
+    }
     if (!event.isPrimary || event.button !== 0 || this.pointerId !== null) return;
     this.pointerId = event.pointerId;
     this.updatePosition(event);
@@ -69,7 +72,8 @@ export class Input {
     const bounds = this.updatePosition(event);
     if (!this.dragged && Math.hypot(this.pointerX - this.pressX, this.pointerY - this.pressY) <= 12
         && this.pointerX >= 0 && this.pointerX < bounds.width && this.pointerY >= 0 && this.pointerY < bounds.height) {
-      this.activateAt(this.pointerX, this.pointerY, false, event.pointerType === 'touch');
+      const press = event.pointerType === 'touch' ? { x: this.pressX, y: this.pressY } : undefined;
+      this.activateAt(this.pointerX, this.pointerY, false, press);
     }
     if (event.pointerType === 'touch') this.clearPosition();
   };
@@ -103,9 +107,14 @@ export class Input {
     this.keys.delete(event.code);
   };
 
-  private readonly reset = (): void => {
+  cancelPointer(): void {
     this.pointerId = null;
     this.clearPosition();
+    this.queuedClicks.length = 0;
+  }
+
+  private readonly reset = (): void => {
+    this.cancelPointer();
     this.keys.clear();
     this.endFrame();
   };

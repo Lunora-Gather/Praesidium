@@ -64,7 +64,15 @@ export class PlayerSpell {
   }
 
   canCast(state: GameState): boolean {
-    return this.ready && state.gold >= this.def.cost && (!this.def.heal || (state.repairAllowed && state.lives < state.maxLives));
+    return this.ready && state.gold >= this.def.cost && (this.def.heal
+      ? state.repairAllowed && state.lives < state.maxLives
+      : this.hasTarget(state));
+  }
+
+  hasTarget(state: GameState, target?: Vec2): boolean {
+    const { radius } = this.def;
+    if (!target || radius === undefined) return state.enemies.some(enemy => !enemy.dead);
+    return state.enemies.some(enemy => !enemy.dead && target.distSq(enemy.pos) <= radius * radius);
   }
 
   update(dt: number): void {
@@ -74,6 +82,7 @@ export class PlayerSpell {
   /** Try to cast. Returns true if cast. target is world pos (for AoE). */
   cast(target: Vec2, state: GameState): boolean {
     if (!this.canCast(state)) return false;
+    if (this.def.radius && !this.hasTarget(state, target)) return false;
     state.gold -= this.def.cost;
     this.cooldown = this.def.cooldown * state.talentMultiplier('spellcd');
 

@@ -15,7 +15,7 @@ try {
     app.serve(legacy);
     const browser = await engine.launch();
     try {
-      const context = await browser.newContext();
+      const context = await browser.newContext({ locale: 'en-US' });
       const oldPage = await context.newPage();
       await oldPage.goto(app.url);
       await oldPage.waitForFunction(() => Boolean(navigator.serviceWorker.controller));

@@ -1,4 +1,4 @@
-// Canvas 2D drawing primitives + camera + screen shake. Keeps render code terse.
+// Canvas 2D drawing primitives and camera transform.
 
 import { Vec2 } from './math/Vec2';
 
@@ -13,10 +13,6 @@ export class Renderer {
   zoom = 1;
   reducedMotion = false;
   get motionClock(): number { return this.reducedMotion ? 0 : performance.now(); }
-  // screen shake: decays over time, applied as random offset each frame
-  private shakeIntensity = 0;
-  private shakeDecay = 0.9;
-  private currentShake = { x: 0, y: 0 };
 
   constructor(public readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -25,31 +21,9 @@ export class Renderer {
     this.resize();
   }
 
-  /** Trigger screen shake (intensity 1-20). Boss death = 12, spell = 8, wave start = 4. */
-  shake(intensity: number): void {
-    if (!this.reducedMotion) this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
-  }
-
-  /** Call once per frame to decay shake. */
-  updateShake(): void {
-    this.shakeIntensity = this.reducedMotion ? 0 : this.shakeIntensity * this.shakeDecay;
-    if (this.shakeIntensity < 0.3) {
-      this.shakeIntensity = 0;
-      this.currentShake.x = 0;
-      this.currentShake.y = 0;
-      return;
-    }
-    const a = Math.random() * Math.PI * 2;
-    this.currentShake.x = Math.cos(a) * this.shakeIntensity;
-    this.currentShake.y = Math.sin(a) * this.shakeIntensity;
-  }
-
-  get shakeOffset(): { x: number; y: number } {
-    return this.currentShake;
-  }
-
-  resize(): void {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+  resize(maxPixelRatio = 2): void {
+    const dpr = Math.min(maxPixelRatio, window.devicePixelRatio || 1);
+    if (this.width === window.innerWidth && this.height === window.innerHeight && this.pixelRatio === dpr) return;
     this.pixelRatio = dpr;
     this.width = window.innerWidth;
     this.height = window.innerHeight;
@@ -73,9 +47,13 @@ export class Renderer {
     const s = this.toScreen(p);
     this.ctx.beginPath();
     this.ctx.arc(s.x, s.y, r * this.zoom, 0, Math.PI * 2);
-    this.ctx.fillStyle = color;
-    if (fill) this.ctx.fill();
-    else this.ctx.stroke();
+    if (fill) {
+      this.ctx.fillStyle = color;
+      this.ctx.fill();
+    } else {
+      this.ctx.strokeStyle = color;
+      this.ctx.stroke();
+    }
   }
 
   rect(x: number, y: number, w: number, h: number, color: string | CanvasGradient, fill = true): void {

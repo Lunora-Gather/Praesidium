@@ -85,6 +85,10 @@ export class GameState {
   private wavesClearedThrough = 0;
   private achievementFlushTimer = 0;
   private analyticsSessionActive = false;
+  private checkpointMutation = 0;
+  private queuedSaveStamp = '';
+  playbackSpeed: 1 | 2 | 3 = 1;
+  effectsEnabled = true;
   readonly spells = PLAYER_SPELLS.map((s) => new PlayerSpell(s.def));
   readonly analytics = new Analytics();
   difficulty: Difficulty = 'normal';
@@ -257,6 +261,8 @@ export class GameState {
   }
 
   private resetRun(weeklyKey: string | null): void {
+    this.queuedSaveStamp = '';
+    this.playbackSpeed = 1;
     this.lastKnownWave = 0;
     this.wavesClearedThrough = 0;
     this.achievementFlushTimer = 0;
@@ -327,6 +333,7 @@ export class GameState {
       firerate: this.talentMultiplier('firerate'),
     };
     this.towers.push(new Tower(def, tx, ty, this.grid, tm));
+    this.markCheckpointDirty();
     this.updateSynergy();
     this.stats.recordPlace();
     this.analytics.recordTowerPlace(def.id);
@@ -337,9 +344,14 @@ export class GameState {
   }
 
   canPlaceTower(tx: number, ty: number, def: TowerDef): boolean {
-    return this.phase === 'playing' && this.gold >= def.cost && this.grid.isBuildable(tx, ty)
-      && (this.activeWeeklyRules.maxTowers === null || this.towers.length < this.activeWeeklyRules.maxTowers)
-      && !this.towers.some(tower => tower.tx === tx && tower.ty === ty);
+    return this.placementFailure(tx, ty, def) === null;
+  }
+
+  placementFailure(tx: number, ty: number, def: TowerDef): 'blocked' | 'limit' | 'funds' | null {
+    if (this.phase !== 'playing' || !this.grid.isBuildable(tx, ty)
+        || this.towers.some(tower => tower.tx === tx && tower.ty === ty)) return 'blocked';
+    if (this.activeWeeklyRules.maxTowers !== null && this.towers.length >= this.activeWeeklyRules.maxTowers) return 'limit';
+    return this.gold < def.cost ? 'funds' : null;
   }
 
   upgradeTower(t: Tower): boolean {
@@ -348,6 +360,7 @@ export class GameState {
     if (!step || this.gold < step.cost) return false;
     this.gold -= step.cost;
     t.upgrade();
+    this.markCheckpointDirty();
     this.stats.recordUpgrade();
     this.achievements.recordUpgrade();
     this.bus.emit('goldChanged', { gold: this.gold });
@@ -361,6 +374,7 @@ export class GameState {
     const refund = t.sellValue;
     this.gold += refund;
     this.towers.splice(i, 1);
+    this.markCheckpointDirty();
     this.updateSynergy();
     if (this.selectedTower === t) this.selectedTower = null;
     this.bus.emit('goldChanged', { gold: this.gold });
@@ -372,12 +386,13 @@ export class GameState {
     const sp = this.spells.find((s) => s.def.id === id);
     if (!sp) return false;
     if (!sp.cast(target, this)) return false;
+    this.markCheckpointDirty();
     this.stats.recordSpell();
     this.analytics.recordSpellCast(id);
     this.achievements.recordSpell();
     this.bus.emit('goldChanged', { gold: this.gold });
     this.bus.emit('spellCast', { id, x: target.x, y: target.y });
-    if (sp.def.damage && sp.def.radius) {
+    if (this.effectsEnabled && sp.def.damage && sp.def.radius) {
       this.particles.burst(target, 24, sp.def.color, 200, 0.65, 5);
       this.particles.shockwave(target, sp.def.radius, sp.def.color, 0.65);
     }
@@ -417,7 +432,9 @@ export class GameState {
 
     for (const p of this.projectiles) {
       p.update(dt);
-      if (!p.dead && Math.random() < 30 * dt) this.particles.burst(p.pos, 1, p.color, 30, 0.25, p.splash ? 2 : 1.2);
+      if (this.effectsEnabled && !p.dead && Math.random() < 30 * dt) {
+        this.particles.burst(p.pos, 1, p.color, 30, 0.25, p.splash ? 2 : 1.2);
+      }
     }
     this.combat.resolve(this.projectiles, this.enemies, this);
     this.compact(this.projectiles);
@@ -560,6 +577,7 @@ export class GameState {
       version: this.runVersion,
       missionDate: this.missionDate,
       activeSec: this.analytics.activeSeconds,
+      playbackSpeed: this.playbackSpeed,
       talentRanks: this.runTalentRanks,
       variedOpener: this.variedOpener,
       wavesClearedThrough: this.wavesClearedThrough,
@@ -606,6 +624,7 @@ export class GameState {
     this.dailyChallengeDate = snapshot.v === 2 ? snapshot.dailyDate : legacyDaily;
     const legacyWeekly = snapshot.v === 1 && snapshot.endless && (snapshot.weeklyModeActive ?? snapshot.endlessSeed !== 0);
     this.resetRun(snapshot.v === 2 ? snapshot.weeklyKey : legacyWeekly ? weekKey() : null);
+    this.playbackSpeed = snapshot.v === 2 ? snapshot.playbackSpeed ?? 1 : 1;
     this.gold = snapshot.gold;
     this.lives = snapshot.lives;
     this.score = snapshot.score;
@@ -638,12 +657,21 @@ export class GameState {
     return true;
   }
 
+  markCheckpointDirty(): void { this.checkpointMutation++; }
+
+  retryCheckpoint(): void { this.queuedSaveStamp = ''; }
+
   autoSave(replace = false): void {
     this.retrySettlement();
     this.achievements.flush();
     if (this.phase === 'playing' && this.lives > 0 && !this.save.hasSettledRun(this.runId)) {
+      const stamp = `${this.stats.get().durationSec}:${this.analytics.activeSeconds}:${this.checkpointMutation}:${this.waves.current}:${this.waves.autoSend}:${this.playbackSpeed}`;
+      if (this.storage && stamp === this.queuedSaveStamp) return;
       const snapshot = this.snapshot();
-      if (this.storage) this.storage.checkpoint(snapshot);
+      if (this.storage) {
+        this.queuedSaveStamp = stamp;
+        this.storage.checkpoint(snapshot);
+      }
       else saveRun(snapshot, replace);
       this.analytics.endSession();
     }
