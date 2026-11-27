@@ -1,7 +1,7 @@
 // Production injects an integrity manifest for the whole release. Never mix releases.
-const RELEASE = "praesidium-v1.1.0";
-const REVISION = "fcf0d2cd350eaa99";
-const PRECACHE = [["./manifest.json","635cf546f17e483653b81b9194b75bc4be28c5129051859f9527a20e4444ad1a"],["./assets/index-DC2cZjhf.js","c23fbb5667ff831468aa1d61595649bfd80b3be62038c2448ab1380c2c4c0dc0"],["./index.html","909a60d8bdadacc005ecbdfd2fa4a20aa3c6a38598f06feac0361da1f0b5d612"]];
+const RELEASE = "praesidium-v1.2.0";
+const REVISION = "3479985844ca86f2";
+const PRECACHE = [["./manifest.json","444000ff7a11b95ef5dd52729ba99fdc778ae2481381fa7acce3f4baaf49a499"],["./assets/home-outpost-tZf6lySl.webp","3fadccc2de6598d88a310009ad2f7dc977953952e78b034617f03611ee50f93e"],["./assets/index-BL25JvS7.js","8abdd1422cba99166ac70474e490b2f321394a77aefaa5ee647303861322db10"],["./assets/index-BYswGHzO.css","a4db6f8651d9d4c78bb304fd2b22d0a5d60ab7345267009fcdea90957199475d"],["./index.html","9a9c51460747f29c12ba5ae5e3e6196c22f7a124ae6b263dc89b67cc13da981d"]];
 
 const scope = self.registration.scope;
 const prefix = `praesidium:${scope}:`;
